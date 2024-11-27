@@ -38,4 +38,4 @@ jobs:
           enable-cache: true
 
       - name: install and test
-        run: uv run --no-editable --frozen pytest
+        run: uv run --no-editable --frozen pytest --color=yes -v
