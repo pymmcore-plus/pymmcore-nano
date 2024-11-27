@@ -41,6 +41,7 @@ def test_camera_device(demo_camera_dll: str) -> None:
     mmc = pmn.CMMCore()
     mmc.setDeviceAdapterSearchPaths([demo_camera_dll])
     mmc.loadDevice("Camera", "DemoCamera", "DCam")
+    mmc.initializeAllDevices()
     assert "DCam" in mmc.getLoadedDevices()
     assert mmc.getDeviceName("Camera") == "DCam"
     assert mmc.getDeviceDescription("DCam") == "Demo Camera"
