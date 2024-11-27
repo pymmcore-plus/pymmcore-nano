@@ -1,3 +1,9 @@
+"""This script is run by meson.build.
+
+It *directly* imports the built .so file and generates a stub file for it,
+circumventing any calls to `import _pymmcore_nano` in the process.
+"""
+
 import importlib.util
 from pathlib import Path
 import re
