@@ -55,7 +55,6 @@ ext_module = py.extension_module(
     cpp_args: cpp_args,
 )
 
-# generate stubs
 # Create stubs using nanobind.stubgen
 stubs = custom_target(
     'generate_stubs',
