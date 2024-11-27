@@ -1,6 +1,6 @@
+from typing import Any
 from collections.abc import Sequence
 import enum
-import types
 from typing import overload
 
 class CMMCore:
@@ -187,9 +187,9 @@ class CMMCore:
     @overload
     def setROI(self, label: str, x: int, y: int, xSize: int, ySize: int) -> None: ...
     @overload
-    def getROI(self) -> "std::__1::tuple<int, int, int, int>": ...
+    def getROI(self) -> tuple[int, int, int, int]: ...
     @overload
-    def getROI(self, label: str) -> "std::__1::tuple<int, int, int, int>": ...
+    def getROI(self, label: str) -> tuple[int, int, int, int]: ...
     def clearROI(self) -> None: ...
     def isMultiROISupported(self) -> bool: ...
     def isMultiROIEnabled(self) -> bool: ...
@@ -217,9 +217,9 @@ class CMMCore:
     def getExposure(self, label: str) -> float: ...
     def snapImage(self) -> None: ...
     @overload
-    def getImage(self) -> types.CapsuleType: ...
+    def getImage(self) -> Any: ...
     @overload
-    def getImage(self, numChannel: int) -> types.CapsuleType: ...
+    def getImage(self, numChannel: int) -> Any: ...
     def getImageWidth(self) -> int: ...
     def getImageHeight(self) -> int: ...
     def getBytesPerPixel(self) -> int: ...
@@ -256,10 +256,10 @@ class CMMCore:
     def isSequenceRunning(self) -> bool: ...
     @overload
     def isSequenceRunning(self, cameraLabel: str) -> bool: ...
-    def getLastImage(self) -> types.CapsuleType: ...
-    def popNextImage(self) -> types.CapsuleType: ...
-    def getLastImageMD(self, md: Metadata) -> types.CapsuleType: ...
-    def getNBeforeLastImageMD(self, n: int, md: Metadata) -> types.CapsuleType: ...
+    def getLastImage(self) -> Any: ...
+    def popNextImage(self) -> Any: ...
+    def getLastImageMD(self, md: Metadata) -> Any: ...
+    def getNBeforeLastImageMD(self, n: int, md: Metadata) -> Any: ...
     def getRemainingImageCount(self) -> int: ...
     def getBufferTotalCapacity(self) -> int: ...
     def getBufferFreeCapacity(self) -> int: ...
@@ -418,7 +418,7 @@ class CMMCore:
     ) -> None: ...
     def setGalvoSpotInterval(self, galvoLabel: str, pulseTime_us: float) -> None: ...
     def setGalvoPosition(self, galvoLabel: str, x: float, y: float) -> None: ...
-    def getGalvoPosition(self, arg: str, /) -> "std::__1::tuple<double, double>": ...
+    def getGalvoPosition(self, arg: str, /) -> tuple[float, float]: ...
     def setGalvoIlluminationState(self, galvoLabel: str, on: bool) -> None: ...
     def getGalvoXRange(self, galvoLabel: str) -> float: ...
     def getGalvoXMinimum(self, galvoLabel: str) -> float: ...
@@ -428,7 +428,6 @@ class CMMCore:
         self, galvoLabel: str, polygonIndex: int, x: float, y: float
     ) -> None:
         """Add a vertex to a galvo polygon."""
-
     def deleteGalvoPolygons(self, galvoLabel: str) -> None: ...
     def loadGalvoPolygons(self, galvoLabel: str) -> None: ...
     def setGalvoPolygonRepetitions(self, galvoLabel: str, repetitions: int) -> None: ...
@@ -452,60 +451,37 @@ DEVICE_INTERFACE_VERSION: int = 71
 
 class DeviceDetectionStatus(enum.IntEnum):
     Misconfigured = -1
-
     Unimplemented = -2
-
     CanNotCommunicate = 0
-
     CanCommunicate = 1
 
 class DeviceInitializationState(enum.IntEnum):
     CoreIdle = 0
-
     CoreBusy = 1
-
     CoreError = 2
 
 class DeviceType(enum.IntEnum):
     UnknownType = 0
-
     AnyType = 1
-
     CameraDevice = 2
-
     ShutterDevice = 3
-
     StateDevice = 4
-
     StageDevice = 5
-
     XYStageDevice = 6
-
     SerialDevice = 7
-
     GenericDevice = 8
-
     AutoFocusDevice = 9
-
     CoreDevice = 10
-
     ImageProcessorDevice = 11
-
     SignalIODevice = 12
-
     MagnifierDevice = 13
-
     SLMDevice = 14
-
     HubDevice = 15
-
     GalvoDevice = 16
 
 class FocusDirection(enum.IntEnum):
     FocusDirectionUnknown = 0
-
     FocusDirectionTowardSample = 1
-
     FocusDirectionAwayFromSample = 2
 
 class MMEventCallback:
@@ -516,18 +492,12 @@ class Metadata:
 
 class PortType(enum.IntEnum):
     InvalidPort = 0
-
     SerialPort = 1
-
     USBPort = 2
-
     HIDPort = 3
 
 class PropertyType(enum.IntEnum):
     Undef = 0
-
     String = 1
-
     Float = 2
-
     Integer = 3

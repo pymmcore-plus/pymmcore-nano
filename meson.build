@@ -36,7 +36,7 @@ endforeach
 
 # ---------- patch c++14 to c++17 ----------
 
-run_command(py.full_path(), 'patch_c14_c17.py', check: true)
+run_command(py.full_path(), 'scripts/patch_c14_c17.py', check: true)
 
 # --------------------------
 
@@ -62,23 +62,14 @@ stubs = custom_target(
     input: [ext_module],
     output: '_pymmcore_nano.pyi',
     command: [
-        'python', '-m', 'nanobind.stubgen',
-        '--module', '_pymmcore_nano',
-        '--output-dir', meson.project_source_root() + '/src',
+        py.full_path(),
+        meson.project_source_root() + '/scripts/build_stubs.py',
+        ext_module.full_path(),
+        meson.project_source_root() + '/src/_pymmcore_nano.pyi',
     ],
     depends: ext_module,
 )
-# Format stubs with ruff
-formatted_stubs = custom_target(
-    'format_stubs',
-    build_by_default: true,
-    input: [stubs],  # Explicitly depend on the output of the stubs target
-    output: '_pymmcore_nano_formatted.pyi',
-    command: [
-        'ruff', 'format', meson.project_source_root() + '/src/_pymmcore_nano.pyi',
-    ],
-    depends: stubs,  # Ensure it only runs after stubs are generated
-)
+
 
 # install the Python package into the site-packages directory
 install_subdir(
