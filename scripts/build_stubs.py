@@ -24,9 +24,9 @@ def load_module_from_filepath(name: str, filepath: str) -> ModuleType:
     return module
 
 
-def build_stub(module_path: str, output_path: str):
-    module_name = Path(module_path).stem.split(".")[0]
-    module = load_module_from_filepath(module_name, module_path)
+def build_stub(module_path: Path, output_path: str):
+    module_name = module_path.stem.split(".")[0]
+    module = load_module_from_filepath(module_name, str(module_path))
     s = StubGen(module, include_docstrings=True, include_private=False)
     s.put(module)
     dest = Path(output_path)
@@ -50,4 +50,16 @@ def build_stub(module_path: str, output_path: str):
 
 
 if __name__ == "__main__":
-    build_stub(sys.argv[1], sys.argv[2])
+    if len(sys.argv) > 1:
+        module_path = Path(sys.argv[1])
+    else:
+        build_dir = Path(__file__).parent.parent / "build"
+        pydir = next(build_dir.glob("cp*"))
+        module_path = next(x for x in pydir.glob("_pymmcore_nano.*") if x.is_file())
+
+    if len(sys.argv) > 2:
+        output = Path(sys.argv[2])
+    else:
+        source_dir = Path(__file__).parent.parent / "src"
+        output = source_dir / "_pymmcore_nano.pyi"
+    build_stub(module_path, str(output))
