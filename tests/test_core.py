@@ -8,9 +8,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 @pytest.fixture
 def demo_camera_dll():
-    return os.path.join(os.path.dirname(__file__), "device", "mmgr_dal_DemoCamera.dll")  
+    return os.path.join(os.path.dirname(__file__), "device", "mmgr_dal_DemoCamera.dll")
+
 
 root = Path.home() / "Library/Application Support/pymmcore-plus/mm"
 mm = next(root.glob("Micro-Manager-*"), None)
@@ -33,6 +35,7 @@ def test_enums():
         assert "Camera" in mmc.getLoadedDevices()
         cfg = mmc.getConfigState("Channel", "DAPI")
         assert isinstance(cfg, pmn.Configuration)
+
 
 @pytest.mark.skipif(sys.platform != "win32", reason="DLL works only on Windows")
 def test_camera_device(demo_camera_dll: str) -> None:
