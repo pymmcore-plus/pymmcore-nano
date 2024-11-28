@@ -3,6 +3,15 @@ from collections.abc import Sequence
 import enum
 from typing import overload
 
+class ActionType(enum.IntEnum):
+    NoAction = 0
+    BeforeGet = 1
+    AfterSet = 2
+    IsSequenceable = 3
+    AfterLoadSequence = 4
+    StartSequence = 5
+    StopSequence = 6
+
 class CMMCore:
     def __init__(self) -> None: ...
     def loadSystemConfiguration(self, fileName: object) -> None: ...
@@ -447,8 +456,8 @@ class Configuration:
 DEVICE_INTERFACE_VERSION: int = 71
 
 class DeviceDetectionStatus(enum.IntEnum):
-    Misconfigured = -1
     Unimplemented = -2
+    Misconfigured = -1
     CanNotCommunicate = 0
     CanCommunicate = 1
 
@@ -456,6 +465,11 @@ class DeviceInitializationState(enum.IntEnum):
     CoreIdle = 0
     CoreBusy = 1
     CoreError = 2
+
+class DeviceNotification(enum.IntEnum):
+    Attention = 0
+    Done = 1
+    StatusChanged = 2
 
 class DeviceType(enum.IntEnum):
     UnknownType = 0
@@ -475,11 +489,28 @@ class DeviceType(enum.IntEnum):
     SLMDevice = 14
     HubDevice = 15
     GalvoDevice = 16
+    Unknown = 0
+    Any = 1
+    Camera = 2
+    Shutter = 3
+    State = 4
+    Stage = 5
+    XYStage = 6
+    Serial = 7
+    Generic = 8
+    AutoFocus = 9
+    Core = 10
+    ImageProcessor = 11
+    SignalIO = 12
+    Magnifier = 13
+    SLM = 14
+    Hub = 15
+    Galvo = 16
 
 class FocusDirection(enum.IntEnum):
-    FocusDirectionUnknown = 0
-    FocusDirectionTowardSample = 1
-    FocusDirectionAwayFromSample = 2
+    Unknown = 0
+    TowardSample = 1
+    AwayFromSample = 2
 
 class MMEventCallback:
     def __init__(self) -> None: ...
@@ -492,6 +523,9 @@ class PortType(enum.IntEnum):
     SerialPort = 1
     USBPort = 2
     HIDPort = 3
+
+class PropertySetting:
+    def __init__(self) -> None: ...
 
 class PropertyType(enum.IntEnum):
     Undef = 0
