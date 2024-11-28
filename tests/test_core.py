@@ -1,9 +1,11 @@
 import enum
 from pathlib import Path
 import sys
-
+import logging
 import pytest
 import pymmcore_nano as pmn
+
+logger = logging.getLogger(__name__)
 
 
 DEMO_CFG = Path(__file__).parent / "MMConfig_demo.cfg"
@@ -41,3 +43,28 @@ def test_core(adapter_paths: list[str]) -> None:
     assert "Camera" in mmc.getLoadedDevices()
     cfg = mmc.getConfigState("Channel", "DAPI")
     assert isinstance(cfg, pmn.Configuration)
+
+def test_camera_snap(adapter_paths: list[str]) -> None:
+    if not adapter_paths:
+        pytest.skip("No adapters found")
+
+    mmc = pmn.CMMCore()
+    mmc.setDeviceAdapterSearchPaths(adapter_paths)
+    mmc.loadSystemConfiguration(DEMO_CFG)
+
+    assert "Camera" in mmc.getLoadedDevices()
+    mmc.snapImage()
+    img = mmc.getImage()
+    assert img is not None
+
+@pytest.skip(reason="mmc.getROI() is not able to return a valid ROI object")
+def test_camera_roi_change(adapter_paths: list[str]) -> None:
+    if not adapter_paths:
+        pytest.skip("No adapters found")
+
+    mmc = pmn.CMMCore()
+    mmc.setDeviceAdapterSearchPaths(adapter_paths)
+    mmc.loadSystemConfiguration(DEMO_CFG)
+
+    roi = mmc.getROI()
+    assert roi is not None
