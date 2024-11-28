@@ -1,5 +1,5 @@
 [build-system]
-requires = ['meson-python', 'nanobind', 'ruff'] # nanobind is for stubgen
+requires = ['meson-python', 'nanobind', 'ruff', 'typing_extensions'] # nanobind is for stubgen
 build-backend = 'mesonpy'
 
 [project]

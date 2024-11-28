@@ -463,8 +463,8 @@ NB_MODULE(_pymmcore_nano, m) {
       // SLM Control
       .def("setSLMImage", nb::overload_cast<const char*, unsigned char*>(&CMMCore::setSLMImage),
            "slmLabel"_a, "pixels"_a)
-      .def("setSLMImage", nb::overload_cast<const char*, imgRGB32>(&CMMCore::setSLMImage),
-           "slmLabel"_a, "pixels"_a)
+      //  .def("setSLMImage", nb::overload_cast<const char*, imgRGB32>(&CMMCore::setSLMImage),
+      //       "slmLabel"_a, "pixels"_a)
       .def("setSLMPixelsTo",
            nb::overload_cast<const char*, unsigned char>(&CMMCore::setSLMPixelsTo), "slmLabel"_a,
            "intensity"_a)
