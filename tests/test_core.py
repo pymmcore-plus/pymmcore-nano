@@ -1,22 +1,26 @@
 import enum
 from pathlib import Path
 import sys
-import logging
 import pytest
 import pymmcore_nano as pmn
-
-logger = logging.getLogger(__name__)
-
-
-DEMO_CFG = Path(__file__).parent / "MMConfig_demo.cfg"
 
 
 @pytest.fixture
 def adapter_paths() -> list[str]:
     adapters = Path(__file__).parent / "adapters" / sys.platform
-    if adapters.is_dir():
-        return [str(adapters)]
-    return []
+    if not adapters.is_dir():
+        pytest.skip(f"No adapters for {sys.platform}")
+    return [str(adapters)]
+
+
+@pytest.fixture
+def demo_core(adapter_paths: list[str]) -> pmn.CMMCore:
+    """Return a CMMCore instance with the demo configuration loaded."""
+    mmc = pmn.CMMCore()
+    mmc.setDeviceAdapterSearchPaths(adapter_paths)
+    cfg = Path(__file__).parent / "MMConfig_demo.cfg"
+    mmc.loadSystemConfiguration(cfg)
+    return mmc
 
 
 def test_enums() -> None:
@@ -32,41 +36,20 @@ def test_core_without_adapters() -> None:
     assert mmc.getLoadedDevices() == ["Core"]
 
 
-def test_core(adapter_paths: list[str]) -> None:
-    if not adapter_paths:
-        pytest.skip("No adapters found")
-
-    mmc = pmn.CMMCore()
-    mmc.setDeviceAdapterSearchPaths(adapter_paths)
-    mmc.loadSystemConfiguration(DEMO_CFG)
-
-    assert "Camera" in mmc.getLoadedDevices()
-    cfg = mmc.getConfigState("Channel", "DAPI")
+def test_core(demo_core: pmn.CMMCore) -> None:
+    assert "Camera" in demo_core.getLoadedDevices()
+    cfg = demo_core.getConfigState("Channel", "DAPI")
     assert isinstance(cfg, pmn.Configuration)
 
 
-def test_camera_snap(adapter_paths: list[str]) -> None:
-    if not adapter_paths:
-        pytest.skip("No adapters found")
-
-    mmc = pmn.CMMCore()
-    mmc.setDeviceAdapterSearchPaths(adapter_paths)
-    mmc.loadSystemConfiguration(DEMO_CFG)
-
-    assert "Camera" in mmc.getLoadedDevices()
-    mmc.snapImage()
-    img = mmc.getImage()
+def test_camera_snap(demo_core: pmn.CMMCore) -> None:
+    assert "Camera" in demo_core.getLoadedDevices()
+    demo_core.snapImage()
+    img = demo_core.getImage()
     assert img is not None
 
 
-@pytest.mark.skip(reason="mmc.getROI() is not able to return a valid ROI object")
-def test_camera_roi_change(adapter_paths: list[str]) -> None:
-    if not adapter_paths:
-        pytest.skip("No adapters found")
-
-    mmc = pmn.CMMCore()
-    mmc.setDeviceAdapterSearchPaths(adapter_paths)
-    mmc.loadSystemConfiguration(DEMO_CFG)
-
-    roi = mmc.getROI()
-    assert roi is not None
+def test_camera_roi_change(demo_core: pmn.CMMCore) -> None:
+    assert demo_core.getROI() == (0, 0, 512, 512)
+    demo_core.setROI(10, 10, 100, 100)
+    assert demo_core.getROI() == (10, 10, 100, 100)
