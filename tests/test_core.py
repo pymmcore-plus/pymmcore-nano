@@ -44,6 +44,7 @@ def test_core(adapter_paths: list[str]) -> None:
     cfg = mmc.getConfigState("Channel", "DAPI")
     assert isinstance(cfg, pmn.Configuration)
 
+
 def test_camera_snap(adapter_paths: list[str]) -> None:
     if not adapter_paths:
         pytest.skip("No adapters found")
@@ -56,6 +57,7 @@ def test_camera_snap(adapter_paths: list[str]) -> None:
     mmc.snapImage()
     img = mmc.getImage()
     assert img is not None
+
 
 @pytest.mark.skip(reason="mmc.getROI() is not able to return a valid ROI object")
 def test_camera_roi_change(adapter_paths: list[str]) -> None:
