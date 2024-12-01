@@ -41,7 +41,7 @@ jobs:
         # c-coverage is very hard to do without editable mode, but that
         # requires activating the virtual environment, which is a bit
         # difficult on Windows.
-      - name: install and test with coverage
+      - name: install and test with C++ coverage
         if: runner.os == 'Linux'
         run: |
           uv sync --frozen --no-install-project
@@ -52,7 +52,7 @@ jobs:
           pytest --color=yes -v --cov --cov-report=xml
           gcovr --xml coverage_cpp.xml
 
-      - name: install and test with coverage
+      - name: install and test
         if: runner.os != 'Linux'
         run: uv run --no-editable pytest --color=yes -v --cov --cov-report=xml
 
