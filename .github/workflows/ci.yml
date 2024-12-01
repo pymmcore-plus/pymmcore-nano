@@ -37,27 +37,26 @@ jobs:
           version: "0.5.5"
           enable-cache: true
 
-      - name: install and test
-        shell: bash
+        # this all got harder when trying to incorporate the C++ coverage
+        # c-coverage is very hard to do without editable mode, but that
+        # requires activating the virtual environment, which is a bit
+        # difficult on Windows.
+      - name: install and test with coverage
+        if: runner.os == 'Linux'
         run: |
-          # TODO: improve me...
-          # this all got harder when trying to incorporate the C++ coverage
-          # unclear whether we have to install in editable mode to get C coverage
-          uv venv
           uv sync --frozen --no-install-project
-          if [ ${{ runner.os }} == 'Windows' ]; then
-            . .venv\\Scripts\\activate
-          else
-            . .venv/bin/activate
-          fi
+          . .venv/bin/activate
           uv pip install -e . --no-build-isolation --force-reinstall \
             -C=setup-args="-Db_coverage=true" \
             -C=editable-verbose=true
           pytest --color=yes -v --cov --cov-report=xml
           gcovr --xml coverage_cpp.xml
 
-      - name: Coverage
-        uses: codecov/codecov-action@v4
+      - name: install and test with coverage
+        if: runner.os != 'Linux'
+        run: uv run --no-editable pytest --color=yes -v --cov --cov-report=xml
+
+      - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml,./coverage_cpp.xml
