@@ -35,6 +35,9 @@ def test_core_without_adapters() -> None:
     assert mmc.getVersionInfo().startswith("MMCore version")
     assert mmc.getLoadedDevices() == ["Core"]
 
+    with pytest.raises(pmn.CMMError):
+        mmc.loadDevice("Camera", "DemoCamera", "DCam")
+
 
 def test_core(demo_core: pmn.CMMCore) -> None:
     assert "Camera" in demo_core.getLoadedDevices()

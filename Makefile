@@ -6,7 +6,7 @@ BUILDDIR := $(shell ls -d build/cp3* 2>/dev/null | head -n 1)
 # editable install
 install:
 	make clean
-	git submodule update --init --recursive
+	git submodule update --init
 	uv sync
 	uv pip install -e . \
 		--no-build-isolation \
