@@ -1,8 +1,8 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
-#include <nanobind/stl/vector.h>
 #include <nanobind/stl/tuple.h>
+#include <nanobind/stl/vector.h>
 
 #include "MMCore.h"
 #include "MMEventCallback.h"
@@ -18,104 +18,156 @@ NB_MODULE(_pymmcore_nano, m) {
 
   m.attr("DEVICE_INTERFACE_VERSION") = DEVICE_INTERFACE_VERSION;
 
+  m.attr("MM_CODE_OK") = MM_CODE_OK;
+  m.attr("MM_CODE_ERR") = MM_CODE_ERR;
+  m.attr("DEVICE_OK") = DEVICE_OK;
+  m.attr("DEVICE_ERR") = DEVICE_ERR;
+  m.attr("DEVICE_INVALID_PROPERTY") = DEVICE_INVALID_PROPERTY;
+  m.attr("DEVICE_INVALID_PROPERTY_VALUE") = DEVICE_INVALID_PROPERTY_VALUE;
+  m.attr("DEVICE_DUPLICATE_PROPERTY") = DEVICE_DUPLICATE_PROPERTY;
+  m.attr("DEVICE_INVALID_PROPERTY_TYPE") = DEVICE_INVALID_PROPERTY_TYPE;
+  m.attr("DEVICE_NATIVE_MODULE_FAILED") = DEVICE_NATIVE_MODULE_FAILED;
+  m.attr("DEVICE_UNSUPPORTED_DATA_FORMAT") = DEVICE_UNSUPPORTED_DATA_FORMAT;
+  m.attr("DEVICE_INTERNAL_INCONSISTENCY") = DEVICE_INTERNAL_INCONSISTENCY;
+  m.attr("DEVICE_NOT_SUPPORTED") = DEVICE_NOT_SUPPORTED;
+  m.attr("DEVICE_UNKNOWN_LABEL") = DEVICE_UNKNOWN_LABEL;
+  m.attr("DEVICE_UNSUPPORTED_COMMAND") = DEVICE_UNSUPPORTED_COMMAND;
+  m.attr("DEVICE_UNKNOWN_POSITION") = DEVICE_UNKNOWN_POSITION;
+  m.attr("DEVICE_NO_CALLBACK_REGISTERED") = DEVICE_NO_CALLBACK_REGISTERED;
+  m.attr("DEVICE_SERIAL_COMMAND_FAILED") = DEVICE_SERIAL_COMMAND_FAILED;
+  m.attr("DEVICE_SERIAL_BUFFER_OVERRUN") = DEVICE_SERIAL_BUFFER_OVERRUN;
+  m.attr("DEVICE_SERIAL_INVALID_RESPONSE") = DEVICE_SERIAL_INVALID_RESPONSE;
+  m.attr("DEVICE_SERIAL_TIMEOUT") = DEVICE_SERIAL_TIMEOUT;
+  m.attr("DEVICE_SELF_REFERENCE") = DEVICE_SELF_REFERENCE;
+  m.attr("DEVICE_NO_PROPERTY_DATA") = DEVICE_NO_PROPERTY_DATA;
+  m.attr("DEVICE_DUPLICATE_LABEL") = DEVICE_DUPLICATE_LABEL;
+  m.attr("DEVICE_INVALID_INPUT_PARAM") = DEVICE_INVALID_INPUT_PARAM;
+  m.attr("DEVICE_BUFFER_OVERFLOW") = DEVICE_BUFFER_OVERFLOW;
+  m.attr("DEVICE_NONEXISTENT_CHANNEL") = DEVICE_NONEXISTENT_CHANNEL;
+  m.attr("DEVICE_INVALID_PROPERTY_LIMTS") = DEVICE_INVALID_PROPERTY_LIMTS;
+  m.attr("DEVICE_INVALID_PROPERTY_LIMITS") = DEVICE_INVALID_PROPERTY_LIMTS;  // Fix Typo
+  m.attr("DEVICE_SNAP_IMAGE_FAILED") = DEVICE_SNAP_IMAGE_FAILED;
+  m.attr("DEVICE_IMAGE_PARAMS_FAILED") = DEVICE_IMAGE_PARAMS_FAILED;
+  m.attr("DEVICE_CORE_FOCUS_STAGE_UNDEF") = DEVICE_CORE_FOCUS_STAGE_UNDEF;
+  m.attr("DEVICE_CORE_EXPOSURE_FAILED") = DEVICE_CORE_EXPOSURE_FAILED;
+  m.attr("DEVICE_CORE_CONFIG_FAILED") = DEVICE_CORE_CONFIG_FAILED;
+  m.attr("DEVICE_CAMERA_BUSY_ACQUIRING") = DEVICE_CAMERA_BUSY_ACQUIRING;
+  m.attr("DEVICE_INCOMPATIBLE_IMAGE") = DEVICE_INCOMPATIBLE_IMAGE;
+  m.attr("DEVICE_CAN_NOT_SET_PROPERTY") = DEVICE_CAN_NOT_SET_PROPERTY;
+  m.attr("DEVICE_CORE_CHANNEL_PRESETS_FAILED") = DEVICE_CORE_CHANNEL_PRESETS_FAILED;
+  m.attr("DEVICE_LOCALLY_DEFINED_ERROR") = DEVICE_LOCALLY_DEFINED_ERROR;
+  m.attr("DEVICE_NOT_CONNECTED") = DEVICE_NOT_CONNECTED;
+  m.attr("DEVICE_COMM_HUB_MISSING") = DEVICE_COMM_HUB_MISSING;
+  m.attr("DEVICE_DUPLICATE_LIBRARY") = DEVICE_DUPLICATE_LIBRARY;
+  m.attr("DEVICE_PROPERTY_NOT_SEQUENCEABLE") = DEVICE_PROPERTY_NOT_SEQUENCEABLE;
+  m.attr("DEVICE_SEQUENCE_TOO_LARGE") = DEVICE_SEQUENCE_TOO_LARGE;
+  m.attr("DEVICE_OUT_OF_MEMORY") = DEVICE_OUT_OF_MEMORY;
+  m.attr("DEVICE_NOT_YET_IMPLEMENTED") = DEVICE_NOT_YET_IMPLEMENTED;
+
+  m.attr("g_Keyword_Name") = MM::g_Keyword_Name;
+  m.attr("g_Keyword_Description") = MM::g_Keyword_Description;
+  m.attr("g_Keyword_CameraName") = MM::g_Keyword_CameraName;
+  m.attr("g_Keyword_CameraID") = MM::g_Keyword_CameraID;
+  m.attr("g_Keyword_CameraChannelName") = MM::g_Keyword_CameraChannelName;
+  m.attr("g_Keyword_CameraChannelIndex") = MM::g_Keyword_CameraChannelIndex;
+  m.attr("g_Keyword_Binning") = MM::g_Keyword_Binning;
+  m.attr("g_Keyword_Exposure") = MM::g_Keyword_Exposure;
+  m.attr("g_Keyword_ActualExposure") = MM::g_Keyword_ActualExposure;
+  m.attr("g_Keyword_ActualInterval_ms") = MM::g_Keyword_ActualInterval_ms;
+  m.attr("g_Keyword_Interval_ms") = MM::g_Keyword_Interval_ms;
+  m.attr("g_Keyword_Elapsed_Time_ms") = MM::g_Keyword_Elapsed_Time_ms;
+  m.attr("g_Keyword_PixelType") = MM::g_Keyword_PixelType;
+  m.attr("g_Keyword_ReadoutTime") = MM::g_Keyword_ReadoutTime;
+  m.attr("g_Keyword_ReadoutMode") = MM::g_Keyword_ReadoutMode;
+  m.attr("g_Keyword_Gain") = MM::g_Keyword_Gain;
+  m.attr("g_Keyword_EMGain") = MM::g_Keyword_EMGain;
+  m.attr("g_Keyword_Offset") = MM::g_Keyword_Offset;
+  m.attr("g_Keyword_CCDTemperature") = MM::g_Keyword_CCDTemperature;
+  m.attr("g_Keyword_CCDTemperatureSetPoint") = MM::g_Keyword_CCDTemperatureSetPoint;
+  m.attr("g_Keyword_State") = MM::g_Keyword_State;
+  m.attr("g_Keyword_Label") = MM::g_Keyword_Label;
+  m.attr("g_Keyword_Position") = MM::g_Keyword_Position;
+  m.attr("g_Keyword_Type") = MM::g_Keyword_Type;
+  m.attr("g_Keyword_Delay") = MM::g_Keyword_Delay;
+  m.attr("g_Keyword_BaudRate") = MM::g_Keyword_BaudRate;
+  m.attr("g_Keyword_DataBits") = MM::g_Keyword_DataBits;
+  m.attr("g_Keyword_StopBits") = MM::g_Keyword_StopBits;
+  m.attr("g_Keyword_Parity") = MM::g_Keyword_Parity;
+  m.attr("g_Keyword_Handshaking") = MM::g_Keyword_Handshaking;
+  m.attr("g_Keyword_DelayBetweenCharsMs") = MM::g_Keyword_DelayBetweenCharsMs;
+  m.attr("g_Keyword_Port") = MM::g_Keyword_Port;
+  m.attr("g_Keyword_AnswerTimeout") = MM::g_Keyword_AnswerTimeout;
+  m.attr("g_Keyword_Speed") = MM::g_Keyword_Speed;
+  m.attr("g_Keyword_CoreDevice") = MM::g_Keyword_CoreDevice;
+  m.attr("g_Keyword_CoreInitialize") = MM::g_Keyword_CoreInitialize;
+  m.attr("g_Keyword_CoreCamera") = MM::g_Keyword_CoreCamera;
+  m.attr("g_Keyword_CoreShutter") = MM::g_Keyword_CoreShutter;
+  m.attr("g_Keyword_CoreXYStage") = MM::g_Keyword_CoreXYStage;
+  m.attr("g_Keyword_CoreFocus") = MM::g_Keyword_CoreFocus;
+  m.attr("g_Keyword_CoreAutoFocus") = MM::g_Keyword_CoreAutoFocus;
+  m.attr("g_Keyword_CoreAutoShutter") = MM::g_Keyword_CoreAutoShutter;
+  m.attr("g_Keyword_CoreChannelGroup") = MM::g_Keyword_CoreChannelGroup;
+  m.attr("g_Keyword_CoreImageProcessor") = MM::g_Keyword_CoreImageProcessor;
+  m.attr("g_Keyword_CoreSLM") = MM::g_Keyword_CoreSLM;
+  m.attr("g_Keyword_CoreGalvo") = MM::g_Keyword_CoreGalvo;
+  m.attr("g_Keyword_CoreTimeoutMs") = MM::g_Keyword_CoreTimeoutMs;
+  m.attr("g_Keyword_Channel") = MM::g_Keyword_Channel;
+  m.attr("g_Keyword_Version") = MM::g_Keyword_Version;
+  m.attr("g_Keyword_ColorMode") = MM::g_Keyword_ColorMode;
+  m.attr("g_Keyword_Transpose_SwapXY") = MM::g_Keyword_Transpose_SwapXY;
+  m.attr("g_Keyword_Transpose_MirrorX") = MM::g_Keyword_Transpose_MirrorX;
+  m.attr("g_Keyword_Transpose_MirrorY") = MM::g_Keyword_Transpose_MirrorY;
+  m.attr("g_Keyword_Transpose_Correction") = MM::g_Keyword_Transpose_Correction;
+  m.attr("g_Keyword_Closed_Position") = MM::g_Keyword_Closed_Position;
+  m.attr("g_Keyword_HubID") = MM::g_Keyword_HubID;
+  m.attr("g_Keyword_Metadata_CameraLabel") = MM::g_Keyword_Metadata_CameraLabel;
+  m.attr("g_Keyword_Meatdata_Exposure") = MM::g_Keyword_Meatdata_Exposure;
+  m.attr("g_Keyword_Metadata_Score") = MM::g_Keyword_Metadata_Score;
+  m.attr("g_Keyword_Metadata_ImageNumber") = MM::g_Keyword_Metadata_ImageNumber;
+  m.attr("g_Keyword_Metadata_ROI_X") = MM::g_Keyword_Metadata_ROI_X;
+  m.attr("g_Keyword_Metadata_ROI_Y") = MM::g_Keyword_Metadata_ROI_Y;
+  m.attr("g_Keyword_Metadata_TimeInCore") = MM::g_Keyword_Metadata_TimeInCore;
+  m.attr("g_FieldDelimiters") = MM::g_FieldDelimiters;
+  m.attr("g_CFGCommand_Device") = MM::g_CFGCommand_Device;
+  m.attr("g_CFGCommand_Label") = MM::g_CFGCommand_Label;
+  m.attr("g_CFGCommand_Property") = MM::g_CFGCommand_Property;
+  m.attr("g_CFGCommand_Configuration") = MM::g_CFGCommand_Configuration;
+  m.attr("g_CFGCommand_ConfigGroup") = MM::g_CFGCommand_ConfigGroup;
+  m.attr("g_CFGCommand_Equipment") = MM::g_CFGCommand_Equipment;
+  m.attr("g_CFGCommand_Delay") = MM::g_CFGCommand_Delay;
+  m.attr("g_CFGCommand_ImageSynchro") = MM::g_CFGCommand_ImageSynchro;
+  m.attr("g_CFGCommand_ConfigPixelSize") = MM::g_CFGCommand_ConfigPixelSize;
+  m.attr("g_CFGCommand_PixelSize_um") = MM::g_CFGCommand_PixelSize_um;
+  m.attr("g_CFGCommand_PixelSizeAffine") = MM::g_CFGCommand_PixelSizeAffine;
+  m.attr("g_CFGCommand_ParentID") = MM::g_CFGCommand_ParentID;
+  m.attr("g_CFGCommand_FocusDirection") = MM::g_CFGCommand_FocusDirection;
+  m.attr("g_CFGGroup_System") = MM::g_CFGGroup_System;
+  m.attr("g_CFGGroup_System_Startup") = MM::g_CFGGroup_System_Startup;
+  m.attr("g_CFGGroup_System_Shutdown") = MM::g_CFGGroup_System_Shutdown;
+  m.attr("g_CFGGroup_PixelSizeUm") = MM::g_CFGGroup_PixelSizeUm;
+
   /////////////////// Enums ///////////////////
 
-  nb::module_ py_enum = nb::module_::import_("enum");
-
-  nb::dict keyword_dict;
-  keyword_dict["Name"] = MM::g_Keyword_Name;
-  keyword_dict["Description"] = MM::g_Keyword_Description;
-  keyword_dict["CameraName"] = MM::g_Keyword_CameraName;
-  keyword_dict["CameraID"] = MM::g_Keyword_CameraID;
-  keyword_dict["CameraChannelName"] = MM::g_Keyword_CameraChannelName;
-  keyword_dict["CameraChannelIndex"] = MM::g_Keyword_CameraChannelIndex;
-  keyword_dict["Binning"] = MM::g_Keyword_Binning;
-  keyword_dict["Exposure"] = MM::g_Keyword_Exposure;
-  keyword_dict["ActualExposure"] = MM::g_Keyword_ActualExposure;
-  keyword_dict["ActualInterval_ms"] = MM::g_Keyword_ActualInterval_ms;
-  keyword_dict["Interval_ms"] = MM::g_Keyword_Interval_ms;
-  keyword_dict["Elapsed_Time_ms"] = MM::g_Keyword_Elapsed_Time_ms;
-  keyword_dict["PixelType"] = MM::g_Keyword_PixelType;
-  keyword_dict["ReadoutTime"] = MM::g_Keyword_ReadoutTime;
-  keyword_dict["ReadoutMode"] = MM::g_Keyword_ReadoutMode;
-  keyword_dict["Gain"] = MM::g_Keyword_Gain;
-  keyword_dict["EMGain"] = MM::g_Keyword_EMGain;
-  keyword_dict["Offset"] = MM::g_Keyword_Offset;
-  keyword_dict["CCDTemperature"] = MM::g_Keyword_CCDTemperature;
-  keyword_dict["CCDTemperatureSetPoint"] = MM::g_Keyword_CCDTemperatureSetPoint;
-  keyword_dict["State"] = MM::g_Keyword_State;
-  keyword_dict["Label"] = MM::g_Keyword_Label;
-  keyword_dict["Position"] = MM::g_Keyword_Position;
-  keyword_dict["Type"] = MM::g_Keyword_Type;
-  keyword_dict["Delay"] = MM::g_Keyword_Delay;
-  keyword_dict["BaudRate"] = MM::g_Keyword_BaudRate;
-  keyword_dict["DataBits"] = MM::g_Keyword_DataBits;
-  keyword_dict["StopBits"] = MM::g_Keyword_StopBits;
-  keyword_dict["Parity"] = MM::g_Keyword_Parity;
-  keyword_dict["Handshaking"] = MM::g_Keyword_Handshaking;
-  keyword_dict["DelayBetweenCharsMs"] = MM::g_Keyword_DelayBetweenCharsMs;
-  keyword_dict["Port"] = MM::g_Keyword_Port;
-  keyword_dict["AnswerTimeout"] = MM::g_Keyword_AnswerTimeout;
-  keyword_dict["Speed"] = MM::g_Keyword_Speed;
-  keyword_dict["CoreDevice"] = MM::g_Keyword_CoreDevice;
-  keyword_dict["CoreInitialize"] = MM::g_Keyword_CoreInitialize;
-  keyword_dict["CoreCamera"] = MM::g_Keyword_CoreCamera;
-  keyword_dict["CoreShutter"] = MM::g_Keyword_CoreShutter;
-  keyword_dict["CoreXYStage"] = MM::g_Keyword_CoreXYStage;
-  keyword_dict["CoreFocus"] = MM::g_Keyword_CoreFocus;
-  keyword_dict["CoreAutoFocus"] = MM::g_Keyword_CoreAutoFocus;
-  keyword_dict["CoreAutoShutter"] = MM::g_Keyword_CoreAutoShutter;
-  keyword_dict["CoreChannelGroup"] = MM::g_Keyword_CoreChannelGroup;
-  keyword_dict["CoreImageProcessor"] = MM::g_Keyword_CoreImageProcessor;
-  keyword_dict["CoreSLM"] = MM::g_Keyword_CoreSLM;
-  keyword_dict["CoreGalvo"] = MM::g_Keyword_CoreGalvo;
-  keyword_dict["CoreTimeoutMs"] = MM::g_Keyword_CoreTimeoutMs;
-  keyword_dict["Channel"] = MM::g_Keyword_Channel;
-  keyword_dict["Version"] = MM::g_Keyword_Version;
-  keyword_dict["ColorMode"] = MM::g_Keyword_ColorMode;
-  keyword_dict["Transpose_SwapXY"] = MM::g_Keyword_Transpose_SwapXY;
-  keyword_dict["Transpose_MirrorX"] = MM::g_Keyword_Transpose_MirrorX;
-  keyword_dict["Transpose_MirrorY"] = MM::g_Keyword_Transpose_MirrorY;
-  keyword_dict["Transpose_Correction"] = MM::g_Keyword_Transpose_Correction;
-  keyword_dict["Closed_Position"] = MM::g_Keyword_Closed_Position;
-  keyword_dict["HubID"] = MM::g_Keyword_HubID;
-  keyword_dict["Metadata_Exposure"] = MM::g_Keyword_Meatdata_Exposure;
-  keyword_dict["Meatdata_Exposure"] = MM::g_Keyword_Meatdata_Exposure;
-  keyword_dict["Metadata_Score"] = MM::g_Keyword_Metadata_Score;
-  keyword_dict["Metadata_ImageNumber"] = MM::g_Keyword_Metadata_ImageNumber;
-  keyword_dict["Metadata_ROI_X"] = MM::g_Keyword_Metadata_ROI_X;
-  keyword_dict["Metadata_ROI_Y"] = MM::g_Keyword_Metadata_ROI_Y;
-  keyword_dict["Metadata_TimeInCore"] = MM::g_Keyword_Metadata_TimeInCore;
-  auto Keyword = py_enum.attr("Enum")("Keyword", keyword_dict);
-  m.attr("Keyword") = Keyword;
-
-  nb::dict cmd_dict;
-  cmd_dict["Device"] = MM::g_CFGCommand_Device;
-  cmd_dict["Label"] = MM::g_CFGCommand_Label;
-  cmd_dict["Property"] = MM::g_CFGCommand_Property;
-  cmd_dict["Configuration"] = MM::g_CFGCommand_Configuration;
-  cmd_dict["ConfigGroup"] = MM::g_CFGCommand_ConfigGroup;
-  cmd_dict["Equipment"] = MM::g_CFGCommand_Equipment;
-  cmd_dict["Delay"] = MM::g_CFGCommand_Delay;
-  cmd_dict["ImageSynchro"] = MM::g_CFGCommand_ImageSynchro;
-  cmd_dict["ConfigPixelSize"] = MM::g_CFGCommand_ConfigPixelSize;
-  cmd_dict["PixelSize_um"] = MM::g_CFGCommand_PixelSize_um;
-  cmd_dict["PixelSizeAffine"] = MM::g_CFGCommand_PixelSizeAffine;
-  cmd_dict["ParentID"] = MM::g_CFGCommand_ParentID;
-  cmd_dict["FocusDirection"] = MM::g_CFGCommand_FocusDirection;
-  cmd_dict["FieldDelimiters"] = MM::g_FieldDelimiters;
-  auto CFGCommand = py_enum.attr("Enum")("CFGCommand", cmd_dict);
-  m.attr("CFGCommand") = CFGCommand;
-
-  nb::dict cfg_group_dict;
-  cfg_group_dict["System"] = MM::g_CFGGroup_System;
-  cfg_group_dict["System_Startup"] = MM::g_CFGGroup_System_Startup;
-  cfg_group_dict["System_Shutdown"] = MM::g_CFGGroup_System_Shutdown;
-  cfg_group_dict["PixelSizeUm"] = MM::g_CFGGroup_PixelSizeUm;
-  auto CFGGroup = py_enum.attr("Enum")("CFGGroup", cfg_group_dict);
-  m.attr("CFGGroup") = CFGGroup;
-
   nb::enum_<MM::DeviceType>(m, "DeviceType", nb::is_arithmetic())
+      // aliases
+      //  .value("Unknown", MM::DeviceType::UnknownType)
+      //  .value("Any", MM::DeviceType::AnyType)
+      //  .value("Camera", MM::DeviceType::CameraDevice)
+      //  .value("Shutter", MM::DeviceType::ShutterDevice)
+      //  .value("State", MM::DeviceType::StateDevice)
+      //  .value("Stage", MM::DeviceType::StageDevice)
+      //  .value("XYStage", MM::DeviceType::XYStageDevice)
+      //  .value("Serial", MM::DeviceType::SerialDevice)
+      //  .value("Generic", MM::DeviceType::GenericDevice)
+      //  .value("AutoFocus", MM::DeviceType::AutoFocusDevice)
+      //  .value("Core", MM::DeviceType::CoreDevice)
+      //  .value("ImageProcessor", MM::DeviceType::ImageProcessorDevice)
+      //  .value("SignalIO", MM::DeviceType::SignalIODevice)
+      //  .value("Magnifier", MM::DeviceType::MagnifierDevice)
+      //  .value("SLM", MM::DeviceType::SLMDevice)
+      //  .value("Hub", MM::DeviceType::HubDevice)
+      //  .value("Galvo", MM::DeviceType::GalvoDevice)
+      // actual values
       .value("UnknownType", MM::DeviceType::UnknownType)
       .value("AnyType", MM::DeviceType::AnyType)
       .value("CameraDevice", MM::DeviceType::CameraDevice)
@@ -132,24 +184,7 @@ NB_MODULE(_pymmcore_nano, m) {
       .value("MagnifierDevice", MM::DeviceType::MagnifierDevice)
       .value("SLMDevice", MM::DeviceType::SLMDevice)
       .value("HubDevice", MM::DeviceType::HubDevice)
-      .value("GalvoDevice", MM::DeviceType::GalvoDevice)
-      .value("Unknown", MM::DeviceType::UnknownType)
-      .value("Any", MM::DeviceType::AnyType)
-      .value("Camera", MM::DeviceType::CameraDevice)
-      .value("Shutter", MM::DeviceType::ShutterDevice)
-      .value("State", MM::DeviceType::StateDevice)
-      .value("Stage", MM::DeviceType::StageDevice)
-      .value("XYStage", MM::DeviceType::XYStageDevice)
-      .value("Serial", MM::DeviceType::SerialDevice)
-      .value("Generic", MM::DeviceType::GenericDevice)
-      .value("AutoFocus", MM::DeviceType::AutoFocusDevice)
-      .value("Core", MM::DeviceType::CoreDevice)
-      .value("ImageProcessor", MM::DeviceType::ImageProcessorDevice)
-      .value("SignalIO", MM::DeviceType::SignalIODevice)
-      .value("Magnifier", MM::DeviceType::MagnifierDevice)
-      .value("SLM", MM::DeviceType::SLMDevice)
-      .value("Hub", MM::DeviceType::HubDevice)
-      .value("Galvo", MM::DeviceType::GalvoDevice);
+      .value("GalvoDevice", MM::DeviceType::GalvoDevice);
 
   nb::enum_<MM::PropertyType>(m, "PropertyType", nb::is_arithmetic())
       .value("Undef", MM::PropertyType::Undef)
@@ -167,15 +202,22 @@ NB_MODULE(_pymmcore_nano, m) {
       .value("StopSequence", MM::ActionType::StopSequence);
 
   nb::enum_<MM::PortType>(m, "PortType", nb::is_arithmetic())
+      //  .value("Invalid", MM::PortType::InvalidPort)
+      //  .value("Serial", MM::PortType::SerialPort)
+      //  .value("USB", MM::PortType::USBPort)
+      //  .value("HID", MM::PortType::HIDPort)
       .value("InvalidPort", MM::PortType::InvalidPort)
       .value("SerialPort", MM::PortType::SerialPort)
       .value("USBPort", MM::PortType::USBPort)
       .value("HIDPort", MM::PortType::HIDPort);
 
   nb::enum_<MM::FocusDirection>(m, "FocusDirection", nb::is_arithmetic())
-      .value("Unknown", MM::FocusDirection::FocusDirectionUnknown)
-      .value("TowardSample", MM::FocusDirection::FocusDirectionTowardSample)
-      .value("AwayFromSample", MM::FocusDirection::FocusDirectionAwayFromSample);
+      //  .value("Unknown", MM::FocusDirection::FocusDirectionUnknown)
+      //  .value("TowardSample", MM::FocusDirection::FocusDirectionTowardSample)
+      //  .value("AwayFromSample", MM::FocusDirection::FocusDirectionAwayFromSample)
+      .value("FocusDirectionUnknown", MM::FocusDirection::FocusDirectionUnknown)
+      .value("FocusDirectionTowardSample", MM::FocusDirection::FocusDirectionTowardSample)
+      .value("FocusDirectionAwayFromSample", MM::FocusDirection::FocusDirectionAwayFromSample);
 
   nb::enum_<MM::DeviceNotification>(m, "DeviceNotification", nb::is_arithmetic())
       .value("Attention", MM::DeviceNotification::Attention)
@@ -189,27 +231,120 @@ NB_MODULE(_pymmcore_nano, m) {
       .value("CanCommunicate", MM::DeviceDetectionStatus::CanCommunicate);
 
   nb::enum_<DeviceInitializationState>(m, "DeviceInitializationState", nb::is_arithmetic())
-      .value("CoreIdle", DeviceInitializationState::Uninitialized)
-      .value("CoreBusy", DeviceInitializationState::InitializedSuccessfully)
-      .value("CoreError", DeviceInitializationState::InitializationFailed);
+      .value("Uninitialized", DeviceInitializationState::Uninitialized)
+      .value("InitializedSuccessfully", DeviceInitializationState::InitializedSuccessfully)
+      .value("InitializationFailed", DeviceInitializationState::InitializationFailed);
 
   //////////////////// Supporting classes ////////////////////
 
-  nb::class_<Configuration>(m, "Configuration").def(nb::init<>())
-      // Add any methods or properties for Configuration here
-      ;
+  nb::class_<Configuration>(m, "Configuration")
+      .def(nb::init<>())
+      .def("addSetting", &Configuration::addSetting, "setting"_a)
+      .def("deleteSetting", &Configuration::deleteSetting, "device"_a, "property"_a)
+      .def("isPropertyIncluded", &Configuration::isPropertyIncluded, "device"_a, "property"_a)
+      .def("isConfigurationIncluded", &Configuration::isConfigurationIncluded, "cfg"_a)
+      .def("getSetting", nb::overload_cast<size_t>(&Configuration::getSetting, nb::const_),
+           "index"_a)
+      .def("getSetting", nb::overload_cast<const char*, const char*>(&Configuration::getSetting),
+           "device"_a, "property"_a)
+      .def("size", &Configuration::size)
+      .def("getVerbose", &Configuration::getVerbose);
 
-  nb::class_<Metadata>(m, "Metadata").def(nb::init<>())
-      // Add any methods or properties for Configuration here
-      ;
+  nb::class_<PropertySetting>(m, "PropertySetting")
+      // Constructors
+      .def(nb::init<const char*, const char*, const char*, bool>(), "deviceLabel"_a, "prop"_a,
+           "value"_a, "readOnly"_a = false, "Constructor specifying the entire contents")
+      .def(nb::init<>(), "Default constructor")
+      .def("getDeviceLabel", &PropertySetting::getDeviceLabel, "Returns the device label")
+      .def("getPropertyName", &PropertySetting::getPropertyName, "Returns the property name")
+      .def("getReadOnly", &PropertySetting::getReadOnly, "Returns the read-only status")
+      .def("getPropertyValue", &PropertySetting::getPropertyValue, "Returns the property value")
+      .def("getKey", &PropertySetting::getKey, "Returns the unique key")
+      .def("getVerbose", &PropertySetting::getVerbose, "Returns a verbose description")
+      .def("isEqualTo", &PropertySetting::isEqualTo, "other"_a,
+           "Checks if this property setting is equal to another")
+      .def_static("generateKey", &PropertySetting::generateKey, "device"_a, "prop"_a,
+                  "Generates a unique key based on device and property");
 
-  nb::class_<MMEventCallback>(m, "MMEventCallback").def(nb::init<>())
-      // Add any methods or properties for MMEventCallback here
-      ;
+  nb::class_<Metadata>(m, "Metadata")
+      // Constructors
+      .def(nb::init<>(), "Empty constructor")
+      .def(nb::init<const Metadata&>(), "Copy constructor")
 
-  nb::class_<PropertySetting>(m, "PropertySetting").def(nb::init<>())
-      // Add any methods or properties for PropertySetting here
-      ;
+      // Member functions
+      .def("Clear", &Metadata::Clear, "Clears all tags")
+      .def("GetKeys", &Metadata::GetKeys, "Returns all tag keys")
+      .def("HasTag", &Metadata::HasTag, "key"_a, "Checks if a tag exists for the given key")
+      .def("GetSingleTag", &Metadata::GetSingleTag, "key"_a, "Gets a single tag by key")
+      .def("GetArrayTag", &Metadata::GetArrayTag, "key"_a, "Gets an array tag by key")
+      .def("SetTag", &Metadata::SetTag, "tag"_a, "Sets a tag")
+      .def("RemoveTag", &Metadata::RemoveTag, "key"_a, "Removes a tag by key")
+      .def("Merge", &Metadata::Merge, "newTags"_a, "Merges new tags into the metadata")
+      .def("Serialize", &Metadata::Serialize, "Serializes the metadata")
+      .def("Restore", &Metadata::Restore, "stream"_a, "Restores metadata from a serialized string")
+      .def("Dump", &Metadata::Dump, "Dumps metadata in human-readable format")
+      // Template methods (bound using lambdas due to C++ template limitations in bindings)
+      .def(
+          "PutTag",
+          [](Metadata& self, const std::string& key, const std::string& deviceLabel,
+             const std::string& value) { self.PutTag(key, deviceLabel, value); },
+          "key"_a, "deviceLabel"_a, "value"_a, "Adds a MetadataSingleTag")
+
+      .def(
+          "PutImageTag",
+          [](Metadata& self, const std::string& key, const std::string& value) {
+            self.PutImageTag(key, value);
+          },
+          "key"_a, "value"_a, "Adds an image tag");
+
+  nb::class_<MMEventCallback>(m, "MMEventCallback")
+      // Constructors
+      .def(nb::init<>())
+
+      // Virtual methods
+      .def("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
+           "Called when properties are changed")
+      .def("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
+           "propValue"_a, "Called when a specific property is changed")
+      .def("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
+           "newChannelGroupName"_a, "Called when the channel group changes")
+      .def("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
+           "newConfigName"_a, "Called when a configuration group changes")
+      .def("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
+           "Called when the system configuration is loaded")
+      .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
+           "Called when the pixel size changes")
+      .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a, "v1"_a,
+           "v2"_a, "v3"_a, "v4"_a, "v5"_a,
+           "Called when the pixel size affine transformation changes")
+      // These bindings are ugly lambda workarounds because the original methods take char* instead
+      // of const char*
+      // https://github.com/micro-manager/mmCoreAndDevices/pull/530
+      .def(
+          "onSLMExposureChanged",
+          [](MMEventCallback& self, const std::string& name, double newExposure) {
+            self.onSLMExposureChanged(const_cast<char*>(name.c_str()), newExposure);
+          },
+          "name"_a, "newExposure"_a)
+      .def(
+          "onExposureChanged",
+          [&](MMEventCallback& self, const std::string& name, double newExposure) {
+            self.onExposureChanged(const_cast<char*>(name.c_str()), newExposure);
+          },
+          "name"_a, "newExposure"_a)
+      .def(
+          "onStagePositionChanged",
+          [&](MMEventCallback& self, const std::string& name, double pos) {
+            self.onStagePositionChanged(const_cast<char*>(name.c_str()), pos);
+          },
+          "name"_a, "pos"_a)
+      .def(
+          "onXYStagePositionChanged",
+          [&](MMEventCallback& self, const std::string& name, double xpos, double ypos) {
+            self.onXYStagePositionChanged(const_cast<char*>(name.c_str()), xpos, ypos);
+          },
+          "name"_a, "xpos"_a, "ypos"_a);
+
   //////////////////// MMCore ////////////////////
 
   nb::class_<CMMCore>(m, "CMMCore")

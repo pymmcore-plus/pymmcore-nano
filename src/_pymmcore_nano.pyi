@@ -452,8 +452,61 @@ class CMMCore:
 
 class Configuration:
     def __init__(self) -> None: ...
+    def addSetting(self, setting: PropertySetting) -> None: ...
+    def deleteSetting(self, device: str, property: str) -> None: ...
+    def isPropertyIncluded(self, device: str, property: str) -> bool: ...
+    def isConfigurationIncluded(self, cfg: Configuration) -> bool: ...
+    @overload
+    def getSetting(self, index: int) -> PropertySetting: ...
+    @overload
+    def getSetting(self, device: str, property: str) -> PropertySetting: ...
+    def size(self) -> int: ...
+    def getVerbose(self) -> str: ...
 
+DEVICE_BUFFER_OVERFLOW: int = 22
+DEVICE_CAMERA_BUSY_ACQUIRING: int = 30
+DEVICE_CAN_NOT_SET_PROPERTY: int = 32
+DEVICE_COMM_HUB_MISSING: int = 36
+DEVICE_CORE_CHANNEL_PRESETS_FAILED: int = 33
+DEVICE_CORE_CONFIG_FAILED: int = 29
+DEVICE_CORE_EXPOSURE_FAILED: int = 28
+DEVICE_CORE_FOCUS_STAGE_UNDEF: int = 27
+DEVICE_DUPLICATE_LABEL: int = 20
+DEVICE_DUPLICATE_LIBRARY: int = 37
+DEVICE_DUPLICATE_PROPERTY: int = 4
+DEVICE_ERR: int = 1
+DEVICE_IMAGE_PARAMS_FAILED: int = 26
+DEVICE_INCOMPATIBLE_IMAGE: int = 31
 DEVICE_INTERFACE_VERSION: int = 71
+DEVICE_INTERNAL_INCONSISTENCY: int = 8
+DEVICE_INVALID_INPUT_PARAM: int = 21
+DEVICE_INVALID_PROPERTY: int = 2
+DEVICE_INVALID_PROPERTY_LIMITS: int = 24
+DEVICE_INVALID_PROPERTY_LIMTS: int = 24
+DEVICE_INVALID_PROPERTY_TYPE: int = 5
+DEVICE_INVALID_PROPERTY_VALUE: int = 3
+DEVICE_LOCALLY_DEFINED_ERROR: int = 34
+DEVICE_NATIVE_MODULE_FAILED: int = 6
+DEVICE_NONEXISTENT_CHANNEL: int = 23
+DEVICE_NOT_CONNECTED: int = 35
+DEVICE_NOT_SUPPORTED: int = 9
+DEVICE_NOT_YET_IMPLEMENTED: int = 41
+DEVICE_NO_CALLBACK_REGISTERED: int = 13
+DEVICE_NO_PROPERTY_DATA: int = 19
+DEVICE_OK: int = 0
+DEVICE_OUT_OF_MEMORY: int = 40
+DEVICE_PROPERTY_NOT_SEQUENCEABLE: int = 38
+DEVICE_SELF_REFERENCE: int = 18
+DEVICE_SEQUENCE_TOO_LARGE: int = 39
+DEVICE_SERIAL_BUFFER_OVERRUN: int = 15
+DEVICE_SERIAL_COMMAND_FAILED: int = 14
+DEVICE_SERIAL_INVALID_RESPONSE: int = 16
+DEVICE_SERIAL_TIMEOUT: int = 17
+DEVICE_SNAP_IMAGE_FAILED: int = 25
+DEVICE_UNKNOWN_LABEL: int = 10
+DEVICE_UNKNOWN_POSITION: int = 12
+DEVICE_UNSUPPORTED_COMMAND: int = 11
+DEVICE_UNSUPPORTED_DATA_FORMAT: int = 7
 
 class DeviceDetectionStatus(enum.IntEnum):
     Unimplemented = -2
@@ -462,9 +515,9 @@ class DeviceDetectionStatus(enum.IntEnum):
     CanCommunicate = 1
 
 class DeviceInitializationState(enum.IntEnum):
-    CoreIdle = 0
-    CoreBusy = 1
-    CoreError = 2
+    Uninitialized = 0
+    InitializedSuccessfully = 1
+    InitializationFailed = 2
 
 class DeviceNotification(enum.IntEnum):
     Attention = 0
@@ -489,34 +542,71 @@ class DeviceType(enum.IntEnum):
     SLMDevice = 14
     HubDevice = 15
     GalvoDevice = 16
-    Unknown = 0
-    Any = 1
-    Camera = 2
-    Shutter = 3
-    State = 4
-    Stage = 5
-    XYStage = 6
-    Serial = 7
-    Generic = 8
-    AutoFocus = 9
-    Core = 10
-    ImageProcessor = 11
-    SignalIO = 12
-    Magnifier = 13
-    SLM = 14
-    Hub = 15
-    Galvo = 16
 
 class FocusDirection(enum.IntEnum):
-    Unknown = 0
-    TowardSample = 1
-    AwayFromSample = 2
+    FocusDirectionUnknown = 0
+    FocusDirectionTowardSample = 1
+    FocusDirectionAwayFromSample = 2
 
 class MMEventCallback:
     def __init__(self) -> None: ...
+    def onPropertiesChanged(self) -> None:
+        """Called when properties are changed"""
+    def onPropertyChanged(self, name: str, propName: str, propValue: str) -> None:
+        """Called when a specific property is changed"""
+    def onChannelGroupChanged(self, newChannelGroupName: str) -> None:
+        """Called when the channel group changes"""
+    def onConfigGroupChanged(self, groupName: str, newConfigName: str) -> None:
+        """Called when a configuration group changes"""
+    def onSystemConfigurationLoaded(self) -> None:
+        """Called when the system configuration is loaded"""
+    def onPixelSizeChanged(self, newPixelSizeUm: float) -> None:
+        """Called when the pixel size changes"""
+    def onPixelSizeAffineChanged(
+        self, v0: float, v1: float, v2: float, v3: float, v4: float, v5: float
+    ) -> None:
+        """Called when the pixel size affine transformation changes"""
+    def onSLMExposureChanged(self, name: str, newExposure: float) -> None: ...
+    def onExposureChanged(self, name: str, newExposure: float) -> None: ...
+    def onStagePositionChanged(self, name: str, pos: float) -> None: ...
+    def onXYStagePositionChanged(self, name: str, xpos: float, ypos: float) -> None: ...
+
+MM_CODE_ERR: int = 1
+MM_CODE_OK: int = 0
 
 class Metadata:
-    def __init__(self) -> None: ...
+    @overload
+    def __init__(self) -> None:
+        """Empty constructor"""
+    @overload
+    def __init__(self, arg: Metadata) -> None:
+        """Copy constructor"""
+    def Clear(self) -> None:
+        """Clears all tags"""
+    def GetKeys(self) -> list[str]:
+        """Returns all tag keys"""
+    def HasTag(self, key: str) -> bool:
+        """Checks if a tag exists for the given key"""
+    def GetSingleTag(self, key: str) -> "MetadataSingleTag":
+        """Gets a single tag by key"""
+    def GetArrayTag(self, key: str) -> "MetadataArrayTag":
+        """Gets an array tag by key"""
+    def SetTag(self, tag: "MetadataTag") -> None:
+        """Sets a tag"""
+    def RemoveTag(self, key: str) -> None:
+        """Removes a tag by key"""
+    def Merge(self, newTags: Metadata) -> None:
+        """Merges new tags into the metadata"""
+    def Serialize(self) -> str:
+        """Serializes the metadata"""
+    def Restore(self, stream: str) -> bool:
+        """Restores metadata from a serialized string"""
+    def Dump(self) -> str:
+        """Dumps metadata in human-readable format"""
+    def PutTag(self, key: str, deviceLabel: str, value: str) -> None:
+        """Adds a MetadataSingleTag"""
+    def PutImageTag(self, key: str, value: str) -> None:
+        """Adds an image tag"""
 
 class PortType(enum.IntEnum):
     InvalidPort = 0
@@ -525,10 +615,116 @@ class PortType(enum.IntEnum):
     HIDPort = 3
 
 class PropertySetting:
-    def __init__(self) -> None: ...
+    @overload
+    def __init__(
+        self, deviceLabel: str, prop: str, value: str, readOnly: bool = False
+    ) -> None:
+        """Constructor specifying the entire contents"""
+    @overload
+    def __init__(self) -> None:
+        """Default constructor"""
+    def getDeviceLabel(self) -> str:
+        """Returns the device label"""
+    def getPropertyName(self) -> str:
+        """Returns the property name"""
+    def getReadOnly(self) -> bool:
+        """Returns the read-only status"""
+    def getPropertyValue(self) -> str:
+        """Returns the property value"""
+    def getKey(self) -> str:
+        """Returns the unique key"""
+    def getVerbose(self) -> str:
+        """Returns a verbose description"""
+    def isEqualTo(self, other: PropertySetting) -> bool:
+        """Checks if this property setting is equal to another"""
+    @staticmethod
+    def generateKey(device: str, prop: str) -> str:
+        """Generates a unique key based on device and property"""
 
 class PropertyType(enum.IntEnum):
     Undef = 0
     String = 1
     Float = 2
     Integer = 3
+
+g_CFGCommand_ConfigGroup: str = "ConfigGroup"
+g_CFGCommand_ConfigPixelSize: str = "ConfigPixelSize"
+g_CFGCommand_Configuration: str = "Config"
+g_CFGCommand_Delay: str = "Delay"
+g_CFGCommand_Device: str = "Device"
+g_CFGCommand_Equipment: str = "Equipment"
+g_CFGCommand_FocusDirection: str = "FocusDirection"
+g_CFGCommand_ImageSynchro: str = "ImageSynchro"
+g_CFGCommand_Label: str = "Label"
+g_CFGCommand_ParentID: str = "Parent"
+g_CFGCommand_PixelSizeAffine: str = "PixelSizeAffine"
+g_CFGCommand_PixelSize_um: str = "PixelSize_um"
+g_CFGCommand_Property: str = "Property"
+g_CFGGroup_PixelSizeUm: str = "PixelSize_um"
+g_CFGGroup_System: str = "System"
+g_CFGGroup_System_Shutdown: str = "Shutdown"
+g_CFGGroup_System_Startup: str = "Startup"
+g_FieldDelimiters: str = ","
+g_Keyword_ActualExposure: str = "ActualExposure"
+g_Keyword_ActualInterval_ms: str = "ActualInterval-ms"
+g_Keyword_AnswerTimeout: str = "AnswerTimeout"
+g_Keyword_BaudRate: str = "BaudRate"
+g_Keyword_Binning: str = "Binning"
+g_Keyword_CCDTemperature: str = "CCDTemperature"
+g_Keyword_CCDTemperatureSetPoint: str = "CCDTemperatureSetPoint"
+g_Keyword_CameraChannelIndex: str = "CameraChannelIndex"
+g_Keyword_CameraChannelName: str = "CameraChannelName"
+g_Keyword_CameraID: str = "CameraID"
+g_Keyword_CameraName: str = "CameraName"
+g_Keyword_Channel: str = "Channel"
+g_Keyword_Closed_Position: str = "ClosedPosition"
+g_Keyword_ColorMode: str = "ColorMode"
+g_Keyword_CoreAutoFocus: str = "AutoFocus"
+g_Keyword_CoreAutoShutter: str = "AutoShutter"
+g_Keyword_CoreCamera: str = "Camera"
+g_Keyword_CoreChannelGroup: str = "ChannelGroup"
+g_Keyword_CoreDevice: str = "Core"
+g_Keyword_CoreFocus: str = "Focus"
+g_Keyword_CoreGalvo: str = "Galvo"
+g_Keyword_CoreImageProcessor: str = "ImageProcessor"
+g_Keyword_CoreInitialize: str = "Initialize"
+g_Keyword_CoreSLM: str = "SLM"
+g_Keyword_CoreShutter: str = "Shutter"
+g_Keyword_CoreTimeoutMs: str = "TimeoutMs"
+g_Keyword_CoreXYStage: str = "XYStage"
+g_Keyword_DataBits: str = "DataBits"
+g_Keyword_Delay: str = "Delay_ms"
+g_Keyword_DelayBetweenCharsMs: str = "DelayBetweenCharsMs"
+g_Keyword_Description: str = "Description"
+g_Keyword_EMGain: str = "EMGain"
+g_Keyword_Elapsed_Time_ms: str = "ElapsedTime-ms"
+g_Keyword_Exposure: str = "Exposure"
+g_Keyword_Gain: str = "Gain"
+g_Keyword_Handshaking: str = "Handshaking"
+g_Keyword_HubID: str = "HubID"
+g_Keyword_Interval_ms: str = "Interval-ms"
+g_Keyword_Label: str = "Label"
+g_Keyword_Meatdata_Exposure: str = "Exposure-ms"
+g_Keyword_Metadata_CameraLabel: str = "Camera"
+g_Keyword_Metadata_ImageNumber: str = "ImageNumber"
+g_Keyword_Metadata_ROI_X: str = "ROI-X-start"
+g_Keyword_Metadata_ROI_Y: str = "ROI-Y-start"
+g_Keyword_Metadata_Score: str = "Score"
+g_Keyword_Metadata_TimeInCore: str = "TimeReceivedByCore"
+g_Keyword_Name: str = "Name"
+g_Keyword_Offset: str = "Offset"
+g_Keyword_Parity: str = "Parity"
+g_Keyword_PixelType: str = "PixelType"
+g_Keyword_Port: str = "Port"
+g_Keyword_Position: str = "Position"
+g_Keyword_ReadoutMode: str = "ReadoutMode"
+g_Keyword_ReadoutTime: str = "ReadoutTime"
+g_Keyword_Speed: str = "Speed"
+g_Keyword_State: str = "State"
+g_Keyword_StopBits: str = "StopBits"
+g_Keyword_Transpose_Correction: str = "TransposeCorrection"
+g_Keyword_Transpose_MirrorX: str = "TransposeMirrorX"
+g_Keyword_Transpose_MirrorY: str = "TransposeMirrorY"
+g_Keyword_Transpose_SwapXY: str = "TransposeXY"
+g_Keyword_Type: str = "Type"
+g_Keyword_Version: str = "Version"

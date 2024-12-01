@@ -9,3 +9,6 @@ subprojects/*
 
 .vscode
 __pycache__
+.coverage
+coverage/
+coverage*

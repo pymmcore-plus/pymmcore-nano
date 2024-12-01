@@ -26,7 +26,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
-      
+
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           toolset: "14.2"
@@ -38,4 +38,13 @@ jobs:
           enable-cache: true
 
       - name: install and test
-        run: uv run --no-editable --frozen pytest --color=yes -v
+        run: |
+          uv sync --no-editable --frozen -C=setup-args="-Db_coverage=true"
+          uv run pytest --color=yes -v --cov --cov-report=xml
+          uv run gcovr --xml coverage_cpp.xml
+
+      - name: Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml,./coverage_cpp.xml
