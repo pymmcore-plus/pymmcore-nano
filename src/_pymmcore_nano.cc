@@ -147,7 +147,7 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("g_CFGGroup_PixelSizeUm") = MM::g_CFGGroup_PixelSizeUm;
 
   /////////////////// Enums ///////////////////
-
+     
   nb::enum_<MM::DeviceType>(m, "DeviceType", nb::is_arithmetic())
       // aliases
       //  .value("Unknown", MM::DeviceType::UnknownType)
@@ -417,11 +417,11 @@ NB_MODULE(_pymmcore_nano, m) {
   nb::class_<CMMCore>(m, "CMMCore")
       .def(nb::init<>())
 
-      // accept any object that can be cast to a string, so as to support Path objects
       .def(
           "loadSystemConfiguration",
-          [](CMMCore& self, nb::object fileName) {
-            self.loadSystemConfiguration(nb::str(fileName).c_str());  // convert to string
+          [](CMMCore& self,
+             nb::object fileName) {  // accept any object that can be cast to a string (e.g. Path)
+            self.loadSystemConfiguration(nb::str(fileName).c_str());
           },
           "fileName"_a)
 
@@ -448,7 +448,15 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("saveSystemState", &CMMCore::saveSystemState, "fileName"_a)
       .def("loadSystemState", &CMMCore::loadSystemState, "fileName"_a)
       .def("registerCallback", &CMMCore::registerCallback, "cb"_a)
-      .def("setPrimaryLogFile", &CMMCore::setPrimaryLogFile, "filename"_a, "truncate"_a = false)
+      .def(
+          "setPrimaryLogFile",
+          [](CMMCore& self,
+             nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
+             bool truncate) {
+            self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);  // convert to string
+          },
+          "filename"_a, "truncate"_a = false)
+
       .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile)
       .def("logMessage", nb::overload_cast<const char*>(&CMMCore::logMessage), "msg"_a)
       .def("logMessage", nb::overload_cast<const char*, bool>(&CMMCore::logMessage), "msg"_a,
@@ -458,8 +466,15 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("debugLogEnabled", &CMMCore::debugLogEnabled)
       .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a)
       .def("stderrLogEnabled", &CMMCore::stderrLogEnabled)
-      .def("startSecondaryLogFile", &CMMCore::startSecondaryLogFile, "filename"_a, "enableDebug"_a,
-           "truncate"_a = true, "synchronous"_a = false)
+      .def(
+          "startSecondaryLogFile",
+          [](CMMCore& self,
+             nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
+             bool enableDebug, bool truncate, bool synchronous) {
+            return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug, truncate,
+                                              synchronous);
+          },
+          "filename"_a, "enableDebug"_a, "truncate"_a = true, "synchronous"_a = false)
       .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
 
       .def("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths)
