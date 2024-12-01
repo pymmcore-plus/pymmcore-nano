@@ -11,6 +11,125 @@ namespace nb = nanobind;
 
 using namespace nb::literals;
 
+///////////////// NUMPY ARRAY HELPERS ///////////////////
+
+// Helper to determine dtype and shape
+std::pair<nb::dlpack::dtype, std::vector<size_t>> determine_dtype_and_shape(
+    unsigned bytesPerPixel, unsigned height, unsigned width, unsigned numComponents = 1) {
+  // Validate input to avoid ambiguity
+  if (bytesPerPixel % numComponents != 0) {
+    throw std::runtime_error("bytesPerPixel is not compatible with numComponents.");
+  }
+
+  // Calculate dtype and shape
+  nb::dlpack::dtype dt;
+  std::vector<size_t> shape = {height, width};  // Common dimensions
+
+  if (numComponents > 1) {
+    shape.push_back(numComponents);
+  }
+
+  switch (bytesPerPixel / numComponents) {
+    case 1:  // 8-bit
+      return {nb::dtype<uint8_t>(), shape};
+    case 2:  // 16-bit
+      return {nb::dtype<uint16_t>(), shape};
+    case 4:  // 32-bit
+      if (numComponents == 1) {
+        return {nb::dtype<float>(), shape};
+      } else {
+        return {nb::dtype<uint8_t>(), shape};
+      }
+    default:
+      throw std::runtime_error("Unsupported bytesPerPixel / numComponents combination.");
+  }
+
+  return {dt, shape};
+}
+
+/**
+ * @brief Creates a read-only NumPy array from a buffer.
+ *
+ * This function wraps a raw memory buffer into a `nanobind::ndarray` of type
+ * `numpy.ndarray`. The array is read-only and shares ownership with the provided
+ * owner object to ensure memory safety.
+ *
+ * @tparam BufferType The type of the input buffer, typically a pointer to the memory buffer
+ *                    (`void*` or similar).
+ *
+ * @param buffer Pointer to the data buffer. This should match the type expected for the
+ *               specified data type and shape.
+ * @param height The height (number of rows) of the image or data array.
+ * @param width The width (number of columns) of the image or data array.
+ * @param bytesPerPixel The number of bytes per pixel in the data buffer. This is used
+ *                      to infer the data type (e.g., `uint8_t`, `uint16_t`, `float`).
+ * @param owner An object representing the owner of the memory buffer. This ensures
+ *              the buffer remains valid as long as the ndarray exists.
+ * @param numComponents (Optional) The number of components per pixel. Defaults to 1
+ *                      (e.g., grayscale images). If greater than 1, the array will
+ *                      have an additional dimension for components.
+ *
+ * @return A `nanobind::ndarray` representing the buffer as a `numpy.ndarray`.
+ *
+ * @throws std::runtime_error If the combination of `bytesPerPixel` and `numComponents`
+ *                            is not supported.
+ *
+ * @note The resulting array is C-contiguous by default, as no strides are specified.
+ */
+template <typename BufferType>
+nb::ndarray<nb::numpy, nb::ro> create_ndarray(BufferType buffer, unsigned height, unsigned width,
+                                              unsigned bytesPerPixel, nb::object owner,
+                                              unsigned numComponents = 1) {
+  auto [dt, shape] = determine_dtype_and_shape(bytesPerPixel, height, width, numComponents);
+
+  return nb::ndarray<nb::numpy, nb::ro>(
+      buffer,        // std::conditional_t<ReadOnly, const void*, void*>
+      shape.size(),  // size_t ndim
+      shape.data(),  // const size_t* shape
+      owner,         // handle owner
+      nullptr,       // const int64_t *stride (nullptr for default C-contiguous)
+      dt             // Data type
+  );
+}
+
+/**
+ * @brief Creates a read-only NumPy array representing an image from the provided buffer and
+ * `CMMCore` instance.
+ *
+ * This function wraps a raw memory buffer from a `CMMCore` instance into a `nanobind::ndarray` of
+ * type `numpy.ndarray`. The array is read-only and shares ownership with the provided `CMMCore`
+ * instance to ensure memory safety.
+ *
+ * @param core A reference to the `CMMCore` object, which provides image metadata and ensures
+ *             ownership of the buffer.
+ * @param pBuf Pointer to the data buffer containing the image data.
+ *
+ * @return A `nanobind::ndarray` representing the image buffer as a `numpy.ndarray`.
+ *
+ * @throws std::runtime_error If the combination of image properties (e.g., bytes per pixel, number
+ *                            of components) is not supported.
+ *
+ * @note The resulting array is C-contiguous by default, as no strides are specified.
+ *       Ownership of the buffer is tied to the lifetime of the `CMMCore` object.
+ */
+nb::ndarray<nb::numpy, nb::ro> create_image_array(CMMCore& core, void* pBuf) {
+  // Retrieve image properties
+  unsigned width = core.getImageWidth();
+  unsigned height = core.getImageHeight();
+  unsigned bytesPerPixel = core.getBytesPerPixel();
+  unsigned numComponents = core.getNumberOfComponents();
+
+  // Cast the CMMCore object to an nb::object for ownership
+  nb::object owner = nb::cast(core, nb::rv_policy::reference);
+
+  // Create and return the ndarray
+  return create_ndarray(pBuf, height, width, bytesPerPixel, owner, numComponents);
+}
+
+////////////////////////////////////////////////////////////////////////////
+///////////////// main _pymmcore_nano module definition  ///////////////////
+////////////////////////////////////////////////////////////////////////////
+
 NB_MODULE(_pymmcore_nano, m) {
   m.doc() = "Python bindings for MMCore";
 
@@ -637,8 +756,18 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("getExposure", nb::overload_cast<>(&CMMCore::getExposure))
       .def("getExposure", nb::overload_cast<const char*>(&CMMCore::getExposure), "label"_a)
       .def("snapImage", &CMMCore::snapImage)
-      .def("getImage", nb::overload_cast<>(&CMMCore::getImage))
-      .def("getImage", nb::overload_cast<unsigned>(&CMMCore::getImage), "numChannel"_a)
+      .def(
+          "getImage",
+          [](CMMCore& self) -> nb::ndarray<nb::numpy, nb::ro> {
+            return create_image_array(self, self.getImage());
+          },
+          nb::rv_policy::reference_internal)
+      .def(
+          "getImage",
+          [](CMMCore& self, unsigned channel) -> nb::ndarray<nb::numpy, nb::ro> {
+            return create_image_array(self, self.getImage(channel));
+          },
+          nb::rv_policy::reference_internal)
       .def("getImageWidth", &CMMCore::getImageWidth)
       .def("getImageHeight", &CMMCore::getImageHeight)
       .def("getBytesPerPixel", &CMMCore::getBytesPerPixel)

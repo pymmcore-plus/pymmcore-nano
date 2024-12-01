@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import time
 from typing import Callable
+import numpy as np
 import pytest
 import pymmcore_nano as pmn
 
@@ -206,10 +207,47 @@ def test_core(demo_core: pmn.CMMCore) -> None:
 
 
 def test_camera_snap(demo_core: pmn.CMMCore) -> None:
-    assert "Camera" in demo_core.getLoadedDevices()
+    assert demo_core.getCameraDevice() == "Camera"
+    # change image dimensions to make it non-square
+    demo_core.setProperty("Camera", "OnCameraCCDXSize", 256)
+    expected_shape = (demo_core.getImageHeight(), demo_core.getImageWidth())
+    assert expected_shape == (512, 256)
+
     demo_core.snapImage()
     img = demo_core.getImage()
-    assert img is not None
+    assert isinstance(img, np.ndarray)
+    assert not img.flags.writeable
+    with pytest.raises(ValueError, match="assignment destination is read-only"):
+        img[0, 0] = 0
+
+    assert img.dtype == np.uint16
+    assert img.shape == expected_shape
+    assert img.dtype.itemsize == demo_core.getBytesPerPixel() == 2
+
+    demo_core.setProperty("Camera", "PixelType", "8bit")
+    demo_core.snapImage()
+    img2 = demo_core.getImage()
+    assert img2.dtype == np.uint8
+    assert img2.dtype.itemsize == demo_core.getBytesPerPixel() == 1
+
+    demo_core.setProperty("Camera", "PixelType", "32bitRGB")
+    assert demo_core.getNumberOfComponents() == 4
+    demo_core.snapImage()
+    img3 = demo_core.getImage()
+    assert img3.shape == (*expected_shape, 4)
+    assert img3.dtype == np.uint8
+
+    demo_core.setProperty("Camera", "PixelType", "64bitRGB")
+    assert demo_core.getNumberOfComponents() == 4
+    demo_core.snapImage()
+    img4 = demo_core.getImage()
+    assert img4.shape == (*expected_shape, 4)
+    assert img4.dtype == np.uint16
+
+    demo_core.setProperty("Camera", "Binning", "2")
+    demo_core.snapImage()
+    img5 = demo_core.getImage(0)  # also testing overloaded method with channel
+    assert img5.shape == (256, 128, 4)  # new shape
 
 
 def test_camera_roi_change(demo_core: pmn.CMMCore) -> None:
