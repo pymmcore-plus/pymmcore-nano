@@ -12,7 +12,7 @@ nanobind_dep = dependency('nanobind', static: true)
 
 print_include_dirs = '''
 import pathlib
-m = pathlib.Path('extern/mmCoreAndDevices')
+m = pathlib.Path('src/mmCoreAndDevices')
 headers = (*(m/'MMDevice').rglob('*.h'), *(m/'MMCore').rglob('*.h'))
 print(';'.join({str(x.parent) for x in headers}))
 '''
@@ -24,7 +24,7 @@ endforeach
 
 print_sources = '''
 import pathlib
-m = pathlib.Path('extern/mmCoreAndDevices')
+m = pathlib.Path('src/mmCoreAndDevices')
 sources = (*(m/'MMDevice').rglob('*.cpp'), *(m/'MMCore').rglob('*.cpp'))
 print(';'.join({str(x) for x in sources if 'unittest' not in str(x)}))
 '''

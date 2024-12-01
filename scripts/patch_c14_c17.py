@@ -1,6 +1,6 @@
 """This script is run by meson.build.
 
-It needs to bring all the code in extern/mmCoreAndDevices up to C++17.
+It needs to bring all the code in src/mmCoreAndDevices up to C++17.
 """
 
 from pathlib import Path
@@ -19,7 +19,7 @@ def patch_file(file_path: str) -> None:
 
 
 if __name__ == "__main__":
-    root = Path(__file__).parent.parent / "extern" / "mmCoreAndDevices"
+    root = Path(__file__).parent.parent / "src" / "mmCoreAndDevices"
     for file in root.glob("**/*.cpp"):
         patch_file(str(file))
     for file in root.glob("**/*.h"):
