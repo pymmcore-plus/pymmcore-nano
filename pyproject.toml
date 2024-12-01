@@ -1,10 +1,10 @@
 [build-system]
 requires = [
     'meson-python',
-    'nanobind',
-    'ruff',
-    'typing_extensions',
-] # nanobind is for stubgen
+    'nanobind',          # for stubgen
+    'typing_extensions', # for stubgen (should be declared by nanobind)
+    'ruff',              # for stubgen
+]
 build-backend = 'mesonpy'
 
 [project]
