@@ -35,8 +35,9 @@ test:
 # clean up build artifacts
 clean:
 	rm -rf build dist builddir
-	rm -rf coverage.info coverage.xml coverage_cpp.xml
-
+	rm -rf .coverage coverage coverage.info coverage.xml coverage_cpp.xml
+	rm -rf .ruff_cache .mypy_cache .pytest_cache
+	rm -rf .mesonpy-*
 
 coverage:
 	rm -rf coverage coverage.xml coverage_cpp.xml

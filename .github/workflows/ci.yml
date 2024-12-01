@@ -39,9 +39,21 @@ jobs:
 
       - name: install and test
         run: |
-          uv sync --no-editable --frozen -C=setup-args="-Db_coverage=true"
-          uv run pytest --color=yes -v --cov --cov-report=xml
-          uv run gcovr --xml coverage_cpp.xml
+          # TODO: improve me...
+          # this all got harder when trying to incorporate the C++ coverage
+          # unclear whether we have to install in editable mode to get C coverage
+          uv venv
+          uv sync --frozen --no-install-project
+          if [ ${{ runner.os }} == 'Windows' ]; then
+            .venv\Scripts\activate
+          else
+            . .venv/bin/activate
+          fi
+          uv pip install -e . --no-build-isolation --force-reinstall \
+            -C=setup-args="-Db_coverage=true" \
+            -C=editable-verbose=true
+          pytest --color=yes -v --cov --cov-report=xml
+          gcovr --xml coverage_cpp.xml
 
       - name: Coverage
         uses: codecov/codecov-action@v4
