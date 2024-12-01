@@ -44,7 +44,7 @@ coverage:
 	mkdir coverage
 	make test
 	gcovr --xml coverage_cpp.xml --xml-pretty
-	gcovr --html-details -o coverage/index.html --exclude .venv
+	gcovr --filter=src/ --html-details -o coverage/index.html --exclude .venv
 	open coverage/index.html
 
 check:

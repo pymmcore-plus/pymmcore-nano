@@ -50,7 +50,7 @@ jobs:
             -C=setup-args="-Db_coverage=true" \
             -C=editable-verbose=true
           pytest --color=yes -v --cov --cov-report=xml
-          gcovr --xml coverage_cpp.xml
+          gcovr --filter=src/ --xml coverage_cpp.xml
 
       - name: install and test
         if: runner.os != 'Linux'

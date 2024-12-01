@@ -51,4 +51,5 @@ exclude_lines = [
 ]
 
 [tool.coverage.run]
-source = ["pymmcore_nano","mmCoreAndDevices"]
+omit = ['subprojects/']
+source = ["pymmcore_nano", "mmCoreAndDevices"]
