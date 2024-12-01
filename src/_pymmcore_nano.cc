@@ -147,7 +147,7 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("g_CFGGroup_PixelSizeUm") = MM::g_CFGGroup_PixelSizeUm;
 
   /////////////////// Enums ///////////////////
-     
+
   nb::enum_<MM::DeviceType>(m, "DeviceType", nb::is_arithmetic())
       // aliases
       //  .value("Unknown", MM::DeviceType::UnknownType)
