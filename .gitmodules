@@ -1,3 +1,4 @@
 [submodule "src/mmCoreAndDevices"]
 	path = src/mmCoreAndDevices
 	url = https://github.com/micro-manager/mmCoreAndDevices
+	ignore = dirty
