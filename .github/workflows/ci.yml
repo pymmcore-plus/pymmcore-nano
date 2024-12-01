@@ -46,7 +46,7 @@ jobs:
           uv venv
           uv sync --frozen --no-install-project
           if [ ${{ runner.os }} == 'Windows' ]; then
-            .venv\Scripts\activate
+            . .venv\\Scripts\\activate
           else
             . .venv/bin/activate
           fi
