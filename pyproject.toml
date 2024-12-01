@@ -28,6 +28,7 @@ dev = [
     "ruff>=0.8.0",
     "pytest-cov>=6.0.0",
     "gcovr>=8.2",
+    "rich>=13.9.4",
 ]
 
 # https://docs.pytest.org/

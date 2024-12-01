@@ -401,6 +401,17 @@ NB_MODULE(_pymmcore_nano, m) {
           },
           "name"_a, "xpos"_a, "ypos"_a);
 
+  //////////////////// Exceptions ////////////////////
+
+  // Register the exception with RuntimeError as the base
+  // NOTE:
+  // at the moment, we're not exposing all of the methods on the CMMErrors class
+  // because this is far simpler... but we could expose more if needed
+  // this will expose pymmcore_nano.CMMErrors as a subclass of RuntimeError
+  // and a basic message will be propagated, for example:
+  // CMMError('Failed to load device "SomeDevice" from adapter module "SomeModule"')
+  nb::exception<CMMError>(m, "CMMError", PyExc_RuntimeError);
+
   //////////////////// MMCore ////////////////////
 
   nb::class_<CMMCore>(m, "CMMCore")
