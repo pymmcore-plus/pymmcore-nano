@@ -9,11 +9,6 @@ repos:
     hooks:
       - id: validate-pyproject
 
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.28.1
-    hooks:
-      - id: typos
-
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v19.1.4
     hooks:

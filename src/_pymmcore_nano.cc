@@ -44,8 +44,8 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("DEVICE_INVALID_INPUT_PARAM") = DEVICE_INVALID_INPUT_PARAM;
   m.attr("DEVICE_BUFFER_OVERFLOW") = DEVICE_BUFFER_OVERFLOW;
   m.attr("DEVICE_NONEXISTENT_CHANNEL") = DEVICE_NONEXISTENT_CHANNEL;
-  m.attr("DEVICE_INVALID_PROPERTY_LIMITS") = DEVICE_INVALID_PROPERTY_LIMITS;
-  m.attr("DEVICE_INVALID_PROPERTY_LIMITS") = DEVICE_INVALID_PROPERTY_LIMITS;  // Fix Typo
+  m.attr("DEVICE_INVALID_PROPERTY_LIMITS") = DEVICE_INVALID_PROPERTY_LIMTS;
+  m.attr("DEVICE_INVALID_PROPERTY_LIMTS") = DEVICE_INVALID_PROPERTY_LIMTS;  // Fix Typo
   m.attr("DEVICE_SNAP_IMAGE_FAILED") = DEVICE_SNAP_IMAGE_FAILED;
   m.attr("DEVICE_IMAGE_PARAMS_FAILED") = DEVICE_IMAGE_PARAMS_FAILED;
   m.attr("DEVICE_CORE_FOCUS_STAGE_UNDEF") = DEVICE_CORE_FOCUS_STAGE_UNDEF;
@@ -251,7 +251,6 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("getVerbose", &Configuration::getVerbose);
 
   nb::class_<PropertySetting>(m, "PropertySetting")
-      // Constructors
       .def(nb::init<const char*, const char*, const char*, bool>(), "deviceLabel"_a, "prop"_a,
            "value"_a, "readOnly"_a = false, "Constructor specifying the entire contents")
       .def(nb::init<>(), "Default constructor")
@@ -267,10 +266,8 @@ NB_MODULE(_pymmcore_nano, m) {
                   "Generates a unique key based on device and property");
 
   nb::class_<Metadata>(m, "Metadata")
-      // Constructors
       .def(nb::init<>(), "Empty constructor")
       .def(nb::init<const Metadata&>(), "Copy constructor")
-
       // Member functions
       .def("Clear", &Metadata::Clear, "Clears all tags")
       .def("GetKeys", &Metadata::GetKeys, "Returns all tag keys")
@@ -297,8 +294,67 @@ NB_MODULE(_pymmcore_nano, m) {
           },
           "key"_a, "value"_a, "Adds an image tag");
 
+  nb::class_<MetadataTag>(m, "MetadataTag")
+      // MetadataTag is Abstract ... no constructors
+      // Member functions
+      .def("GetDevice", &MetadataTag::GetDevice, "Returns the device label")
+      .def("GetName", &MetadataTag::GetName, "Returns the name of the tag")
+      .def("GetQualifiedName", &MetadataTag::GetQualifiedName, "Returns the qualified name")
+      .def("IsReadOnly", &MetadataTag::IsReadOnly, "Checks if the tag is read-only")
+      .def("SetDevice", &MetadataTag::SetDevice, "device"_a, "Sets the device label")
+      .def("SetName", &MetadataTag::SetName, "name"_a, "Sets the name of the tag")
+      .def("SetReadOnly", &MetadataTag::SetReadOnly, "readOnly"_a, "Sets the read-only status")
+      // Virtual functions
+      .def("ToSingleTag", &MetadataTag::ToSingleTag, "Converts to MetadataSingleTag if applicable")
+      .def("ToArrayTag", &MetadataTag::ToArrayTag, "Converts to MetadataArrayTag if applicable")
+      .def("Clone", &MetadataTag::Clone, "Creates a clone of the MetadataTag")
+      .def("Serialize", &MetadataTag::Serialize, "Serializes the MetadataTag to a string")
+      .def("Restore", nb::overload_cast<const char*>(&MetadataTag::Restore), "stream"_a,
+           "Restores from a serialized string");
+  // Ommitting the std::istringstream& overload: Python doesn't have a stringstream equivalent
+  //  .def("Restore", nb::overload_cast<std::istringstream&>(&MetadataTag::Restore),
+  //  "istream"_a,
+  //       "Restores from an input stream")
+  // Static methods
+  //  .def_static("ReadLine", &MetadataTag::ReadLine, "istream"_a,
+  //    "Reads a line from an input stream");
+
+  nb::class_<MetadataSingleTag, MetadataTag>(m, "MetadataSingleTag")
+      .def(nb::init<>(), "Default constructor")
+      .def(nb::init<const char*, const char*, bool>(), "name"_a, "device"_a, "readOnly"_a,
+           "Parameterized constructor")
+      // Member functions
+      .def("GetValue", &MetadataSingleTag::GetValue, "Returns the value")
+      .def("SetValue", &MetadataSingleTag::SetValue, "val"_a, "Sets the value")
+      .def("ToSingleTag", &MetadataSingleTag::ToSingleTag,
+           "Returns this object as MetadataSingleTag")
+      .def("Clone", &MetadataSingleTag::Clone, "Clones this tag")
+      .def("Serialize", &MetadataSingleTag::Serialize, "Serializes this tag to a string")
+      // Omitting the std::istringstream& overload: Python doesn't have a stringstream equivalent
+      //  .def("Restore", nb::overload_cast<std::istringstream&>(&MetadataSingleTag::Restore),
+      //  "istream"_a, "Restores from an input stream")
+      .def("Restore", nb::overload_cast<const char*>(&MetadataSingleTag::Restore), "stream"_a,
+           "Restores from a serialized string");
+
+  nb::class_<MetadataArrayTag, MetadataTag>(m, "MetadataArrayTag")
+      .def(nb::init<>(), "Default constructor")
+      .def(nb::init<const char*, const char*, bool>(), "name"_a, "device"_a, "readOnly"_a,
+           "Parameterized constructor")
+      .def("ToArrayTag", &MetadataArrayTag::ToArrayTag, "Returns this object as MetadataArrayTag")
+      .def("AddValue", &MetadataArrayTag::AddValue, "val"_a, "Adds a value to the array")
+      .def("SetValue", &MetadataArrayTag::SetValue, "val"_a, "idx"_a,
+           "Sets a value at a specific index")
+      .def("GetValue", &MetadataArrayTag::GetValue, "idx"_a, "Gets a value at a specific index")
+      .def("GetSize", &MetadataArrayTag::GetSize, "Returns the size of the array")
+      .def("Clone", &MetadataArrayTag::Clone, "Clones this tag")
+      .def("Serialize", &MetadataArrayTag::Serialize, "Serializes this tag to a string")
+      // Omitting the std::istringstream& overload: Python doesn't have a stringstream equivalent
+      //  .def("Restore", nb::overload_cast<std::istringstream&>(&MetadataArrayTag::Restore),
+      //       "istream"_a, "Restores from an input stream")
+      .def("Restore", nb::overload_cast<const char*>(&MetadataArrayTag::Restore), "stream"_a,
+           "Restores from a serialized string");
+
   nb::class_<MMEventCallback>(m, "MMEventCallback")
-      // Constructors
       .def(nb::init<>())
 
       // Virtual methods

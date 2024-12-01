@@ -16,6 +16,7 @@ install:
 
 # quick build after having already setup the build directory
 build:
+	find $(BUILDDIR) -name "*.gcda" -delete
 	meson compile -C $(BUILDDIR)
 
 # run tests (calling make install if needed)

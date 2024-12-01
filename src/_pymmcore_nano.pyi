@@ -482,7 +482,7 @@ DEVICE_INTERNAL_INCONSISTENCY: int = 8
 DEVICE_INVALID_INPUT_PARAM: int = 21
 DEVICE_INVALID_PROPERTY: int = 2
 DEVICE_INVALID_PROPERTY_LIMITS: int = 24
-DEVICE_INVALID_PROPERTY_LIMITS: int = 24
+DEVICE_INVALID_PROPERTY_LIMTS: int = 24
 DEVICE_INVALID_PROPERTY_TYPE: int = 5
 DEVICE_INVALID_PROPERTY_VALUE: int = 3
 DEVICE_LOCALLY_DEFINED_ERROR: int = 34
@@ -587,11 +587,11 @@ class Metadata:
         """Returns all tag keys"""
     def HasTag(self, key: str) -> bool:
         """Checks if a tag exists for the given key"""
-    def GetSingleTag(self, key: str) -> "MetadataSingleTag":
+    def GetSingleTag(self, key: str) -> MetadataSingleTag:
         """Gets a single tag by key"""
-    def GetArrayTag(self, key: str) -> "MetadataArrayTag":
+    def GetArrayTag(self, key: str) -> MetadataArrayTag:
         """Gets an array tag by key"""
-    def SetTag(self, tag: "MetadataTag") -> None:
+    def SetTag(self, tag: MetadataTag) -> None:
         """Sets a tag"""
     def RemoveTag(self, key: str) -> None:
         """Removes a tag by key"""
@@ -607,6 +607,76 @@ class Metadata:
         """Adds a MetadataSingleTag"""
     def PutImageTag(self, key: str, value: str) -> None:
         """Adds an image tag"""
+
+class MetadataArrayTag(MetadataTag):
+    @overload
+    def __init__(self) -> None:
+        """Default constructor"""
+    @overload
+    def __init__(self, name: str, device: str, readOnly: bool) -> None:
+        """Parameterized constructor"""
+    def ToArrayTag(self) -> MetadataArrayTag:
+        """Returns this object as MetadataArrayTag"""
+    def AddValue(self, val: str) -> None:
+        """Adds a value to the array"""
+    def SetValue(self, val: str, idx: int) -> None:
+        """Sets a value at a specific index"""
+    def GetValue(self, idx: int) -> str:
+        """Gets a value at a specific index"""
+    def GetSize(self) -> int:
+        """Returns the size of the array"""
+    def Clone(self) -> MetadataTag:
+        """Clones this tag"""
+    def Serialize(self) -> str:
+        """Serializes this tag to a string"""
+    def Restore(self, stream: str) -> bool:
+        """Restores from a serialized string"""
+
+class MetadataSingleTag(MetadataTag):
+    @overload
+    def __init__(self) -> None:
+        """Default constructor"""
+    @overload
+    def __init__(self, name: str, device: str, readOnly: bool) -> None:
+        """Parameterized constructor"""
+    def GetValue(self) -> str:
+        """Returns the value"""
+    def SetValue(self, val: str) -> None:
+        """Sets the value"""
+    def ToSingleTag(self) -> MetadataSingleTag:
+        """Returns this object as MetadataSingleTag"""
+    def Clone(self) -> MetadataTag:
+        """Clones this tag"""
+    def Serialize(self) -> str:
+        """Serializes this tag to a string"""
+    def Restore(self, stream: str) -> bool:
+        """Restores from a serialized string"""
+
+class MetadataTag:
+    def GetDevice(self) -> str:
+        """Returns the device label"""
+    def GetName(self) -> str:
+        """Returns the name of the tag"""
+    def GetQualifiedName(self) -> str:
+        """Returns the qualified name"""
+    def IsReadOnly(self) -> bool:
+        """Checks if the tag is read-only"""
+    def SetDevice(self, device: str) -> None:
+        """Sets the device label"""
+    def SetName(self, name: str) -> None:
+        """Sets the name of the tag"""
+    def SetReadOnly(self, readOnly: bool) -> None:
+        """Sets the read-only status"""
+    def ToSingleTag(self) -> MetadataSingleTag:
+        """Converts to MetadataSingleTag if applicable"""
+    def ToArrayTag(self) -> MetadataArrayTag:
+        """Converts to MetadataArrayTag if applicable"""
+    def Clone(self) -> MetadataTag:
+        """Creates a clone of the MetadataTag"""
+    def Serialize(self) -> str:
+        """Serializes the MetadataTag to a string"""
+    def Restore(self, stream: str) -> bool:
+        """Restores from a serialized string"""
 
 class PortType(enum.IntEnum):
     InvalidPort = 0
