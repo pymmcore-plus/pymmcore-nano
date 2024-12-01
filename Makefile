@@ -7,7 +7,7 @@ BUILDDIR := $(shell ls -d build/cp3* 2>/dev/null | head -n 1)
 install:
 	make clean
 	git submodule update --init
-	uv sync
+	uv sync --no-install-project && source .venv/bin/activate
 	uv pip install -e . \
 		--no-build-isolation \
 		--force-reinstall \
@@ -21,7 +21,10 @@ build:
 
 # run tests (calling make install if needed)
 test:
-	@if [ -z "$(BUILDDIR)" ]; then \
+	@if [ -z "$$VIRTUAL_ENV" ]; then \
+		. .venv/bin/activate; \
+	fi; \
+	if [ -z "$(BUILDDIR)" ]; then \
 		echo "Build directory not found. Running make install..."; \
 		make install; \
 	fi; \
@@ -41,9 +44,10 @@ clean:
 
 coverage:
 	rm -rf coverage coverage.xml coverage_cpp.xml
-	mkdir coverage
 	make test
-	gcovr --xml coverage_cpp.xml --xml-pretty
+	mkdir coverage
+	@if [ -z "$$VIRTUAL_ENV" ]; then . .venv/bin/activate; fi;
+	gcovr --filter=src/ --xml coverage_cpp.xml --xml-pretty
 	gcovr --filter=src/ --html-details -o coverage/index.html --exclude .venv
 	open coverage/index.html
 
