@@ -266,9 +266,36 @@ class CMMCore:
     def isSequenceRunning(self) -> bool: ...
     @overload
     def isSequenceRunning(self, cameraLabel: str) -> bool: ...
-    def getLastImage(self) -> Any: ...
-    def popNextImage(self) -> Any: ...
-    def getLastImageMD(self, md: Metadata) -> Any: ...
+    def getLastImage(self) -> Annotated[ArrayLike, dict(writable=False)]: ...
+    def popNextImage(self) -> Annotated[ArrayLike, dict(writable=False)]: ...
+    @overload
+    def getLastImageMD(
+        self,
+    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+        """
+        Get the last image in the circular buffer, return as tuple of image and metadata
+        """
+    @overload
+    def getLastImageMD(
+        self, md: Metadata
+    ) -> Annotated[ArrayLike, dict(writable=False)]:
+        """
+        Get the last image in the circular buffer, store metadata in the provided object
+        """
+    @overload
+    def getLastImageMD(
+        self, channel: int, slice: int
+    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+        """
+        Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata
+        """
+    @overload
+    def getLastImageMD(
+        self, channel: int, slice: int, md: Metadata
+    ) -> Annotated[ArrayLike, dict(writable=False)]:
+        """
+        Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
+        """
     def getNBeforeLastImageMD(self, n: int, md: Metadata) -> Any: ...
     def getRemainingImageCount(self) -> int: ...
     def getBufferTotalCapacity(self) -> int: ...
@@ -635,6 +662,12 @@ class MetadataArrayTag(MetadataTag):
         """Serializes this tag to a string"""
     def Restore(self, stream: str) -> bool:
         """Restores from a serialized string"""
+
+class MetadataIndexError(IndexError):
+    pass
+
+class MetadataKeyError(KeyError):
+    pass
 
 class MetadataSingleTag(MetadataTag):
     @overload

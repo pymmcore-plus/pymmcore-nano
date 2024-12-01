@@ -1,4 +1,5 @@
 import enum
+from math import e
 from pathlib import Path
 import sys
 import time
@@ -248,6 +249,47 @@ def test_camera_snap(demo_core: pmn.CMMCore) -> None:
     demo_core.snapImage()
     img5 = demo_core.getImage(0)  # also testing overloaded method with channel
     assert img5.shape == (256, 128, 4)  # new shape
+
+
+def test_get_image_metadata(demo_core: pmn.CMMCore) -> None:
+    assert demo_core.getCameraDevice() == "Camera"
+    # change image dimensions to make it non-square
+    demo_core.setProperty("Camera", "OnCameraCCDXSize", 256)
+    expected_shape = (demo_core.getImageHeight(), demo_core.getImageWidth())
+    assert expected_shape == (512, 256)
+
+    demo_core.startSequenceAcquisition(2, 0, False)
+    _wait_until(lambda: not demo_core.isSequenceRunning())
+
+    img, md = demo_core.getLastImageMD()
+    assert isinstance(img, np.ndarray)
+    assert isinstance(md, pmn.Metadata)
+    assert img.shape == expected_shape
+    assert img.dtype == np.uint16
+    assert md.GetSingleTag("Camera").GetValue() == "Camera"
+    assert md.GetSingleTag("PixelType").GetValue() == "GRAY16"
+
+    demo_core.setProperty("Camera", "PixelType", "32bitRGB")
+    demo_core.startSequenceAcquisition(2, 0, False)
+    _wait_until(lambda: not demo_core.isSequenceRunning())
+
+    img2, md2 = demo_core.getLastImageMD()
+    assert img2.shape == (*expected_shape, 4)
+    assert img2.dtype == np.uint8
+    assert md2.GetSingleTag("PixelType").GetValue() == "RGB32"
+
+    demo_core.setProperty("Camera", "PixelType", "8bit")
+    demo_core.startSequenceAcquisition(2, 0, False)
+    _wait_until(lambda: not demo_core.isSequenceRunning())
+    demo_core.stopSequenceAcquisition()
+    # use the overload where we create our own metadata object
+    md3 = pmn.Metadata()
+    img3 = demo_core.getLastImageMD(md3)
+    assert img3.shape == expected_shape
+    assert img3.dtype == np.uint8
+
+    with pytest.raises(KeyError, match="Undefined metadata key"):
+        md.GetSingleTag("NumberOfComponents")
 
 
 def test_camera_roi_change(demo_core: pmn.CMMCore) -> None:
