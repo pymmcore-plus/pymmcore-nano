@@ -35,12 +35,8 @@ foreach src : cpp_sources
 endforeach
 
 # patch c++14 to c++17
-run_command(
-    'patch',
-    '-d', 'src/mmCoreAndDevices',
-    '-i', '../../patches/cpp17.patch',
-    check: true,
-)
+run_command(py.full_path(), 'scripts/patch_sources.py', check: true)
+
 # patch ImageMetadata
 # https://github.com/micro-manager/mmCoreAndDevices/pull/532
 run_command(
