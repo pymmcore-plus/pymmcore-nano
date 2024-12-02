@@ -51,9 +51,32 @@ def patch_img_metadata_error() -> None:
     file.write_text("".join(lines), encoding="utf-8")
 
 
+def patch_version():
+    """Expose the version numbers as extern variables in MMCore.h."""
+    MMCore_h = MMCORE / "MMCore.h"
+    content = MMCore_h.read_text(encoding="utf-8")
+
+    if "extern const int MMCore_versionMajor" in content:
+        return
+
+    lines = content.splitlines(keepends=True)
+    index = (
+        next(n for n, line in enumerate(lines) if "class CPluginManager" in line) - 1
+    )
+    lines[index:index] = [
+        "",
+        "extern const int MMCore_versionMajor;\n",
+        "extern const int MMCore_versionMinor;\n",
+        "extern const int MMCore_versionPatch;\n",
+    ]
+
+    MMCore_h.write_text("".join(lines), encoding="utf-8")
+
+
 if __name__ == "__main__":
     for file in itertools.chain(MMCORE.rglob("*"), MMDEVICE.rglob("*")):
         if file.suffix in {".cpp", ".h"}:
             patch_to_cpp17(str(file))
 
     patch_img_metadata_error()
+    patch_version()

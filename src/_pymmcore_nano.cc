@@ -7,10 +7,13 @@
 
 #include "MMCore.h"
 #include "MMEventCallback.h"
+#include "ModuleInterface.h"
 
 namespace nb = nanobind;
 
 using namespace nb::literals;
+
+const int PYMMCORE_NANO_VERSION = 0;
 
 ///////////////// NUMPY ARRAY HELPERS ///////////////////
 
@@ -233,6 +236,13 @@ NB_MODULE(_pymmcore_nano, m) {
   /////////////////// Module Attributes ///////////////////
 
   m.attr("DEVICE_INTERFACE_VERSION") = DEVICE_INTERFACE_VERSION;
+  m.attr("MODULE_INTERFACE_VERSION") = MODULE_INTERFACE_VERSION;
+  std::string version = std::to_string(MMCore_versionMajor) + "." +
+                        std::to_string(MMCore_versionMinor) + "." +
+                        std::to_string(MMCore_versionPatch);
+  m.attr("MMCore_version") = version;
+  m.attr("MMCore_version_info") =
+      std::tuple(MMCore_versionMajor, MMCore_versionMinor, MMCore_versionPatch);
 
   m.attr("MM_CODE_OK") = MM_CODE_OK;
   m.attr("MM_CODE_ERR") = MM_CODE_ERR;
@@ -690,7 +700,7 @@ NB_MODULE(_pymmcore_nano, m) {
           "loadSystemConfiguration",
           [](CMMCore& self,
              nb::object fileName) {  // accept any object that can be cast to a string (e.g. Path)
-            self.loadSystemConfiguration(nb::str(fileName).c_str());
+    self.loadSystemConfiguration(nb::str(fileName).c_str());
           },
           "fileName"_a)
 
@@ -722,7 +732,7 @@ NB_MODULE(_pymmcore_nano, m) {
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool truncate) {
-            self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);  // convert to string
+    self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);  // convert to string
           },
           "filename"_a, "truncate"_a = false)
 
@@ -740,8 +750,8 @@ NB_MODULE(_pymmcore_nano, m) {
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool enableDebug, bool truncate, bool synchronous) {
-            return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug, truncate,
-                                              synchronous);
+    return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug, truncate,
+                                      synchronous);
           },
           "filename"_a, "enableDebug"_a, "truncate"_a = true, "synchronous"_a = false)
       .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
@@ -884,16 +894,16 @@ NB_MODULE(_pymmcore_nano, m) {
            "label"_a, "x"_a, "y"_a, "xSize"_a, "ySize"_a)
       .def("getROI",
            [](CMMCore& self) {
-             int x, y, xSize, ySize;
-             self.getROI(x, y, xSize, ySize);             // Call C++ method
-             return std::make_tuple(x, y, xSize, ySize);  // Return a tuple
+    int x, y, xSize, ySize;
+    self.getROI(x, y, xSize, ySize);             // Call C++ method
+    return std::make_tuple(x, y, xSize, ySize);  // Return a tuple
            })
       .def(
           "getROI",
           [](CMMCore& self, const char* label) {
-            int x, y, xSize, ySize;
-            self.getROI(label, x, y, xSize, ySize);      // Call the C++ method
-            return std::make_tuple(x, y, xSize, ySize);  // Return as Python tuple
+    int x, y, xSize, ySize;
+    self.getROI(label, x, y, xSize, ySize);      // Call the C++ method
+    return std::make_tuple(x, y, xSize, ySize);  // Return as Python tuple
           },
           "label"_a)
       .def("clearROI", &CMMCore::clearROI)
@@ -903,9 +913,9 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("getMultiROI",
            [](CMMCore& self) -> std::tuple<std::vector<unsigned>, std::vector<unsigned>, std::vector<unsigned>,
                                            std::vector<unsigned>> {
-                std::vector<unsigned> xs, ys, widths, heights;
-                    self.getMultiROI(xs, ys, widths, heights);
-                    return {xs, ys, widths, heights};
+    std::vector<unsigned> xs, ys, widths, heights;
+    self.getMultiROI(xs, ys, widths, heights);
+    return {xs, ys, widths, heights};
            })
 
       .def("setExposure", nb::overload_cast<double>(&CMMCore::setExposure), "exp"_a)
@@ -915,10 +925,11 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("getExposure", nb::overload_cast<const char*>(&CMMCore::getExposure), "label"_a)
       .def("snapImage", &CMMCore::snapImage)
       .def("getImage",
-           [](CMMCore& self) -> ro_np_array { return create_image_array(self, self.getImage()); })
+           [](CMMCore& self) -> ro_np_array {
+    return create_image_array(self, self.getImage()); })
       .def("getImage",
            [](CMMCore& self, unsigned channel) -> ro_np_array {
-             return create_image_array(self, self.getImage(channel));
+    return create_image_array(self, self.getImage(channel));
            })
       .def("getImageWidth", &CMMCore::getImageWidth)
       .def("getImageHeight", &CMMCore::getImageHeight)
@@ -953,27 +964,27 @@ NB_MODULE(_pymmcore_nano, m) {
            "cameraLabel"_a)
       .def("getLastImage",
            [](CMMCore& self) -> ro_np_array {
-             return create_image_array(self, self.getLastImage());
+    return create_image_array(self, self.getLastImage());
            })
       .def("popNextImage",
            [](CMMCore& self) -> ro_np_array {
-             return create_image_array(self, self.popNextImage());
+    return create_image_array(self, self.popNextImage());
            })
       // this is a new overload that returns both the image and the metadata
       // not present in the original C++ API
       .def(
           "getLastImageMD",
           [](CMMCore& self) -> std::tuple<ro_np_array, Metadata> {
-            Metadata md;
-            auto img = self.getLastImageMD(md);
-            return {create_metadata_array(self, img, md), md};
+    Metadata md;
+    auto img = self.getLastImageMD(md);
+    return {create_metadata_array(self, img, md), md};
           },
           "Get the last image in the circular buffer, return as tuple of image and metadata")
       .def(
           "getLastImageMD",
           [](CMMCore& self, Metadata& md) -> ro_np_array {
-            auto img = self.getLastImageMD(md);
-            return create_metadata_array(self, img, md);
+    auto img = self.getLastImageMD(md);
+    return create_metadata_array(self, img, md);
           },
           "md"_a,
           "Get the last image in the circular buffer, store metadata in the provided object")
@@ -981,9 +992,9 @@ NB_MODULE(_pymmcore_nano, m) {
           "getLastImageMD",
           [](CMMCore& self, unsigned channel,
              unsigned slice) -> std::tuple<ro_np_array, Metadata> {
-            Metadata md;
-            auto img = self.getLastImageMD(channel, slice, md);
-            return {create_metadata_array(self, img, md), md};
+    Metadata md;
+    auto img = self.getLastImageMD(channel, slice, md);
+    return {create_metadata_array(self, img, md), md};
           },
           "channel"_a, "slice"_a,
           "Get the last image in the circular buffer for a specific channel and slice, return"
@@ -991,8 +1002,8 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(
           "getLastImageMD",
           [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> ro_np_array {
-            auto img = self.getLastImageMD(channel, slice, md);
-            return create_metadata_array(self, img, md);
+    auto img = self.getLastImageMD(channel, slice, md);
+    return create_metadata_array(self, img, md);
           },
           "channel"_a, "slice"_a, "md"_a,
           "Get the last image in the circular buffer for a specific channel and slice, store "
@@ -1001,16 +1012,16 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(
           "popNextImageMD",
           [](CMMCore& self) -> std::tuple<ro_np_array, Metadata> {
-            Metadata md;
-            auto img = self.popNextImageMD(md);
-            return {create_metadata_array(self, img, md), md};
+    Metadata md;
+    auto img = self.popNextImageMD(md);
+    return {create_metadata_array(self, img, md), md};
           },
           "Get the last image in the circular buffer, return as tuple of image and metadata")
       .def(
           "popNextImageMD",
           [](CMMCore& self, Metadata& md) -> ro_np_array {
-            auto img = self.popNextImageMD(md);
-            return create_metadata_array(self, img, md);
+    auto img = self.popNextImageMD(md);
+    return create_metadata_array(self, img, md);
           },
           "md"_a,
           "Get the last image in the circular buffer, store metadata in the provided object")
@@ -1018,9 +1029,9 @@ NB_MODULE(_pymmcore_nano, m) {
           "popNextImageMD",
           [](CMMCore& self, unsigned channel,
              unsigned slice) -> std::tuple<ro_np_array, Metadata> {
-            Metadata md;
-            auto img = self.popNextImageMD(channel, slice, md);
-            return {create_metadata_array(self, img, md), md};
+    Metadata md;
+    auto img = self.popNextImageMD(channel, slice, md);
+    return {create_metadata_array(self, img, md), md};
           },
           "channel"_a, "slice"_a,
           "Get the last image in the circular buffer for a specific channel and slice, return"
@@ -1028,8 +1039,8 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(
           "popNextImageMD",
           [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> ro_np_array {
-            auto img = self.popNextImageMD(channel, slice, md);
-            return create_metadata_array(self, img, md);
+    auto img = self.popNextImageMD(channel, slice, md);
+    return create_metadata_array(self, img, md);
           },
           "channel"_a, "slice"_a, "md"_a,
           "Get the last image in the circular buffer for a specific channel and slice, store "
@@ -1038,9 +1049,9 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(
           "getNBeforeLastImageMD",
           [](CMMCore& self, unsigned long n) -> std::tuple<ro_np_array, Metadata> {
-            Metadata md;
-            auto img = self.getNBeforeLastImageMD(n, md);
-            return {create_metadata_array(self, img, md), md};
+    Metadata md;
+    auto img = self.getNBeforeLastImageMD(n, md);
+    return {create_metadata_array(self, img, md), md};
           },
           "n"_a,
           "Get the nth image before the last image in the circular buffer and return it as a "
@@ -1049,8 +1060,8 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(
           "getNBeforeLastImageMD",
           [](CMMCore& self, unsigned long n, Metadata& md) -> ro_np_array {
-            auto img = self.getNBeforeLastImageMD(n, md);
-            return create_metadata_array(self, img, md);
+    auto img = self.getNBeforeLastImageMD(n, md);
+    return create_metadata_array(self, img, md);
           },
           "n"_a, "md"_a,
           "Get the nth image before the last image in the circular buffer and store the metadata "
@@ -1142,16 +1153,16 @@ NB_MODULE(_pymmcore_nano, m) {
 
       .def("getXYPosition",
            [](CMMCore& self, const char* xyStageLabel) -> std::tuple<double, double> {
-             double x, y;
-             self.getXYPosition(xyStageLabel, x, y);
-             return {x, y};
+    double x, y;
+    self.getXYPosition(xyStageLabel, x, y);
+    return {x, y};
            },
            "xyStageLabel"_a)
           .def("getXYPosition",
                [](CMMCore& self) -> std::tuple<double, double> {
-               double x, y;
-               self.getXYPosition(x, y);
-               return {x, y};
+    double x, y;
+    self.getXYPosition(x, y);
+    return {x, y};
                })
       .def("getXPosition", nb::overload_cast<const char*>(&CMMCore::getXPosition),
            "xyStageLabel"_a)
@@ -1223,9 +1234,9 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a)
       .def("getGalvoPosition",
            [](CMMCore& self, const char* galvoLabel) {
-             double x, y;
-             self.getGalvoPosition(galvoLabel, x, y);  // Call C++ method
-             return std::make_tuple(x, y);             // Return a tuple
+    double x, y;
+    self.getGalvoPosition(galvoLabel, x, y);  // Call C++ method
+    return std::make_tuple(x, y);             // Return a tuple
            })
       .def("setGalvoIlluminationState", &CMMCore::setGalvoIlluminationState, "galvoLabel"_a,
            "on"_a)

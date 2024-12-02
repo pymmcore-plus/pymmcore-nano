@@ -721,7 +721,7 @@ wheels = [
 
 [[package]]
 name = "pymmcore-nano"
-version = "0.0.1"
+version = "11.2.1.71.0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
