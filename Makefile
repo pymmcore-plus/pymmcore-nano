@@ -41,6 +41,7 @@ clean:
 	rm -rf .coverage coverage coverage.info coverage.xml coverage_cpp.xml
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
+	rm -rf *.gcov
 
 coverage:
 	rm -rf coverage coverage.xml coverage_cpp.xml

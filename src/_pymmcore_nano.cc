@@ -882,7 +882,26 @@ NB_MODULE(_pymmcore_nano, m) {
           "Get the last image in the circular buffer for a specific channel and slice, store "
           "metadata in the provided object")
 
-      .def("getNBeforeLastImageMD", &CMMCore::getNBeforeLastImageMD, "n"_a, "md"_a)
+      .def(
+          "getNBeforeLastImageMD",
+          [](CMMCore& self, unsigned long n) -> std::tuple<ro_np_array, Metadata> {
+            Metadata md;
+            auto img = self.getNBeforeLastImageMD(n, md);
+            return {create_metadata_array(self, img, md), md};
+          },
+          "n"_a,
+          "Get the nth image before the last image in the circular buffer and return it as a "
+          "tuple "
+          "of image and metadata")
+      .def(
+          "getNBeforeLastImageMD",
+          [](CMMCore& self, unsigned long n, Metadata& md) -> ro_np_array {
+            auto img = self.getNBeforeLastImageMD(n, md);
+            return create_metadata_array(self, img, md);
+          },
+          "n"_a, "md"_a,
+          "Get the nth image before the last image in the circular buffer and store the metadata "
+          "in the provided object")
 
       // Circular Buffer Methods
       .def("getRemainingImageCount", &CMMCore::getRemainingImageCount)

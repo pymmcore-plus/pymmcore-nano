@@ -1,4 +1,3 @@
-from typing import Any
 from collections.abc import Sequence
 import enum
 from typing import Annotated, overload
@@ -324,7 +323,20 @@ class CMMCore:
         """
         Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
         """
-    def getNBeforeLastImageMD(self, n: int, md: Metadata) -> Any: ...
+    @overload
+    def getNBeforeLastImageMD(
+        self, n: int
+    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+        """
+        Get the nth image before the last image in the circular buffer and return it as a tuple of image and metadata
+        """
+    @overload
+    def getNBeforeLastImageMD(
+        self, n: int, md: Metadata
+    ) -> Annotated[ArrayLike, dict(writable=False)]:
+        """
+        Get the nth image before the last image in the circular buffer and store the metadata in the provided object
+        """
     def getRemainingImageCount(self) -> int: ...
     def getBufferTotalCapacity(self) -> int: ...
     def getBufferFreeCapacity(self) -> int: ...
