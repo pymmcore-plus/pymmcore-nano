@@ -103,3 +103,5 @@ test(
     args: ['-m', 'pytest', '--color=yes', '-v'],
     workdir: meson.current_source_dir(),
 )
+
+meson.add_dist_script(py.full_path(), meson.current_source_dir() / 'scripts/generate_dist.py')
