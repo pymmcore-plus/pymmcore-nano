@@ -1,13 +1,27 @@
+# replace the version by running:
+# meson rewrite kwargs set project / version $(python scripts/extract_version.py)
 project(
-    'pymmcore-nano',
-    'cpp',
-    version: '0.0.1',
-    meson_version: '>= 1.6.0',
-    default_options: ['cpp_std=c++17'],
+  'pymmcore-nano',
+  'cpp',
+version : '11.2.1.71.0',
+  meson_version : '>= 1.6.0',
+  default_options : ['cpp_std=c++17']
 )
 py = import('python').find_installation()
 nanobind_dep = dependency('nanobind', static: true)
 
+# Extract the version dynamically
+version_output = run_command(
+    py.full_path(),
+    meson.project_source_root() + '/scripts/extract_version.py',
+).stdout().strip()
+if version_output == ''
+    error(
+        'Version extraction failed. Ensure the script and C++ file are correct.',
+    )
+endif
+# Debug message to confirm extracted version
+message('Dynamically extracted version: ' + version_output)
 # ---------- dynamically gather sources and include dirs ----------
 
 print_include_dirs = '''
@@ -69,7 +83,6 @@ custom_target(
     ],
     depends: ext_module,
 )
-
 
 # install the Python package into the site-packages directory
 install_subdir(

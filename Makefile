@@ -1,11 +1,12 @@
 BUILDDIR := $(shell ls -d build/cp3* 2>/dev/null | head -n 1)
 
-.PHONY: build clean install test coverage stubs check clean-cov
+.PHONY: build clean install test coverage stubs check clean-cov version
 
 # https://mesonbuild.com/meson-python/how-to-guides/editable-installs.html
 # editable install
 install:
 	make clean
+	make version
 	git submodule update --init
 	uv sync --no-install-project && source .venv/bin/activate
 	uv pip install -e . \
@@ -57,3 +58,6 @@ coverage:
 
 check:
 	pre-commit run --all-files --hook-stage manual
+
+version:
+	meson rewrite kwargs set project / version $(shell python scripts/extract_version.py)

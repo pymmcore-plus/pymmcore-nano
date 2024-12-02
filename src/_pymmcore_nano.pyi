@@ -640,6 +640,8 @@ InitializedSuccessfully: int = 1
 Integer: int = 3
 InvalidPort: int = 0
 IsSequenceable: int = 3
+MMCore_version: str = "11.2.1"
+MMCore_version_info: tuple = (11, 2, 1)
 
 class MMEventCallback:
     def __init__(self) -> None: ...
@@ -666,6 +668,7 @@ class MMEventCallback:
 
 MM_CODE_ERR: int = 1
 MM_CODE_OK: int = 0
+MODULE_INTERFACE_VERSION: int = 10
 MagnifierDevice: int = 13
 
 class Metadata:
