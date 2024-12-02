@@ -1,4 +1,4 @@
 src/mmCoreAndDevices/** export-ignore
 
-!src/mmCoreAndDevices/MMCore/** export-ignore
-!src/mmCoreAndDevices/MMDevice/** export-ignore
+\!src/mmCoreAndDevices/MMCore/**
+\!src/mmCoreAndDevices/MMDevice/**

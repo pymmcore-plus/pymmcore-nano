@@ -29,7 +29,7 @@ jobs:
 
       - uses: ilammy/msvc-dev-cmd@v1
         with:
-          toolset: "14.2"
+          toolset: "14.29"
 
       - name: Install a specific version of uv
         uses: astral-sh/setup-uv@v4
