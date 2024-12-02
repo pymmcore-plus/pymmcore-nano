@@ -19,11 +19,6 @@ using ro_np_array = nb::ndarray<nb::numpy, nb::ro>;
 // Helper to determine dtype and shape
 std::pair<nb::dlpack::dtype, std::vector<size_t>> determine_dtype_and_shape(
     unsigned height, unsigned width, unsigned bytesPerPixel, unsigned numComponents = 1) {
-  // Validate input to avoid ambiguity
-  if (bytesPerPixel % numComponents != 0) {
-    throw std::runtime_error("bytesPerPixel is not compatible with numComponents.");
-  }
-
   // Calculate dtype and shape
   std::vector<size_t> shape = {height, width};
 
@@ -45,8 +40,8 @@ std::pair<nb::dlpack::dtype, std::vector<size_t>> determine_dtype_and_shape(
       }
       shape.push_back(numComponents);
       return {nb::dtype<uint16_t>(), shape};
-    default:
-      throw std::runtime_error("Unsupported bytesPerPixel / numComponents combination.");
+    default:  // pragma: no cover
+      throw std::runtime_error("Unsupported bytesPerPixel.");
   }
 }
 // Overload to determine dtype and shape from pixelType, which appears in image metadata
@@ -850,8 +845,43 @@ NB_MODULE(_pymmcore_nano, m) {
           "Get the last image in the circular buffer for a specific channel and slice, store "
           "metadata in the provided object")
 
-      //  .def("popNextImageMD", &CMMCore::popNextImageMD, "channel"_a, "slice"_a, "md"_a)
-      //  .def("popNextImageMD", &CMMCore::popNextImageMD, "md"_a)
+      .def(
+          "popNextImageMD",
+          [](CMMCore& self) -> std::tuple<ro_np_array, Metadata> {
+            Metadata md;
+            auto img = self.popNextImageMD(md);
+            return {create_metadata_array(self, img, md), md};
+          },
+          "Get the last image in the circular buffer, return as tuple of image and metadata")
+      .def(
+          "popNextImageMD",
+          [](CMMCore& self, Metadata& md) -> ro_np_array {
+            auto img = self.popNextImageMD(md);
+            return create_metadata_array(self, img, md);
+          },
+          "md"_a,
+          "Get the last image in the circular buffer, store metadata in the provided object")
+      .def(
+          "popNextImageMD",
+          [](CMMCore& self, unsigned channel,
+             unsigned slice) -> std::tuple<ro_np_array, Metadata> {
+            Metadata md;
+            auto img = self.popNextImageMD(channel, slice, md);
+            return {create_metadata_array(self, img, md), md};
+          },
+          "channel"_a, "slice"_a,
+          "Get the last image in the circular buffer for a specific channel and slice, return"
+          "as tuple of image and metadata")
+      .def(
+          "popNextImageMD",
+          [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> ro_np_array {
+            auto img = self.popNextImageMD(channel, slice, md);
+            return create_metadata_array(self, img, md);
+          },
+          "channel"_a, "slice"_a, "md"_a,
+          "Get the last image in the circular buffer for a specific channel and slice, store "
+          "metadata in the provided object")
+
       .def("getNBeforeLastImageMD", &CMMCore::getNBeforeLastImageMD, "n"_a, "md"_a)
 
       // Circular Buffer Methods

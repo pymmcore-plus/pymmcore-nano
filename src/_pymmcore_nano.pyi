@@ -296,6 +296,34 @@ class CMMCore:
         """
         Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
         """
+    @overload
+    def popNextImageMD(
+        self,
+    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+        """
+        Get the last image in the circular buffer, return as tuple of image and metadata
+        """
+    @overload
+    def popNextImageMD(
+        self, md: Metadata
+    ) -> Annotated[ArrayLike, dict(writable=False)]:
+        """
+        Get the last image in the circular buffer, store metadata in the provided object
+        """
+    @overload
+    def popNextImageMD(
+        self, channel: int, slice: int
+    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+        """
+        Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata
+        """
+    @overload
+    def popNextImageMD(
+        self, channel: int, slice: int, md: Metadata
+    ) -> Annotated[ArrayLike, dict(writable=False)]:
+        """
+        Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
+        """
     def getNBeforeLastImageMD(self, n: int, md: Metadata) -> Any: ...
     def getRemainingImageCount(self) -> int: ...
     def getBufferTotalCapacity(self) -> int: ...

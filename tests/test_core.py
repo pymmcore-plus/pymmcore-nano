@@ -291,6 +291,34 @@ def test_get_image_metadata(demo_core: pmn.CMMCore) -> None:
         md.GetSingleTag("NumberOfComponents")
 
 
+def test_image_sequence(demo_core: pmn.CMMCore) -> None:
+    assert demo_core.getCameraDevice() == "Camera"
+    demo_core.setExposure(10)
+    expected_shape = (demo_core.getImageHeight(), demo_core.getImageWidth())
+
+    demo_core.startContinuousSequenceAcquisition(0)
+    _wait_until(lambda: demo_core.isSequenceRunning())
+    time.sleep(0.1)
+    demo_core.stopSequenceAcquisition()
+    _wait_until(lambda: not demo_core.isSequenceRunning())
+
+    assert demo_core.getRemainingImageCount() > 1
+
+    img = demo_core.popNextImage()
+    assert isinstance(img, np.ndarray)
+    assert img.dtype == np.uint16
+    assert img.shape == expected_shape
+
+    img2, md = demo_core.popNextImageMD()
+    assert isinstance(img2, np.ndarray)
+    assert img2.dtype == np.uint16
+    assert img2.shape == expected_shape
+
+    while demo_core.getRemainingImageCount():
+        img = demo_core.popNextImage()
+        assert isinstance(img, np.ndarray)
+
+
 def test_camera_roi_change(demo_core: pmn.CMMCore) -> None:
     assert demo_core.getROI() == (0, 0, 512, 512)
     demo_core.setROI(10, 10, 100, 100)
