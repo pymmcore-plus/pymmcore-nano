@@ -3,7 +3,6 @@ from pathlib import Path
 import sys
 import time
 from typing import Callable
-import weakref
 import numpy as np
 import pytest
 import pymmcore_nano as pmn
