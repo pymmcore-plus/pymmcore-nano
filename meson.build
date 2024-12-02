@@ -37,15 +37,6 @@ endforeach
 # patch c++14 to c++17
 run_command(py.full_path(), 'scripts/patch_sources.py', check: true)
 
-# patch ImageMetadata
-# https://github.com/micro-manager/mmCoreAndDevices/pull/532
-run_command(
-    'patch',
-    '-d', 'src/mmCoreAndDevices',
-    '-i', '../../patches/img_meta.patch',
-    check: true,
-)
-
 # --------------------------
 
 cpp_args = ['-DMMDEVICE_CLIENT_BUILD']
