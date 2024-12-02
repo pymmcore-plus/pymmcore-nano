@@ -14,26 +14,11 @@ MMCORE = ROOT / "MMCore"
 MMDEVICE = ROOT / "MMDevice"
 
 
-def detect_line_ending(file_path: str) -> str:
-    with open(file_path, "rb") as f:
-        content = f.read()
-        if b"\r\n" in content:
-            return "\r\n"
-        elif b"\n" in content:
-            return "\n"
-        else:
-            return "\r"
-
-
 def patch_to_cpp17(file_path: str) -> None:
     content = Path(file_path).read_text(encoding="utf-8")
 
     # Replace 'throw (CMMError)' with 'noexcept(false)'
     patched_content = THROW_CMMERROR_RE.sub("noexcept(false)", content)
-    line_ending = detect_line_ending(file_path)
-    content = Path(file_path).read_text(encoding="utf-8")
-    # Normalize to the detected line ending
-    patched_content = patched_content.replace("\n", line_ending)
 
     Path(file_path).write_text(patched_content, encoding="utf-8")
 

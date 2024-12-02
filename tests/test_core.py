@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import time
 from typing import Callable
+import weakref
 import numpy as np
 import pytest
 import pymmcore_nano as pmn
@@ -38,6 +39,7 @@ def demo_core(core: pmn.CMMCore) -> pmn.CMMCore:
     """Return a CMMCore instance with the demo configuration loaded."""
     cfg = Path(__file__).parent / "MMConfig_demo.cfg"
     core.loadSystemConfiguration(cfg)
+    core.waitForSystem()
     return core
 
 
@@ -222,6 +224,8 @@ def test_camera_snap(demo_core: pmn.CMMCore) -> None:
     assert not img.flags.writeable
     with pytest.raises(ValueError, match="assignment destination is read-only"):
         img[0, 0] = 0
+    img = img.copy()
+    assert img.flags.writeable
 
     assert img.dtype == np.uint16
     assert img.shape == expected_shape
