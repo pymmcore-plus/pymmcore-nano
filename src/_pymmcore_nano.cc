@@ -68,13 +68,8 @@ std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(
 }
 
 /**
- * @brief Creates a read-only NumPy array representing an image from the
- * provided buffer and `CMMCore` instance.
- *
- * This function wraps a raw memory buffer from a `CMMCore` instance into a
- * `nanobind::ndarray` of type `numpy.ndarray`. The array is read-only and
- * shares ownership with the provided `CMMCore` instance to ensure memory
- * safety.
+ * @brief Creates a read-only NumPy array using core methods
+ * getImageWidth/getImageHeight/getBytesPerPixel/getNumberOfComponents
  *
  * @param core A reference to the `CMMCore` object, which provides image
  * metadata and ensures ownership of the buffer.
@@ -100,25 +95,39 @@ ro_np_array create_image_array(CMMCore &core, void *pBuf) {
   // Create and return the ndarray
   auto [dt, shape] = get_dtype_shape(height, width, bytesPerPixel, numComponents);
 
-  // Cast the CMMCore object to an nb::object for ownership
-  nb::object owner = nb::cast(core, nb::rv_policy::reference);
+  // NOTE: I am definitely *not* sure that I've done this correctly.
+  // we need to assign an owner to the array whose continued existence
+  // keeps the underlying memory region alive:
+  // https://nanobind.readthedocs.io/en/latest/ndarray.html#returning-arrays-from-c-to-python
+  // https://nanobind.readthedocs.io/en/latest/ndarray.html#data-ownership
 
-  return ro_np_array(pBuf,          // std::conditional_t<ReadOnly, const void*, void*>
-                     shape.size(),  // size_t ndim
-                     shape.data(),  // const size_t* shape
-                     owner,         // handle owner
-                     nullptr,       // const int64_t *stride (nullptr for default C-contiguous)
-                     dt             // Data type
-  );
+  // This method comes directly from the docs above
+  // but leads to a double free error
+  // nb::capsule owner(data, [](void *p) noexcept { delete[] (float *)p; });
+
+  // This method ties the lifetime of the buffer to the lifetime of the CMMCore object
+  // but gives a bunch of "nanobind: leaked 6 instances!" warnings at exit.
+  // those *could* be hidden with `nb::set_leak_warnings(false);` ...
+  // but not sure if that's a good idea.
+  // nb::object owner = nb::cast(core, nb::rv_policy::reference);
+
+  // This would fully copy the data.  It's the safest, but also the slowest.
+  // size_t total_size = std::accumulate(shape.begin(), shape.end(), (size_t)1,
+  // std::multiplies<>()); auto buffer = std::make_unique<uint8_t[]>(total_size *
+  // bytesPerPixel); std::memcpy(buffer.get(), pBuf, total_size * bytesPerPixel);
+  // // ... then later use buffer.release() as the data pointer in the array constructor
+
+  // This method gives neither leak warnings nor double free errors.
+  // If the core object deletes the buffer prematurely, the numpy array will point to
+  // invalid memory, potentially leading to crashes or undefined behavior...
+  // so users should  call `img.copy()` if they want to ensure the data is copied.
+  nb::capsule owner(pBuf, [](void *p) noexcept {});
+
+  return ro_np_array(pBuf, shape.size(), shape.data(), owner, nullptr, dt);
 }
 /**
- * @brief Creates a read-only NumPy array representing image metadata from the
- * provided buffer and `CMMCore` instance.
- *
- * This function wraps a raw memory buffer from a `CMMCore` instance into a
- * `nanobind::ndarray` of type `numpy.ndarray`. The array is read-only and
- * shares ownership with the provided `CMMCore` instance to ensure memory
- * safety.
+ * @brief Creates a read-only NumPy array using width/height/pixelType
+ * from a metadata object.
  *
  * @param core A reference to the `CMMCore` object, which provides image
  * metadata and ensures ownership of the buffer.
@@ -135,24 +144,27 @@ ro_np_array create_image_array(CMMCore &core, void *pBuf) {
  * specified.
  */
 ro_np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
-  // These keys are unfortunately hard-coded in the source code
-  // see https://github.com/micro-manager/mmCoreAndDevices/pull/531
-  // Retrieve and log the values of the tags
-  std::string width_str = md.GetSingleTag("Width").GetValue();
-  std::string height_str = md.GetSingleTag("Height").GetValue();
-  std::string pixel_type = md.GetSingleTag("PixelType").GetValue();
+  std::string width_str, height_str, pixel_type;
+  try {
+    // These keys are unfortunately hard-coded in the source code
+    // see https://github.com/micro-manager/mmCoreAndDevices/pull/531
+    // Retrieve and log the values of the tags
+    width_str = md.GetSingleTag("Width").GetValue();
+    height_str = md.GetSingleTag("Height").GetValue();
+    pixel_type = md.GetSingleTag("PixelType").GetValue();
+  } catch (const MetadataKeyError &e) {
+    // The metadata doesn't have what we need to shape the array...
+    // Fallback to core.getImageWidth etc...
+    return create_image_array(core, pBuf);
+  }
+
   auto [dt, shape] = get_dtype_shape(std::stoi(height_str), std::stoi(width_str), pixel_type);
 
-  // Cast the CMMCore object to an nb::object for ownership
-  nb::object owner = nb::cast(core, nb::rv_policy::reference);
+  // NB: this may not be the best approach
+  // SEE NOTES ABOUT OWNERSHIP ABOVE IN create_image_array
+  nb::capsule owner(pBuf, [](void *p) noexcept {});
 
-  return ro_np_array(pBuf,          // std::conditional_t<ReadOnly, const void*, void*>
-                     shape.size(),  // size_t ndim
-                     shape.data(),  // const size_t* shape
-                     owner,         // handle owner
-                     nullptr,       // const int64_t *stride (nullptr for default C-contiguous)
-                     dt             // Data type
-  );
+  return ro_np_array(pBuf, shape.size(), shape.data(), owner, nullptr, dt);
 }
 
 ///////////////// Trampoline class for MMEventCallback ///////////////////
@@ -213,6 +225,9 @@ class PyMMEventCallback : public MMEventCallback {
 ////////////////////////////////////////////////////////////////////////////
 
 NB_MODULE(_pymmcore_nano, m) {
+  // https://nanobind.readthedocs.io/en/latest/faq.html#why-am-i-getting-errors-about-leaked-functions-and-types
+  nb::set_leak_warnings(false);
+
   m.doc() = "Python bindings for MMCore";
 
   /////////////////// Module Attributes ///////////////////

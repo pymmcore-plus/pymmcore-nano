@@ -52,7 +52,7 @@ ext_module = py.extension_module(
     dependencies: [nanobind_dep],
     include_directories: include_dirs,
     install: true,
-    cpp_args: cpp_args,
+    cpp_args: cpp_args + ['-DNB_DOMAIN=pmn'],
 )
 
 # Create stubs using nanobind.stubgen

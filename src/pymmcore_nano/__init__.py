@@ -15,6 +15,8 @@ _pymmcore_spec = importlib.util.find_spec("pymmcore")
 
 
 class PymmcoreRedirect:
+    """Redirects imports of `pymmcore` to `pymmcore_nano`."""
+
     def find_spec(self, fullname, path, target=None):
         if fullname == "pymmcore_swig":
             # Redirect to the replacement package
@@ -26,4 +28,5 @@ class PymmcoreRedirect:
 
 
 def patch_pymmcore():
+    """Add a meta path hook to redirect imports of `pymmcore` to `pymmcore_nano`."""
     sys.meta_path.insert(0, PymmcoreRedirect())
