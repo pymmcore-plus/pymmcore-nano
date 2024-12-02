@@ -108,13 +108,12 @@ ro_np_array create_image_array(CMMCore& core, void* pBuf) {
 ro_np_array create_metadata_array(CMMCore& core, void* pBuf, const Metadata md) {
   // These keys are unfortunately hard-coded in the source code
   // see https://github.com/micro-manager/mmCoreAndDevices/pull/531
-  const std::string& width_str = md.GetSingleTag("Width").GetValue();
-  unsigned width = std::stoi(width_str);
-  const std::string& height_str = md.GetSingleTag("Height").GetValue();
-  unsigned height = std::stoi(height_str);
-  const std::string& pixel_type = md.GetSingleTag("PixelType").GetValue();
-
-  auto [dt, shape] = determine_dtype_and_shape(height, width, pixel_type);
+  // Retrieve and log the values of the tags
+  std::string width_str = md.GetSingleTag("Width").GetValue();
+  std::string height_str = md.GetSingleTag("Height").GetValue();
+  std::string pixel_type = md.GetSingleTag("PixelType").GetValue();
+  auto [dt, shape] =
+      determine_dtype_and_shape(std::stoi(height_str), std::stoi(width_str), pixel_type);
 
   // Cast the CMMCore object to an nb::object for ownership
   nb::object owner = nb::cast(core, nb::rv_policy::reference);
