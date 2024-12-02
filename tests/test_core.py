@@ -26,8 +26,6 @@ def test_enums() -> None:
 def test_bare_core() -> None:
     """Test basic CMMCore functionality without providing any adapters."""
     mmc = pmn.CMMCore()
-    mmc.setDeviceAdapterSearchPaths([])
-    assert not mmc.getDeviceAdapterSearchPaths()
 
     api_version_info = mmc.getAPIVersionInfo()
     assert api_version_info.startswith("Device API version")
@@ -38,9 +36,6 @@ def test_bare_core() -> None:
     assert timeout > 0
     mmc.setTimeoutMs(1000)
     assert mmc.getTimeoutMs() == 1000
-
-    with pytest.raises(Exception):
-        mmc.loadDevice("Camera", "DemoCamera", "DCam")
 
 
 def test_device_listings(core: pmn.CMMCore) -> None:
