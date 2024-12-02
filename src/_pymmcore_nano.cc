@@ -3,6 +3,7 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
+#include <nanobind/trampoline.h>
 
 #include "MMCore.h"
 #include "MMEventCallback.h"
@@ -145,6 +146,57 @@ ro_np_array create_metadata_array(CMMCore& core, void* pBuf, const Metadata md) 
                      dt             // Data type
   );
 }
+
+///////////////// Trampoline class for MMEventCallback ///////////////////
+
+// Allow Python to override virtual functions in MMEventCallback
+// https://nanobind.readthedocs.io/en/latest/classes.html#overriding-virtual-functions-in-python
+
+class PyMMEventCallback : public MMEventCallback {
+ public:
+  NB_TRAMPOLINE(MMEventCallback, 11);  // Total number of overridable virtual methods.
+
+  void onPropertiesChanged() override { NB_OVERRIDE(onPropertiesChanged); }
+
+  void onPropertyChanged(const char* name, const char* propName, const char* propValue) override {
+    NB_OVERRIDE(onPropertyChanged, name, propName, propValue);
+  }
+
+  void onChannelGroupChanged(const char* newChannelGroupName) override {
+    NB_OVERRIDE(onChannelGroupChanged, newChannelGroupName);
+  }
+
+  void onConfigGroupChanged(const char* groupName, const char* newConfigName) override {
+    NB_OVERRIDE(onConfigGroupChanged, groupName, newConfigName);
+  }
+
+  void onSystemConfigurationLoaded() override { NB_OVERRIDE(onSystemConfigurationLoaded); }
+
+  void onPixelSizeChanged(double newPixelSizeUm) override {
+    NB_OVERRIDE(onPixelSizeChanged, newPixelSizeUm);
+  }
+
+  void onPixelSizeAffineChanged(double v0, double v1, double v2, double v3, double v4,
+                                double v5) override {
+    NB_OVERRIDE(onPixelSizeAffineChanged, v0, v1, v2, v3, v4, v5);
+  }
+
+  void onStagePositionChanged(char* name, double pos) override {
+    NB_OVERRIDE(onStagePositionChanged, name, pos);
+  }
+
+  void onXYStagePositionChanged(char* name, double xpos, double ypos) override {
+    NB_OVERRIDE(onXYStagePositionChanged, name, xpos, ypos);
+  }
+
+  void onExposureChanged(char* name, double newExposure) override {
+    NB_OVERRIDE(onExposureChanged, name, newExposure);
+  }
+
+  void onSLMExposureChanged(char* name, double newExposure) override {
+    NB_OVERRIDE(onSLMExposureChanged, name, newExposure);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////
 ///////////////// main _pymmcore_nano module definition  ///////////////////
@@ -493,7 +545,7 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("Restore", nb::overload_cast<const char*>(&MetadataArrayTag::Restore), "stream"_a,
            "Restores from a serialized string");
 
-  nb::class_<MMEventCallback>(m, "MMEventCallback")
+  nb::class_<MMEventCallback, PyMMEventCallback>(m, "MMEventCallback")
       .def(nb::init<>())
 
       // Virtual methods

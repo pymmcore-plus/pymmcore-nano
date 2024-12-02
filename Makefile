@@ -1,6 +1,6 @@
 BUILDDIR := $(shell ls -d build/cp3* 2>/dev/null | head -n 1)
 
-.PHONY: build clean install test coverage stubs check
+.PHONY: build clean install test coverage stubs check clean-cov
 
 # https://mesonbuild.com/meson-python/how-to-guides/editable-installs.html
 # editable install
@@ -42,6 +42,9 @@ clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
 	rm -rf *.gcov
+
+clean-cov:
+	find $(BUILDDIR) -name "*.gcda" -exec rm -f {} \;
 
 coverage:
 	rm -rf coverage coverage.xml coverage_cpp.xml

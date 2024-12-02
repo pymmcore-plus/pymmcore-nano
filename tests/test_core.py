@@ -1,6 +1,5 @@
 import enum
 from pathlib import Path
-import sys
 import time
 from typing import Callable
 import numpy as np
@@ -15,31 +14,6 @@ def _wait_until(predicate: Callable[[], bool], timeout: float = 1.0, interval=0.
             return True
         time.sleep(interval)
     raise TimeoutError("Timed out waiting for condition")
-
-
-@pytest.fixture
-def adapter_paths() -> list[str]:
-    adapters = Path(__file__).parent / "adapters" / sys.platform
-    if not adapters.is_dir():
-        pytest.skip(f"No adapters for {sys.platform}")
-    return [str(adapters)]
-
-
-@pytest.fixture
-def core(adapter_paths: list[str]) -> pmn.CMMCore:
-    """Return a CMMCore instance with the demo configuration loaded."""
-    mmc = pmn.CMMCore()
-    mmc.setDeviceAdapterSearchPaths(adapter_paths)
-    return mmc
-
-
-@pytest.fixture
-def demo_core(core: pmn.CMMCore) -> pmn.CMMCore:
-    """Return a CMMCore instance with the demo configuration loaded."""
-    cfg = Path(__file__).parent / "MMConfig_demo.cfg"
-    core.loadSystemConfiguration(cfg)
-    core.waitForSystem()
-    return core
 
 
 def test_enums() -> None:
@@ -109,6 +83,7 @@ def test_device_loading(core: pmn.CMMCore) -> None:
 
     core.loadDevice(LABEL, LIBRARY, DEVICE_NAME)
     core.initializeAllDevices()
+    core.waitForSystem()
     init_state = core.getDeviceInitializationState(LABEL)
     assert init_state == pmn.DeviceInitializationState.InitializedSuccessfully
     core.unloadAllDevices()
