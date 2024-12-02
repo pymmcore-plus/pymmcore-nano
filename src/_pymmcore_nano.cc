@@ -17,8 +17,9 @@ using namespace nb::literals;
 using ro_np_array = nb::ndarray<nb::numpy, nb::ro>;
 
 // Helper to determine dtype and shape
-std::pair<nb::dlpack::dtype, std::vector<size_t>> determine_dtype_and_shape(
-    unsigned height, unsigned width, unsigned bytesPerPixel, unsigned numComponents = 1) {
+std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(unsigned height, unsigned width,
+                                                                  unsigned bytesPerPixel,
+                                                                  unsigned numComponents = 1) {
   // Calculate dtype and shape
   std::vector<size_t> shape = {height, width};
 
@@ -45,8 +46,8 @@ std::pair<nb::dlpack::dtype, std::vector<size_t>> determine_dtype_and_shape(
   }
 }
 // Overload to determine dtype and shape from pixelType, which appears in image metadata
-std::pair<nb::dlpack::dtype, std::vector<size_t>> determine_dtype_and_shape(
-    unsigned height, unsigned width, const std::string& pixelType) {
+std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(unsigned height, unsigned width,
+                                                                  const std::string& pixelType) {
   // These values are hard-coded in CircularBuffer.cpp
   if (pixelType == "GRAY8") {
     return {nb::dtype<uint8_t>(), {height, width}};
@@ -91,7 +92,7 @@ ro_np_array create_image_array(CMMCore& core, void* pBuf) {
   unsigned numComponents = core.getNumberOfComponents();
 
   // Create and return the ndarray
-  auto [dt, shape] = determine_dtype_and_shape(height, width, bytesPerPixel, numComponents);
+  auto [dt, shape] = get_dtype_shape(height, width, bytesPerPixel, numComponents);
 
   // Cast the CMMCore object to an nb::object for ownership
   nb::object owner = nb::cast(core, nb::rv_policy::reference);
@@ -104,7 +105,26 @@ ro_np_array create_image_array(CMMCore& core, void* pBuf) {
                      dt             // Data type
   );
 }
-
+/**
+ * @brief Creates a read-only NumPy array representing image metadata from the provided buffer and
+ * `CMMCore` instance.
+ *
+ * This function wraps a raw memory buffer from a `CMMCore` instance into a `nanobind::ndarray` of
+ * type `numpy.ndarray`. The array is read-only and shares ownership with the provided `CMMCore`
+ * instance to ensure memory safety.
+ *
+ * @param core A reference to the `CMMCore` object, which provides image metadata and ensures
+ *            ownership of the buffer.
+ * @param pBuf Pointer to the data buffer containing the image metadata.
+ * @param md The metadata object containing the image properties.
+ *
+ * @return A `nanobind::ndarray` representing the image metadata buffer as a `numpy.ndarray`.
+ *
+ * @throws std::runtime_error If the combination of image properties (e.g., bytes per pixel, number
+ *                          of components) is not supported.
+ *
+ * @note The resulting array is C-contiguous by default, as no strides are specified.
+ */
 ro_np_array create_metadata_array(CMMCore& core, void* pBuf, const Metadata md) {
   // These keys are unfortunately hard-coded in the source code
   // see https://github.com/micro-manager/mmCoreAndDevices/pull/531
@@ -112,8 +132,7 @@ ro_np_array create_metadata_array(CMMCore& core, void* pBuf, const Metadata md) 
   std::string width_str = md.GetSingleTag("Width").GetValue();
   std::string height_str = md.GetSingleTag("Height").GetValue();
   std::string pixel_type = md.GetSingleTag("PixelType").GetValue();
-  auto [dt, shape] =
-      determine_dtype_and_shape(std::stoi(height_str), std::stoi(width_str), pixel_type);
+  auto [dt, shape] = get_dtype_shape(std::stoi(height_str), std::stoi(width_str), pixel_type);
 
   // Cast the CMMCore object to an nb::object for ownership
   nb::object owner = nb::cast(core, nb::rv_policy::reference);
