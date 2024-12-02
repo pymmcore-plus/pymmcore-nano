@@ -12,6 +12,13 @@ class ActionType(enum.IntEnum):
     StartSequence = 5
     StopSequence = 6
 
+AfterLoadSequence: int = 4
+AfterSet: int = 2
+AnyType: int = 1
+Attention: int = 0
+AutoFocusDevice: int = 9
+BeforeGet: int = 1
+
 class CMMCore:
     def __init__(self) -> None: ...
     def loadSystemConfiguration(self, fileName: object) -> None: ...
@@ -209,13 +216,7 @@ class CMMCore:
         widths: Sequence[int],
         heights: Sequence[int],
     ) -> None: ...
-    def getMultiROI(
-        self,
-        xs: Sequence[int],
-        ys: Sequence[int],
-        widths: Sequence[int],
-        heights: Sequence[int],
-    ) -> None: ...
+    def getMultiROI(self) -> tuple[list[int], list[int], list[int], list[int]]: ...
     @overload
     def setExposure(self, exp: float) -> None: ...
     @overload
@@ -416,11 +417,9 @@ class CMMCore:
     @overload
     def setRelativeXYPosition(self, dx: float, dy: float) -> None: ...
     @overload
-    def getXYPosition(
-        self, xyStageLabel: str, x_stage: float, y_stage: float
-    ) -> None: ...
+    def getXYPosition(self, xyStageLabel: str) -> tuple[float, float]: ...
     @overload
-    def getXYPosition(self, x_stage: float, y_stage: float) -> None: ...
+    def getXYPosition(self) -> tuple[float, float]: ...
     @overload
     def getXPosition(self, xyStageLabel: str) -> float: ...
     @overload
@@ -521,12 +520,17 @@ class CMMCore:
 class CMMError(RuntimeError):
     pass
 
+CameraDevice: int = 2
+CanCommunicate: int = 1
+CanNotCommunicate: int = 0
+
 class Configuration:
     def __init__(self) -> None: ...
     def addSetting(self, setting: PropertySetting) -> None: ...
     def deleteSetting(self, device: str, property: str) -> None: ...
     def isPropertyIncluded(self, device: str, property: str) -> bool: ...
     def isConfigurationIncluded(self, cfg: Configuration) -> bool: ...
+    def isSettingIncluded(self, setting: PropertySetting) -> bool: ...
     @overload
     def getSetting(self, index: int) -> PropertySetting: ...
     @overload
@@ -534,6 +538,7 @@ class Configuration:
     def size(self) -> int: ...
     def getVerbose(self) -> str: ...
 
+CoreDevice: int = 10
 DEVICE_BUFFER_OVERFLOW: int = 22
 DEVICE_CAMERA_BUSY_ACQUIRING: int = 30
 DEVICE_CAN_NOT_SET_PROPERTY: int = 32
@@ -614,10 +619,27 @@ class DeviceType(enum.IntEnum):
     HubDevice = 15
     GalvoDevice = 16
 
+Done: int = 1
+Float: int = 2
+
 class FocusDirection(enum.IntEnum):
     FocusDirectionUnknown = 0
     FocusDirectionTowardSample = 1
     FocusDirectionAwayFromSample = 2
+
+FocusDirectionAwayFromSample: int = 2
+FocusDirectionTowardSample: int = 1
+FocusDirectionUnknown: int = 0
+GalvoDevice: int = 16
+GenericDevice: int = 8
+HIDPort: int = 3
+HubDevice: int = 15
+ImageProcessorDevice: int = 11
+InitializationFailed: int = 2
+InitializedSuccessfully: int = 1
+Integer: int = 3
+InvalidPort: int = 0
+IsSequenceable: int = 3
 
 class MMEventCallback:
     def __init__(self) -> None: ...
@@ -644,6 +666,7 @@ class MMEventCallback:
 
 MM_CODE_ERR: int = 1
 MM_CODE_OK: int = 0
+MagnifierDevice: int = 13
 
 class Metadata:
     @overload
@@ -755,6 +778,9 @@ class MetadataTag:
     def Restore(self, stream: str) -> bool:
         """Restores from a serialized string"""
 
+Misconfigured: int = -1
+NoAction: int = 0
+
 class PortType(enum.IntEnum):
     InvalidPort = 0
     SerialPort = 1
@@ -794,6 +820,23 @@ class PropertyType(enum.IntEnum):
     Float = 2
     Integer = 3
 
+SLMDevice: int = 14
+SerialDevice: int = 7
+SerialPort: int = 1
+ShutterDevice: int = 3
+SignalIODevice: int = 12
+StageDevice: int = 5
+StartSequence: int = 5
+StateDevice: int = 4
+StatusChanged: int = 2
+StopSequence: int = 6
+String: int = 1
+USBPort: int = 2
+Undef: int = 0
+Unimplemented: int = -2
+Uninitialized: int = 0
+UnknownType: int = 0
+XYStageDevice: int = 6
 g_CFGCommand_ConfigGroup: str = "ConfigGroup"
 g_CFGCommand_ConfigPixelSize: str = "ConfigPixelSize"
 g_CFGCommand_Configuration: str = "Config"

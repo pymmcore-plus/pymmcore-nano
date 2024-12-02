@@ -40,7 +40,7 @@ run_command(py.full_path(), 'scripts/patch_sources.py', check: true)
 
 # --------------------------
 
-cpp_args = ['-DMMDEVICE_CLIENT_BUILD']
+cpp_args = ['-DMMDEVICE_CLIENT_BUILD', '-DMATCH_SWIG']
 
 if host_machine.system() == 'windows'
     cpp_args += ['-DNOMINMAX', '-D_CRT_SECURE_NO_WARNINGS']
