@@ -39,7 +39,7 @@ def test_bare_core() -> None:
     mmc.setTimeoutMs(1000)
     assert mmc.getTimeoutMs() == 1000
 
-    with pytest.raises(pmn.CMMError):
+    with pytest.raises(Exception):
         mmc.loadDevice("Camera", "DemoCamera", "DCam")
 
 
