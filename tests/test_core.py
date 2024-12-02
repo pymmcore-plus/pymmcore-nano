@@ -26,6 +26,9 @@ def test_enums() -> None:
 def test_bare_core() -> None:
     """Test basic CMMCore functionality without providing any adapters."""
     mmc = pmn.CMMCore()
+    mmc.setDeviceAdapterSearchPaths([])
+    assert not mmc.getDeviceAdapterSearchPaths()
+
     api_version_info = mmc.getAPIVersionInfo()
     assert api_version_info.startswith("Device API version")
     assert str(pmn.DEVICE_INTERFACE_VERSION) in api_version_info
