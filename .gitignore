@@ -1,4 +1,5 @@
 build
+dist
 builddir
 
 # Ignore downloaded or built subprojects
