@@ -56,7 +56,7 @@ jobs:
         if: runner.os != 'Linux'
         run: uv run --no-editable pytest --color=yes -v --cov --cov-report=xml
 
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml,./coverage_cpp.xml
