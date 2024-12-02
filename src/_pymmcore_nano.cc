@@ -45,7 +45,8 @@ std::pair<nb::dlpack::dtype, std::vector<size_t>> determine_dtype_and_shape(
       }
       shape.push_back(numComponents);
       return {nb::dtype<uint16_t>(), shape};
-    default: throw std::runtime_error("Unsupported bytesPerPixel / numComponents combination.");
+    default:
+      throw std::runtime_error("Unsupported bytesPerPixel / numComponents combination.");
   }
 }
 // Overload to determine dtype and shape from pixelType, which appears in image metadata

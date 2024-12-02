@@ -34,9 +34,21 @@ foreach src : cpp_sources
     message('Including source: ' + src)
 endforeach
 
-# ---------- patch c++14 to c++17 ----------
-
-run_command(py.full_path(), 'scripts/patch_c14_c17.py', check: true)
+# # patch c++14 to c++17
+# run_command(
+#     'patch',
+#     '-d', 'src/mmCoreAndDevices',
+#     '-i', '../../patches/cpp17.patch',
+#     check: true,
+# )
+# # patch ImageMetadata
+# # https://github.com/micro-manager/mmCoreAndDevices/pull/532
+# run_command(
+#     'patch',
+#     '-d', 'src/mmCoreAndDevices',
+#     '-i', '../../patches/img_meta.patch',
+#     check: true,
+# )
 
 # --------------------------
 
@@ -69,7 +81,6 @@ custom_target(
     ],
     depends: ext_module,
 )
-
 
 # install the Python package into the site-packages directory
 install_subdir(
