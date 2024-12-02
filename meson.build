@@ -34,7 +34,8 @@ foreach src : cpp_sources
     message('Including source: ' + src)
 endforeach
 
-# patch c++14 to c++17
+# ---------- patch c++14 to c++17 ----------
+
 run_command(py.full_path(), 'scripts/patch_sources.py', check: true)
 
 # --------------------------
@@ -68,6 +69,7 @@ custom_target(
     ],
     depends: ext_module,
 )
+
 
 # install the Python package into the site-packages directory
 install_subdir(
