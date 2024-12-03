@@ -9,7 +9,7 @@ build-backend = 'mesonpy'
 
 [project]
 name = "pymmcore-nano"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dynamic = ['version']
 description = "CMMCore wrapper for Python, using nanobind"
 readme = "README.md"
