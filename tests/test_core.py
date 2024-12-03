@@ -16,6 +16,17 @@ def _wait_until(predicate: Callable[[], bool], timeout: float = 1.0, interval=0.
     raise TimeoutError("Timed out waiting for condition")
 
 
+def test_version():
+    device_version = pmn.DEVICE_INTERFACE_VERSION
+    assert isinstance(device_version, int)
+    mmcore_version = pmn.MMCore_version
+    assert isinstance(mmcore_version, str)
+    assert isinstance(pmn.MMCore_version_info, tuple)
+    assert str(device_version) in pmn.__version__
+    assert mmcore_version in pmn.__version__
+    assert isinstance(pmn.__version__, str)
+
+
 def test_enums() -> None:
     assert pmn.DeviceType.CameraDevice == 2
     assert isinstance(pmn.DeviceType.CameraDevice, enum.IntEnum)

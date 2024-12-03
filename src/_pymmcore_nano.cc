@@ -21,8 +21,7 @@ const int PYMMCORE_NANO_VERSION = 0;
 using ro_np_array = nb::ndarray<nb::numpy, nb::ro>;
 
 // Helper to determine dtype and shape
-std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(unsigned height,
-                                                                  unsigned width,
+std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(unsigned height, unsigned width,
                                                                   unsigned bytesPerPixel,
                                                                   unsigned numComponents = 1) {
   // Calculate dtype and shape
@@ -52,8 +51,8 @@ std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(unsigned heigh
 }
 // Overload to determine dtype and shape from pixelType, which appears in image
 // metadata
-std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(
-    unsigned height, unsigned width, const std::string &pixelType) {
+std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(unsigned height, unsigned width,
+                                                                  const std::string &pixelType) {
   // These values are hard-coded in CircularBuffer.cpp
   if (pixelType == "GRAY8") {
     return {nb::dtype<uint8_t>(), {height, width}};
@@ -182,8 +181,7 @@ class PyMMEventCallback : public MMEventCallback {
 
   void onPropertiesChanged() override { NB_OVERRIDE(onPropertiesChanged); }
 
-  void onPropertyChanged(const char *name, const char *propName,
-                         const char *propValue) override {
+  void onPropertyChanged(const char *name, const char *propName, const char *propValue) override {
     NB_OVERRIDE(onPropertyChanged, name, propName, propValue);
   }
 
@@ -243,6 +241,10 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("MMCore_version") = version;
   m.attr("MMCore_version_info") =
       std::tuple(MMCore_versionMajor, MMCore_versionMinor, MMCore_versionPatch);
+  // the final combined version
+  m.attr("PYMMCORE_NANO_VERSION") = PYMMCORE_NANO_VERSION;
+  m.attr("__version__") = version + "." + std::to_string(DEVICE_INTERFACE_VERSION) + "." +
+                          std::to_string(PYMMCORE_NANO_VERSION);
 
   m.attr("MM_CODE_OK") = MM_CODE_OK;
   m.attr("MM_CODE_ERR") = MM_CODE_ERR;
@@ -509,16 +511,14 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("isSettingIncluded", &Configuration::isSettingIncluded, "setting"_a)
       .def("getSetting", nb::overload_cast<size_t>(&Configuration::getSetting, nb::const_),
            "index"_a)
-      .def("getSetting",
-           nb::overload_cast<const char *, const char *>(&Configuration::getSetting),
+      .def("getSetting", nb::overload_cast<const char *, const char *>(&Configuration::getSetting),
            "device"_a, "property"_a)
       .def("size", &Configuration::size)
       .def("getVerbose", &Configuration::getVerbose);
 
   nb::class_<PropertySetting>(m, "PropertySetting")
-      .def(nb::init<const char *, const char *, const char *, bool>(), "deviceLabel"_a,
-           "prop"_a, "value"_a, "readOnly"_a = false,
-           "Constructor specifying the entire contents")
+      .def(nb::init<const char *, const char *, const char *, bool>(), "deviceLabel"_a, "prop"_a,
+           "value"_a, "readOnly"_a = false, "Constructor specifying the entire contents")
       .def(nb::init<>(), "Default constructor")
       .def("getDeviceLabel", &PropertySetting::getDeviceLabel, "Returns the device label")
       .def("getPropertyName", &PropertySetting::getPropertyName, "Returns the property name")
@@ -544,8 +544,7 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("RemoveTag", &Metadata::RemoveTag, "key"_a, "Removes a tag by key")
       .def("Merge", &Metadata::Merge, "newTags"_a, "Merges new tags into the metadata")
       .def("Serialize", &Metadata::Serialize, "Serializes the metadata")
-      .def("Restore", &Metadata::Restore, "stream"_a,
-           "Restores metadata from a serialized string")
+      .def("Restore", &Metadata::Restore, "stream"_a, "Restores metadata from a serialized string")
       .def("Dump", &Metadata::Dump, "Dumps metadata in human-readable format")
       // Template methods (bound using lambdas due to C++ template limitations
       // in bindings)
@@ -573,8 +572,7 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("SetName", &MetadataTag::SetName, "name"_a, "Sets the name of the tag")
       .def("SetReadOnly", &MetadataTag::SetReadOnly, "readOnly"_a, "Sets the read-only status")
       // Virtual functions
-      .def("ToSingleTag", &MetadataTag::ToSingleTag,
-           "Converts to MetadataSingleTag if applicable")
+      .def("ToSingleTag", &MetadataTag::ToSingleTag, "Converts to MetadataSingleTag if applicable")
       .def("ToArrayTag", &MetadataTag::ToArrayTag, "Converts to MetadataArrayTag if applicable")
       .def("Clone", &MetadataTag::Clone, "Creates a clone of the MetadataTag")
       .def("Serialize", &MetadataTag::Serialize, "Serializes the MetadataTag to a string")
@@ -613,8 +611,7 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(nb::init<>(), "Default constructor")
       .def(nb::init<const char *, const char *, bool>(), "name"_a, "device"_a, "readOnly"_a,
            "Parameterized constructor")
-      .def("ToArrayTag", &MetadataArrayTag::ToArrayTag,
-           "Returns this object as MetadataArrayTag")
+      .def("ToArrayTag", &MetadataArrayTag::ToArrayTag, "Returns this object as MetadataArrayTag")
       .def("AddValue", &MetadataArrayTag::AddValue, "val"_a, "Adds a value to the array")
       .def("SetValue", &MetadataArrayTag::SetValue, "val"_a, "idx"_a,
            "Sets a value at a specific index")
@@ -646,8 +643,8 @@ NB_MODULE(_pymmcore_nano, m) {
            "Called when the system configuration is loaded")
       .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
            "Called when the pixel size changes")
-      .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
-           "v1"_a, "v2"_a, "v3"_a, "v4"_a, "v5"_a,
+      .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a, "v1"_a,
+           "v2"_a, "v3"_a, "v4"_a, "v5"_a,
            "Called when the pixel size affine transformation changes")
       // These bindings are ugly lambda workarounds because the original methods
       // take char* instead of const char*
