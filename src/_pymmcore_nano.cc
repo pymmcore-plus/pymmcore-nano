@@ -1,3 +1,4 @@
+#include <nanobind/make_iterator.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
@@ -19,38 +20,22 @@ const int PYMMCORE_NANO_VERSION = 0;
 
 // Alias for read-only NumPy array
 using np_array = nb::ndarray<nb::numpy, nb::ro>;
+using StrVec = std::vector<std::string>;
 
 /**
- * @brief Creates a read-only NumPy array for pBuf for a given width, height, etc.
- * These parameters are are gleaned either from image metadata or core methods.
+ * @brief Creates a read-only NumPy array for pBuf for a given width, height,
+ * etc. These parameters are are gleaned either from image metadata or core
+ * methods.
  *
  */
-np_array build_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
-                        unsigned bytesPerPixel, unsigned numComponents) {
-  // Validate inputs
-  if (bytesPerPixel % numComponents != 0) {
-    throw std::invalid_argument("bytesPerPixel must be divisible by numComponents");
-  }
-
-  // gross syntax... i know, but nanobind really wants an initializer list
-  // and this is a fast way to get one.
-  std::initializer_list<size_t> new_shape =
-      (numComponents == 4) ? std::initializer_list<size_t>{height, width, 3}  // RGB, not RGBA
-                           : std::initializer_list<size_t>{height, width};
-
-  // strides are funny for a RGB image, with an inverted channel order
-  std::initializer_list<int64_t> strides =
-      (numComponents == 4)
-          ? std::initializer_list<int64_t>{static_cast<int64_t>(width * bytesPerPixel),
-                                           static_cast<int64_t>(bytesPerPixel), 1}  // RGBA
-          : std::initializer_list<int64_t>{static_cast<int64_t>(width), 1};
-
-  // Element size in bytes (e.g., 1 byte for uint8_t)
-  unsigned elementSize = bytesPerPixel / numComponents;
+np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
+                                  unsigned byteDepth) {
+  std::initializer_list<size_t> new_shape = {height, width};
+  std::initializer_list<int64_t> strides = {width, 1};
 
   // Determine the dtype based on the element size
   nb::dlpack::dtype new_dtype;
-  switch (elementSize) {
+  switch (byteDepth) {
     case 1: new_dtype = nb::dtype<uint8_t>(); break;
     case 2: new_dtype = nb::dtype<uint16_t>(); break;
     case 4: new_dtype = nb::dtype<uint32_t>(); break;
@@ -68,22 +53,47 @@ np_array build_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned heig
   // but leads to a double free error
   // nb::capsule owner(data, [](void *p) noexcept { delete[] (float *)p; });
 
-  // This method ties the lifetime of the buffer to the lifetime of the CMMCore object
-  // but gives a bunch of "nanobind: leaked 6 instances!" warnings at exit.
-  // those *could* be hidden with `nb::set_leak_warnings(false);` ...
-  // but not sure if that's a good idea.
-  // nb::object owner = nb::cast(core, nb::rv_policy::reference);
+  // This method ties the lifetime of the buffer to the lifetime of the CMMCore
+  // object but gives a bunch of "nanobind: leaked 6 instances!" warnings at
+  // exit. those *could* be hidden with `nb::set_leak_warnings(false);` ... but
+  // not sure if that's a good idea. nb::object owner = nb::cast(core,
+  // nb::rv_policy::reference);
 
   // This would fully copy the data.  It's the safest, but also the slowest.
   // size_t total_size = std::accumulate(shape.begin(), shape.end(), (size_t)1,
-  // std::multiplies<>()); auto buffer = std::make_unique<uint8_t[]>(total_size *
-  // bytesPerPixel); std::memcpy(buffer.get(), pBuf, total_size * bytesPerPixel);
-  // // ... then later use buffer.release() as the data pointer in the array constructor
+  // std::multiplies<>()); auto buffer = std::make_unique<uint8_t[]>(total_size
+  // * bytesPerPixel); std::memcpy(buffer.get(), pBuf, total_size *
+  // bytesPerPixel);
+  // // ... then later use buffer.release() as the data pointer in the array
+  // constructor
 
   // This method gives neither leak warnings nor double free errors.
-  // If the core object deletes the buffer prematurely, the numpy array will point to
-  // invalid memory, potentially leading to crashes or undefined behavior...
-  // so users should  call `img.copy()` if they want to ensure the data is copied.
+  // If the core object deletes the buffer prematurely, the numpy array will
+  // point to invalid memory, potentially leading to crashes or undefined
+  // behavior... so users should  call `img.copy()` if they want to ensure the
+  // data is copied.
+  nb::capsule owner(pBuf, [](void *p) noexcept {});
+
+  // Create the ndarray
+  return np_array(pBuf, new_shape, owner, strides, new_dtype);
+}
+
+// only reason we're making two functions here is that i had a hell of a time
+// trying to create std::initializer_list dynamically based on numComponents (only on Linux)
+// so we create two constructors
+np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
+                            unsigned byteDepth) {
+  std::initializer_list<size_t> new_shape = {height, width, 3};
+  std::initializer_list<int64_t> strides = {width * byteDepth, byteDepth, 1};
+
+  // Determine the dtype based on the element size
+  nb::dlpack::dtype new_dtype;
+  switch (byteDepth / 4) {  // all RGB formats have 4 components in a single "pixel"
+    case 1: new_dtype = nb::dtype<uint8_t>(); break;
+    case 2: new_dtype = nb::dtype<uint16_t>(); break;
+    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    default: throw std::invalid_argument("Unsupported element size");
+  }
   nb::capsule owner(pBuf, [](void *p) noexcept {});
 
   // Create the ndarray
@@ -99,12 +109,17 @@ np_array create_image_array(CMMCore &core, void *pBuf) {
   unsigned height = core.getImageHeight();
   unsigned bytesPerPixel = core.getBytesPerPixel();
   unsigned numComponents = core.getNumberOfComponents();
-  return build_np_array(core, pBuf, width, height, bytesPerPixel, numComponents);
+  if (numComponents == 4) {
+    return build_rgb_np_array(core, pBuf, width, height, bytesPerPixel);
+  } else {
+    return build_grayscale_np_array(core, pBuf, width, height, bytesPerPixel);
+  }
 }
 
 /**
- * @brief Creates a read-only NumPy array for pBuf by using width/height/pixelType
- * from a metadata object if possible, otherwise falls back to core methods.
+ * @brief Creates a read-only NumPy array for pBuf by using
+ * width/height/pixelType from a metadata object if possible, otherwise falls
+ * back to core methods.
  *
  */
 np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
@@ -141,8 +156,11 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
     // Fallback to core.getImageWidth etc...
     return create_image_array(core, pBuf);
   }
-
-  return build_np_array(core, pBuf, width, height, bytesPerPixel, numComponents);
+  if (numComponents == 4) {
+    return build_rgb_np_array(core, pBuf, width, height, bytesPerPixel);
+  } else {
+    return build_grayscale_np_array(core, pBuf, width, height, bytesPerPixel);
+  }
 }
 
 ///////////////// Trampoline class for MMEventCallback ///////////////////
@@ -539,7 +557,25 @@ NB_MODULE(_pymmcore_nano, m) {
           [](Metadata &self, const std::string &key, const std::string &value) {
             self.PutImageTag(key, value);
           },
-          "key"_a, "value"_a, "Adds an image tag");
+          "key"_a, "value"_a, "Adds an image tag")
+      // MutableMapping Methods:
+      .def("__getitem__",
+           [](Metadata &self, const std::string &key) {
+             MetadataSingleTag tag = self.GetSingleTag(key.c_str());
+             return tag.GetValue();
+           })
+      .def("__setitem__",
+           [](Metadata &self, const std::string &key, const std::string &value) {
+             MetadataSingleTag tag(key.c_str(), "__", false);
+             tag.SetValue(value.c_str());
+             self.SetTag(tag);
+           })
+      .def("__delitem__", &Metadata::RemoveTag);
+  //  .def("__iter__",
+  //       [m](Metadata &self) {
+  //         StrVec keys = self.GetKeys();
+  //         return nb::make_iterator(m, "keys_iterator", keys);
+  //       },  nb::keep_alive<0, 1>())
 
   nb::class_<MetadataTag>(m, "MetadataTag")
       // MetadataTag is Abstract ... no constructors

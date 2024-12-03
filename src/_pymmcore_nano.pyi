@@ -704,6 +704,9 @@ class Metadata:
         """Adds a MetadataSingleTag"""
     def PutImageTag(self, key: str, value: str) -> None:
         """Adds an image tag"""
+    def __getitem__(self, arg: str, /) -> str: ...
+    def __setitem__(self, arg0: str, arg1: str, /) -> None: ...
+    def __delitem__(self, arg: str, /) -> None: ...
 
 class MetadataArrayTag(MetadataTag):
     @overload
