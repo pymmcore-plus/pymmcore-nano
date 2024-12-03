@@ -1,15 +1,9 @@
 from _pymmcore_nano import *  # noqa
+from _pymmcore_nano import __version__ as __version__
 
 import sys
 import importlib.util
 
-from importlib.metadata import version, PackageNotFoundError
-
-
-try:
-    __version__ = version("pymmcore-nano")
-except PackageNotFoundError:
-    __version__ = "uninstalled"
 
 _pymmcore_spec = importlib.util.find_spec("pymmcore")
 

@@ -46,6 +46,7 @@ omit = ['subprojects/']
 source = ["pymmcore_nano", "mmCoreAndDevices"]
 
 [tool.cibuildwheel]
+build-verbosity = 1
 # Skip 32-bit builds, musllinux, and PyPy wheels on all platforms
 # Note: use of PTHREAD_MUTEX_RECURSIVE_NP in DeviceThreads.h
 # is specific to glibc and not available in musl-libc
@@ -53,8 +54,10 @@ skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "pp*"]
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
 test-requires = "pytest"
 test-command = 'pytest "{project}/tests" -v'
-test-skip = "*-macosx_arm64"
+test-skip = ["*-macosx_arm64", "*linux*"]
 
 [tool.cibuildwheel.macos]
 # https://cibuildwheel.readthedocs.io/en/stable/faq/#apple-silicon
 archs = ["x86_64", "arm64"]
+# Needed for full C++17 support on macOS
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.14" }

@@ -10,18 +10,6 @@ version : '11.2.1.71.0',
 py = import('python').find_installation()
 nanobind_dep = dependency('nanobind', static: true)
 
-# Extract the version dynamically
-version_output = run_command(
-    py.full_path(),
-    meson.project_source_root() + '/scripts/extract_version.py',
-).stdout().strip()
-if version_output == ''
-    error(
-        'Version extraction failed. Ensure the script and C++ file are correct.',
-    )
-endif
-# Debug message to confirm extracted version
-message('Dynamically extracted version: ' + version_output)
 # ---------- dynamically gather sources and include dirs ----------
 
 print_include_dirs = '''
