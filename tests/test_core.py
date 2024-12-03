@@ -224,20 +224,20 @@ def test_camera_snap(demo_core: pmn.CMMCore) -> None:
     assert demo_core.getNumberOfComponents() == 4
     demo_core.snapImage()
     img3 = demo_core.getImage()
-    assert img3.shape == (*expected_shape, 4)
+    assert img3.shape == (*expected_shape, 3)
     assert img3.dtype == np.uint8
 
     demo_core.setProperty("Camera", "PixelType", "64bitRGB")
     assert demo_core.getNumberOfComponents() == 4
     demo_core.snapImage()
     img4 = demo_core.getImage()
-    assert img4.shape == (*expected_shape, 4)
+    assert img4.shape == (*expected_shape, 3)
     assert img4.dtype == np.uint16
 
     demo_core.setProperty("Camera", "Binning", "2")
     demo_core.snapImage()
     img5 = demo_core.getImage(0)  # also testing overloaded method with channel
-    assert img5.shape == (256, 128, 4)  # new shape
+    assert img5.shape == (256, 128, 3)  # new shape
 
 
 def test_image_processor(demo_core: pmn.CMMCore) -> None:
@@ -274,7 +274,7 @@ def test_get_image_metadata(demo_core: pmn.CMMCore) -> None:
     _wait_until(lambda: not demo_core.isSequenceRunning())
 
     img2, md2 = demo_core.getLastImageMD(0, 0)
-    assert img2.shape == (*expected_shape, 4)
+    assert img2.shape == (*expected_shape, 3)
     assert img2.dtype == np.uint8
     assert md2.GetSingleTag("PixelType").GetValue() == "RGB32"
 

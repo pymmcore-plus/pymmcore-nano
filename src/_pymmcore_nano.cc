@@ -18,53 +18,15 @@ const int PYMMCORE_NANO_VERSION = 0;
 ///////////////// NUMPY ARRAY HELPERS ///////////////////
 
 // Alias for read-only NumPy array
-using ro_np_array = nb::ndarray<nb::numpy, nb::ro>;
-
-// Overload to determine dtype and shape from pixelType, which appears in image
-// metadata
-std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(
-    unsigned height, unsigned width, const std::string &pixelType) {
-  // These values are hard-coded in CircularBuffer.cpp
-  if (pixelType == "GRAY8") {
-    return {nb::dtype<uint8_t>(), {height, width}};
-  } else if (pixelType == "GRAY16") {
-    return {nb::dtype<uint16_t>(), {height, width}};
-  } else if (pixelType == "GRAY32") {
-    return {nb::dtype<uint32_t>(), {height, width}};
-  } else if (pixelType == "RGB32") {
-    return {nb::dtype<uint32_t>(), {height, width}};
-  } else if (pixelType == "RGB64") {
-    return {nb::dtype<uint64_t>(), {height, width}};
-  } else {
-    throw std::runtime_error("Unsupported pixelType.");
-  }
-}
+using np_array = nb::ndarray<nb::numpy, nb::ro>;
 
 /**
- * @brief Creates a read-only NumPy array using core methods
- * getImageWidth/getImageHeight/getBytesPerPixel/getNumberOfComponents
+ * @brief Creates a read-only NumPy array for pBuf for a given width, height, etc.
+ * These parameters are are gleaned either from image metadata or core methods.
  *
- * @param core A reference to the `CMMCore` object, which provides image
- * metadata and ensures ownership of the buffer.
- * @param pBuf Pointer to the data buffer containing the image data.
- *
- * @return A `nanobind::ndarray` representing the image buffer as a
- * `numpy.ndarray`.
- *
- * @throws std::runtime_error If the combination of image properties (e.g.,
- * bytes per pixel, number of components) is not supported.
- *
- * @note The resulting array is C-contiguous by default, as no strides are
- * specified. Ownership of the buffer is tied to the lifetime of the `CMMCore`
- * object.
  */
-ro_np_array create_image_array(CMMCore &core, void *pBuf) {
-  // Retrieve image properties
-  unsigned width = core.getImageWidth();
-  unsigned height = core.getImageHeight();
-  unsigned bytesPerPixel = core.getBytesPerPixel();
-  unsigned numComponents = core.getNumberOfComponents();
-
+np_array build_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
+                        unsigned bytesPerPixel, unsigned numComponents) {
   // Validate inputs
   if (bytesPerPixel % numComponents != 0) {
     throw std::invalid_argument("bytesPerPixel must be divisible by numComponents");
@@ -72,16 +34,15 @@ ro_np_array create_image_array(CMMCore &core, void *pBuf) {
 
   // gross syntax... i know, but nanobind really wants an initializer list
   // and this is a fast way to get one.
-  // Shape: (height, width [, 3]?)
   std::initializer_list<size_t> new_shape =
-      (numComponents == 4) ? std::initializer_list<size_t>{height, width, 3}  // RGB
+      (numComponents == 4) ? std::initializer_list<size_t>{height, width, 3}  // RGB, not RGBA
                            : std::initializer_list<size_t>{height, width};
 
   // strides are funny for a RGB image, with an inverted channel order
   std::initializer_list<int64_t> strides =
       (numComponents == 4)
           ? std::initializer_list<int64_t>{static_cast<int64_t>(width * bytesPerPixel),
-                                           static_cast<int64_t>(bytesPerPixel), -1}  // BGRA
+                                           static_cast<int64_t>(bytesPerPixel), 1}  // RGBA
           : std::initializer_list<int64_t>{static_cast<int64_t>(width), 1};
 
   // Element size in bytes (e.g., 1 byte for uint8_t)
@@ -96,7 +57,7 @@ ro_np_array create_image_array(CMMCore &core, void *pBuf) {
     default: throw std::invalid_argument("Unsupported element size");
   }
 
-  // NOTE: I am definitely *not* sure that I've done this correctly.
+  // NOTE: I am definitely *not* sure that I've done this owner correctly.
   // we need to assign an owner to the array whose continued existence
   // keeps the underlying memory region alive:
   //
@@ -126,30 +87,30 @@ ro_np_array create_image_array(CMMCore &core, void *pBuf) {
   nb::capsule owner(pBuf, [](void *p) noexcept {});
 
   // Create the ndarray
-  return ro_np_array(pBuf, new_shape, owner, strides, new_dtype);
+  return np_array(pBuf, new_shape, owner, strides, new_dtype);
 }
 
+/** @brief Create a read-only NumPy array using core methods
+ *  getImageWidth/getImageHeight/getBytesPerPixel/getNumberOfComponents
+ */
+np_array create_image_array(CMMCore &core, void *pBuf) {
+  // Retrieve image properties
+  unsigned width = core.getImageWidth();
+  unsigned height = core.getImageHeight();
+  unsigned bytesPerPixel = core.getBytesPerPixel();
+  unsigned numComponents = core.getNumberOfComponents();
+  return build_np_array(core, pBuf, width, height, bytesPerPixel, numComponents);
+}
 
 /**
- * @brief Creates a read-only NumPy array using width/height/pixelType
- * from a metadata object.
+ * @brief Creates a read-only NumPy array for pBuf by using width/height/pixelType
+ * from a metadata object if possible, otherwise falls back to core methods.
  *
- * @param core A reference to the `CMMCore` object, which provides image
- * metadata and ensures ownership of the buffer.
- * @param pBuf Pointer to the data buffer containing the image metadata.
- * @param md The metadata object containing the image properties.
- *
- * @return A `nanobind::ndarray` representing the image metadata buffer as a
- * `numpy.ndarray`.
- *
- * @throws std::runtime_error If the combination of image properties (e.g.,
- * bytes per pixel, number of components) is not supported.
- *
- * @note The resulting array is C-contiguous by default, as no strides are
- * specified.
  */
-ro_np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
+np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
   std::string width_str, height_str, pixel_type;
+  unsigned width = 0, height = 0;
+  unsigned bytesPerPixel, numComponents = 1;
   try {
     // These keys are unfortunately hard-coded in the source code
     // see https://github.com/micro-manager/mmCoreAndDevices/pull/531
@@ -157,19 +118,31 @@ ro_np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) 
     width_str = md.GetSingleTag("Width").GetValue();
     height_str = md.GetSingleTag("Height").GetValue();
     pixel_type = md.GetSingleTag("PixelType").GetValue();
-  } catch (const MetadataKeyError &e) {
+    width = std::stoi(width_str);
+    height = std::stoi(height_str);
+
+    if (pixel_type == "GRAY8") {
+      bytesPerPixel = 1;
+    } else if (pixel_type == "GRAY16") {
+      bytesPerPixel = 2;
+    } else if (pixel_type == "GRAY32") {
+      bytesPerPixel = 4;
+    } else if (pixel_type == "RGB32") {
+      numComponents = 4;
+      bytesPerPixel = 4;
+    } else if (pixel_type == "RGB64") {
+      numComponents = 4;
+      bytesPerPixel = 8;
+    } else {
+      throw std::runtime_error("Unsupported pixelType.");
+    }
+  } catch (...) {
     // The metadata doesn't have what we need to shape the array...
     // Fallback to core.getImageWidth etc...
     return create_image_array(core, pBuf);
   }
 
-  auto [dt, shape] = get_dtype_shape(std::stoi(height_str), std::stoi(width_str), pixel_type);
-
-  // NB: this may not be the best approach
-  // SEE NOTES ABOUT OWNERSHIP ABOVE IN create_image_array
-  nb::capsule owner(pBuf, [](void *p) noexcept {});
-
-  return ro_np_array(pBuf, shape.size(), shape.data(), owner, nullptr, dt);
+  return build_np_array(core, pBuf, width, height, bytesPerPixel, numComponents);
 }
 
 ///////////////// Trampoline class for MMEventCallback ///////////////////
@@ -931,10 +904,10 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("getExposure", nb::overload_cast<const char*>(&CMMCore::getExposure), "label"_a)
       .def("snapImage", &CMMCore::snapImage)
       .def("getImage",
-           [](CMMCore& self) -> ro_np_array {
+           [](CMMCore& self) -> np_array {
     return create_image_array(self, self.getImage()); })
       .def("getImage",
-           [](CMMCore& self, unsigned channel) -> ro_np_array {
+           [](CMMCore& self, unsigned channel) -> np_array {
     return create_image_array(self, self.getImage(channel));
            })
       .def("getImageWidth", &CMMCore::getImageWidth)
@@ -969,18 +942,18 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("isSequenceRunning", nb::overload_cast<const char*>(&CMMCore::isSequenceRunning),
            "cameraLabel"_a)
       .def("getLastImage",
-           [](CMMCore& self) -> ro_np_array {
+           [](CMMCore& self) -> np_array {
     return create_image_array(self, self.getLastImage());
            })
       .def("popNextImage",
-           [](CMMCore& self) -> ro_np_array {
+           [](CMMCore& self) -> np_array {
     return create_image_array(self, self.popNextImage());
            })
       // this is a new overload that returns both the image and the metadata
       // not present in the original C++ API
       .def(
           "getLastImageMD",
-          [](CMMCore& self) -> std::tuple<ro_np_array, Metadata> {
+          [](CMMCore& self) -> std::tuple<np_array, Metadata> {
     Metadata md;
     auto img = self.getLastImageMD(md);
     return {create_metadata_array(self, img, md), md};
@@ -988,7 +961,7 @@ NB_MODULE(_pymmcore_nano, m) {
           "Get the last image in the circular buffer, return as tuple of image and metadata")
       .def(
           "getLastImageMD",
-          [](CMMCore& self, Metadata& md) -> ro_np_array {
+          [](CMMCore& self, Metadata& md) -> np_array {
     auto img = self.getLastImageMD(md);
     return create_metadata_array(self, img, md);
           },
@@ -997,7 +970,7 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(
           "getLastImageMD",
           [](CMMCore& self, unsigned channel,
-             unsigned slice) -> std::tuple<ro_np_array, Metadata> {
+             unsigned slice) -> std::tuple<np_array, Metadata> {
     Metadata md;
     auto img = self.getLastImageMD(channel, slice, md);
     return {create_metadata_array(self, img, md), md};
@@ -1007,7 +980,7 @@ NB_MODULE(_pymmcore_nano, m) {
           "as tuple of image and metadata")
       .def(
           "getLastImageMD",
-          [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> ro_np_array {
+          [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> np_array {
     auto img = self.getLastImageMD(channel, slice, md);
     return create_metadata_array(self, img, md);
           },
@@ -1017,7 +990,7 @@ NB_MODULE(_pymmcore_nano, m) {
 
       .def(
           "popNextImageMD",
-          [](CMMCore& self) -> std::tuple<ro_np_array, Metadata> {
+          [](CMMCore& self) -> std::tuple<np_array, Metadata> {
     Metadata md;
     auto img = self.popNextImageMD(md);
     return {create_metadata_array(self, img, md), md};
@@ -1025,7 +998,7 @@ NB_MODULE(_pymmcore_nano, m) {
           "Get the last image in the circular buffer, return as tuple of image and metadata")
       .def(
           "popNextImageMD",
-          [](CMMCore& self, Metadata& md) -> ro_np_array {
+          [](CMMCore& self, Metadata& md) -> np_array {
     auto img = self.popNextImageMD(md);
     return create_metadata_array(self, img, md);
           },
@@ -1034,7 +1007,7 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(
           "popNextImageMD",
           [](CMMCore& self, unsigned channel,
-             unsigned slice) -> std::tuple<ro_np_array, Metadata> {
+             unsigned slice) -> std::tuple<np_array, Metadata> {
     Metadata md;
     auto img = self.popNextImageMD(channel, slice, md);
     return {create_metadata_array(self, img, md), md};
@@ -1044,7 +1017,7 @@ NB_MODULE(_pymmcore_nano, m) {
           "as tuple of image and metadata")
       .def(
           "popNextImageMD",
-          [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> ro_np_array {
+          [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> np_array {
     auto img = self.popNextImageMD(channel, slice, md);
     return create_metadata_array(self, img, md);
           },
@@ -1054,7 +1027,7 @@ NB_MODULE(_pymmcore_nano, m) {
 
       .def(
           "getNBeforeLastImageMD",
-          [](CMMCore& self, unsigned long n) -> std::tuple<ro_np_array, Metadata> {
+          [](CMMCore& self, unsigned long n) -> std::tuple<np_array, Metadata> {
     Metadata md;
     auto img = self.getNBeforeLastImageMD(n, md);
     return {create_metadata_array(self, img, md), md};
@@ -1065,7 +1038,7 @@ NB_MODULE(_pymmcore_nano, m) {
           "of image and metadata")
       .def(
           "getNBeforeLastImageMD",
-          [](CMMCore& self, unsigned long n, Metadata& md) -> ro_np_array {
+          [](CMMCore& self, unsigned long n, Metadata& md) -> np_array {
     auto img = self.getNBeforeLastImageMD(n, md);
     return create_metadata_array(self, img, md);
           },
