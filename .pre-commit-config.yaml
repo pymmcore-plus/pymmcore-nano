@@ -20,14 +20,6 @@ repos:
       - id: clang-format
         args: ["--style={ BasedOnStyle: Google, ColumnLimit: 96, AllowShortCaseLabelsOnASingleLine: true }", -i]
 
-  - repo: local
-    hooks:
-      - id: run-version
-        name: update-meson-version
-        entry: bash -c 'meson rewrite kwargs set project / version $(python scripts/extract_version.py) 2>/dev/null'
-        language: system
-        files: .*
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.1
     hooks:
@@ -42,3 +34,13 @@ repos:
         files: "^src/"
         additional_dependencies:
           - numpy
+
+  - repo: local
+    hooks:
+      - id: run-version
+        name: update-meson-version
+        entry: bash -c 'meson rewrite kwargs set project / version $(python scripts/extract_version.py) 2>/dev/null'
+        language: system
+        files: .*
+        exclude: "CI=true"
+        stages: [manual]
