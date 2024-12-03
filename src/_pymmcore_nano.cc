@@ -20,36 +20,6 @@ const int PYMMCORE_NANO_VERSION = 0;
 // Alias for read-only NumPy array
 using ro_np_array = nb::ndarray<nb::numpy, nb::ro>;
 
-// Helper to determine dtype and shape
-std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(unsigned height,
-                                                                  unsigned width,
-                                                                  unsigned bytesPerPixel,
-                                                                  unsigned numComponents = 1) {
-  // Calculate dtype and shape
-  std::vector<size_t> shape = {height, width};
-
-  switch (bytesPerPixel) {
-    case 1:  // 8-bit GRAY8
-      return {nb::dtype<uint8_t>(), shape};
-    case 2:  // 16-bit GRAY16
-      return {nb::dtype<uint16_t>(), shape};
-    case 4:  // 32-bit GRAY32 or 32-bit RGB32
-      if (numComponents == 1) {
-        return {nb::dtype<uint32_t>(), shape};
-      } else {
-        shape.push_back(numComponents);
-        return {nb::dtype<uint8_t>(), shape};
-      }
-    case 8:  // 64-bit RGB64
-      if (numComponents != 4) {
-        throw std::runtime_error("Unsupported numComponents for 64-bit RGB64.");
-      }
-      shape.push_back(numComponents);
-      return {nb::dtype<uint16_t>(), shape};
-    default:  // pragma: no cover
-      throw std::runtime_error("Unsupported bytesPerPixel.");
-  }
-}
 // Overload to determine dtype and shape from pixelType, which appears in image
 // metadata
 std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(
@@ -62,9 +32,9 @@ std::pair<nb::dlpack::dtype, std::vector<size_t>> get_dtype_shape(
   } else if (pixelType == "GRAY32") {
     return {nb::dtype<uint32_t>(), {height, width}};
   } else if (pixelType == "RGB32") {
-    return {nb::dtype<uint8_t>(), {height, width, 4}};
+    return {nb::dtype<uint32_t>(), {height, width}};
   } else if (pixelType == "RGB64") {
-    return {nb::dtype<uint64_t>(), {height, width, 4}};
+    return {nb::dtype<uint64_t>(), {height, width}};
   } else {
     throw std::runtime_error("Unsupported pixelType.");
   }
@@ -95,12 +65,41 @@ ro_np_array create_image_array(CMMCore &core, void *pBuf) {
   unsigned bytesPerPixel = core.getBytesPerPixel();
   unsigned numComponents = core.getNumberOfComponents();
 
-  // Create and return the ndarray
-  auto [dt, shape] = get_dtype_shape(height, width, bytesPerPixel, numComponents);
+  // Validate inputs
+  if (bytesPerPixel % numComponents != 0) {
+    throw std::invalid_argument("bytesPerPixel must be divisible by numComponents");
+  }
+
+  // gross syntax... i know, but nanobind really wants an initializer list
+  // and this is a fast way to get one.
+  // Shape: (height, width [, 3]?)
+  std::initializer_list<size_t> new_shape =
+      (numComponents == 4) ? std::initializer_list<size_t>{height, width, 3}  // RGB
+                           : std::initializer_list<size_t>{height, width};
+
+  // strides are funny for a RGB image, with an inverted channel order
+  std::initializer_list<int64_t> strides =
+      (numComponents == 4)
+          ? std::initializer_list<int64_t>{static_cast<int64_t>(width * bytesPerPixel),
+                                           static_cast<int64_t>(bytesPerPixel), -1}  // BGRA
+          : std::initializer_list<int64_t>{static_cast<int64_t>(width), 1};
+
+  // Element size in bytes (e.g., 1 byte for uint8_t)
+  unsigned elementSize = bytesPerPixel / numComponents;
+
+  // Determine the dtype based on the element size
+  nb::dlpack::dtype new_dtype;
+  switch (elementSize) {
+    case 1: new_dtype = nb::dtype<uint8_t>(); break;
+    case 2: new_dtype = nb::dtype<uint16_t>(); break;
+    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    default: throw std::invalid_argument("Unsupported element size");
+  }
 
   // NOTE: I am definitely *not* sure that I've done this correctly.
   // we need to assign an owner to the array whose continued existence
   // keeps the underlying memory region alive:
+  //
   // https://nanobind.readthedocs.io/en/latest/ndarray.html#returning-arrays-from-c-to-python
   // https://nanobind.readthedocs.io/en/latest/ndarray.html#data-ownership
 
@@ -126,8 +125,11 @@ ro_np_array create_image_array(CMMCore &core, void *pBuf) {
   // so users should  call `img.copy()` if they want to ensure the data is copied.
   nb::capsule owner(pBuf, [](void *p) noexcept {});
 
-  return ro_np_array(pBuf, shape.size(), shape.data(), owner, nullptr, dt);
+  // Create the ndarray
+  return ro_np_array(pBuf, new_shape, owner, strides, new_dtype);
 }
+
+
 /**
  * @brief Creates a read-only NumPy array using width/height/pixelType
  * from a metadata object.
