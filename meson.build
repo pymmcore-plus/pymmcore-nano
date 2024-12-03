@@ -18,7 +18,16 @@ m = pathlib.Path('src/mmCoreAndDevices')
 headers = (*(m/'MMDevice').rglob('*.h'), *(m/'MMCore').rglob('*.h'))
 print(';'.join({str(x.parent) for x in headers}))
 '''
+
+# just in case ... add the Python include path from the Python installation
 include_dirs_list = run_command(py.full_path(), '-c', print_include_dirs, check: true).stdout().strip().split(';')
+# Run a command to get the Python include path
+python_include_path = run_command(
+  py.full_path(),
+  ['-c', 'import sysconfig; print(sysconfig.get_paths()["include"])']
+).stdout().strip()
+include_dirs_list += [python_include_path]
+
 include_dirs = include_directories(include_dirs_list, is_system: true)
 foreach dir : include_dirs_list
     message('Include dir: ' + dir)

@@ -7,7 +7,7 @@ BUILDDIR := $(shell ls -d build/cp3* 2>/dev/null | head -n 1)
 install:
 	make clean
 	git submodule update --init
-	uv sync --no-install-project && source .venv/bin/activate
+	uv sync --no-install-project && . .venv/bin/activate
 	uv run make version
 	uv pip install -e . \
 		--no-build-isolation \
