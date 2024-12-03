@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   build_wheels:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     name: Build wheels on ${{ matrix.os }} ${{ matrix.macos_arch }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -34,11 +35,11 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           toolset: "14.29"
-      
+
       - run: |
           pip install meson
           meson rewrite kwargs set project / version $(python scripts/extract_version.py)
-          
+
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.22
         env:
@@ -91,8 +92,8 @@ jobs:
           merge-multiple: true
           path: dist
 
-      # - name: Publish to PyPI
-      # uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
       - uses: softprops/action-gh-release@v2
         with:
