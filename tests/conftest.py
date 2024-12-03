@@ -28,5 +28,5 @@ def demo_config() -> Path:
 @pytest.fixture
 def demo_core(core: pmn.CMMCore, demo_config: Path) -> pmn.CMMCore:
     """Return a CMMCore instance with the demo configuration loaded."""
-    core.loadSystemConfiguration(demo_config)
+    core.loadSystemConfiguration(str(demo_config))
     return core
