@@ -1,5 +1,5 @@
 from _pymmcore_nano import *  # noqa
-from _pymmcore_nano import __version__ as __version__
+from _pymmcore_nano import __version__ as __version__  # type: ignore [attr-defined]
 
 import sys
 import importlib.util
