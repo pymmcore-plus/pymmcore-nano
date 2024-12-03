@@ -4,10 +4,8 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches:
-      - main
-    tags:
-      - "v*"
+    branches: [main]
+    tags: [v*]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -36,7 +34,11 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           toolset: "14.29"
-
+      
+      - run: |
+          pip install meson
+          meson rewrite kwargs set project / version $(python scripts/extract_version.py)
+          
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.19
         env:
@@ -62,8 +64,8 @@ jobs:
 
       - name: Build sdist
         run: |
-          pip install -U pip build check-manifest
-          check-manifest
+          pip install -U pip build meson
+          meson rewrite kwargs set project / version $(python scripts/extract_version.py)
           python -m build --sdist
 
       - uses: actions/upload-artifact@v4
@@ -71,10 +73,10 @@ jobs:
           name: artifact-sdist
           path: dist/*.tar.gz
 
-  upload_pypi:
+  publish:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
-    # upload to PyPI on every tag
+    # publish on every tag
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
 
     # https://docs.pypi.org/trusted-publishers/
@@ -89,8 +91,8 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      # - name: Publish to PyPI
+      # uses: pypa/gh-action-pypi-publish@release/v1
 
       - uses: softprops/action-gh-release@v2
         with:

@@ -6,9 +6,9 @@ BUILDDIR := $(shell ls -d build/cp3* 2>/dev/null | head -n 1)
 # editable install
 install:
 	make clean
-	make version
 	git submodule update --init
 	uv sync --no-install-project && source .venv/bin/activate
+	uv run make version
 	uv pip install -e . \
 		--no-build-isolation \
 		--force-reinstall \
