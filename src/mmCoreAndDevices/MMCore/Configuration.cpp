@@ -83,7 +83,7 @@ std::string Configuration::getVerbose() const
 /**
  * Returns the setting with specified index.
  */
-PropertySetting Configuration::getSetting(size_t index) const throw (CMMError)
+PropertySetting Configuration::getSetting(size_t index) const noexcept(false)
 {
    if (index >= settings_.size())
    {

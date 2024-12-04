@@ -401,7 +401,7 @@ public:
 
    void setPixelSizeUm(double pixSize) {pixelSizeUm_ = pixSize;}
    double getPixelSizeUm() const {return pixelSizeUm_;}
-   void setPixelConfigAffineMatrix(std::vector<double> &affineMatrix) throw (CMMError)
+   void setPixelConfigAffineMatrix(std::vector<double> &affineMatrix) noexcept(false)
    { 
       if (affineMatrix.size() != 6) 
       {

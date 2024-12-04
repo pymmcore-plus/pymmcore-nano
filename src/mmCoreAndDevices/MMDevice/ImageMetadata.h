@@ -50,6 +50,8 @@ public:
 
    virtual ~MetadataError() {}
 
+   virtual const char* what() const throw() { return message_.c_str(); }
+
    virtual std::string getMsg()
    {
       return message_;
