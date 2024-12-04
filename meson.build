@@ -4,46 +4,74 @@ project(
   'pymmcore-nano',
   'cpp',
 version : '11.2.1.71.0.dev1',
-  meson_version : '>= 1.6.0',
+  meson_version : '>= 1.2.0',
   default_options : ['cpp_std=c++17']
 )
 py = import('python').find_installation()
 nanobind_dep = dependency('nanobind', static: true)
 
-# ---------- dynamically gather sources and include dirs ----------
-
-print_include_dirs = '''
-import pathlib
-m = pathlib.Path('src/mmCoreAndDevices')
-headers = (*(m/'MMDevice').rglob('*.h'), *(m/'MMCore').rglob('*.h'))
-print(';'.join({str(x.parent) for x in headers}))
-'''
-
-# just in case ... add the Python include path from the Python installation
-include_dirs_list = run_command(py.full_path(), '-c', print_include_dirs, check: true).stdout().strip().split(';')
 # Run a command to get the Python include path
 python_include_path = run_command(
-  py.full_path(),
-  ['-c', 'import sysconfig; print(sysconfig.get_paths()["include"])']
+    py.full_path(), ['-c', 'import sysconfig; print(sysconfig.get_paths()["include"])']
 ).stdout().strip()
-include_dirs_list += [python_include_path]
 
-include_dirs = include_directories(include_dirs_list, is_system: true)
-foreach dir : include_dirs_list
-    message('Include dir: ' + dir)
-endforeach
+# Include directories
+include_dirs = include_directories(
+    'src/mmCoreAndDevices/MMCore',
+    'src/mmCoreAndDevices/MMCore/Devices',
+    'src/mmCoreAndDevices/MMCore/LibraryInfo',
+    'src/mmCoreAndDevices/MMCore/LoadableModules',
+    'src/mmCoreAndDevices/MMCore/Logging',
+    'src/mmCoreAndDevices/MMDevice',
+    python_include_path,
+)
 
-print_sources = '''
-import pathlib
-m = pathlib.Path('src/mmCoreAndDevices')
-sources = (*(m/'MMDevice').rglob('*.cpp'), *(m/'MMCore').rglob('*.cpp'))
-print(';'.join({str(x) for x in sources if 'unittest' not in str(x)}))
-'''
-cpp_sources = run_command(py.full_path(), '-c', print_sources, check: true).stdout().strip().split(';')
-
-foreach src : cpp_sources
-    message('Including source: ' + src)
-endforeach
+mmcore_sources = files(
+    'src/mmCoreAndDevices/MMCore/CircularBuffer.cpp',
+    'src/mmCoreAndDevices/MMCore/Configuration.cpp',
+    'src/mmCoreAndDevices/MMCore/CoreCallback.cpp',
+    'src/mmCoreAndDevices/MMCore/CoreFeatures.cpp',
+    'src/mmCoreAndDevices/MMCore/CoreProperty.cpp',
+    'src/mmCoreAndDevices/MMCore/DeviceManager.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/AutoFocusInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/CameraInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/DeviceInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/GalvoInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/HubInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/ImageProcessorInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/MagnifierInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/SerialInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/ShutterInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/SignalIOInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/SLMInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/StageInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/StateInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/XYStageInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Error.cpp',
+    'src/mmCoreAndDevices/MMCore/FrameBuffer.cpp',
+    'src/mmCoreAndDevices/MMCore/LibraryInfo/LibraryPathsUnix.cpp',
+    'src/mmCoreAndDevices/MMCore/LibraryInfo/LibraryPathsWindows.cpp',
+    'src/mmCoreAndDevices/MMCore/LoadableModules/LoadedDeviceAdapter.cpp',
+    'src/mmCoreAndDevices/MMCore/LoadableModules/LoadedModule.cpp',
+    'src/mmCoreAndDevices/MMCore/LoadableModules/LoadedModuleImpl.cpp',
+    'src/mmCoreAndDevices/MMCore/LoadableModules/LoadedModuleImplUnix.cpp',
+    'src/mmCoreAndDevices/MMCore/LoadableModules/LoadedModuleImplWindows.cpp',
+    'src/mmCoreAndDevices/MMCore/Logging/Metadata.cpp',
+    'src/mmCoreAndDevices/MMCore/LogManager.cpp',
+    'src/mmCoreAndDevices/MMCore/MMCore.cpp',
+    'src/mmCoreAndDevices/MMCore/PluginManager.cpp',
+    'src/mmCoreAndDevices/MMCore/Semaphore.cpp',
+    'src/mmCoreAndDevices/MMCore/Task.cpp',
+    'src/mmCoreAndDevices/MMCore/TaskSet_CopyMemory.cpp',
+    'src/mmCoreAndDevices/MMCore/TaskSet.cpp',
+    'src/mmCoreAndDevices/MMCore/ThreadPool.cpp',
+    'src/mmCoreAndDevices/MMDevice/Debayer.cpp',
+    'src/mmCoreAndDevices/MMDevice/DeviceUtils.cpp',
+    'src/mmCoreAndDevices/MMDevice/ImgBuffer.cpp',
+    'src/mmCoreAndDevices/MMDevice/MMDevice.cpp',
+    'src/mmCoreAndDevices/MMDevice/ModuleInterface.cpp',
+    'src/mmCoreAndDevices/MMDevice/Property.cpp',
+)
 
 # ---------- patch c++14 to c++17 ----------
 
@@ -59,7 +87,7 @@ endif
 
 ext_module = py.extension_module(
     '_pymmcore_nano',
-    sources: ['src/_pymmcore_nano.cc'] + cpp_sources,
+    sources: ['src/_pymmcore_nano.cc'] + mmcore_sources,
     dependencies: [nanobind_dep],
     include_directories: include_dirs,
     install: true,

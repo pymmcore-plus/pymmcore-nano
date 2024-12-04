@@ -3,10 +3,11 @@ dist
 builddir
 
 # Ignore downloaded or built subprojects
-subprojects/*
+**/subprojects/*
 # but specifically allow configuration files
-!subprojects/meson.build
-!subprojects/*.wrap
+!**/subprojects/meson.build
+!**/subprojects/*.wrap
+!**/subprojects/.gitignore
 
 .vscode
 __pycache__
