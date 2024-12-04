@@ -55,41 +55,19 @@ pull-mmcore:
 	git subtree pull --prefix=src/mmCoreAndDevices https://github.com/micro-manager/mmCoreAndDevices main --squash
 
 build-devices:
-	just build-democamera
-	just build-utilities
-	# just build-sequencetester
+	just build-adapter DemoCamera
+	just build-adapter Utilities
+	# just build-adapter SequenceTester
 
 build-mmdevice:
 	meson setup src/mmCoreAndDevices/MMDevice/builddir src/mmCoreAndDevices/MMDevice
 	meson compile -C src/mmCoreAndDevices/MMDevice/builddir
 
-build-democamera:
+build-adapter dir:
 	just build-mmdevice
-	mkdir -p src/mmCoreAndDevices/DeviceAdapters/DemoCamera/subprojects
-	rm -f src/mmCoreAndDevices/DeviceAdapters/DemoCamera/subprojects/MMDevice
-	ln -s ../../../MMDevice src/mmCoreAndDevices/DeviceAdapters/DemoCamera/subprojects/MMDevice
+	mkdir -p src/mmCoreAndDevices/DeviceAdapters/{{dir}}/subprojects
+	rm -f src/mmCoreAndDevices/DeviceAdapters/{{dir}}/subprojects/MMDevice
+	ln -s ../../../MMDevice src/mmCoreAndDevices/DeviceAdapters/{{dir}}/subprojects/MMDevice
 
-	meson setup src/mmCoreAndDevices/DeviceAdapters/DemoCamera/builddir src/mmCoreAndDevices/DeviceAdapters/DemoCamera
-	meson compile -C src/mmCoreAndDevices/DeviceAdapters/DemoCamera/builddir
-	cp src/mmCoreAndDevices/DeviceAdapters/DemoCamera/builddir/libmmgr_dal_DemoCamera.dylib tests/adapters/darwin/libmmgr_dal_DemoCamera
-
-build-utilities:
-	just build-mmdevice
-	mkdir -p src/mmCoreAndDevices/DeviceAdapters/Utilities/subprojects
-	rm -f src/mmCoreAndDevices/DeviceAdapters/Utilities/subprojects/MMDevice
-	ln -s ../../../MMDevice src/mmCoreAndDevices/DeviceAdapters/Utilities/subprojects/MMDevice
-
-	meson setup src/mmCoreAndDevices/DeviceAdapters/Utilities/builddir src/mmCoreAndDevices/DeviceAdapters/Utilities
-	meson compile -C src/mmCoreAndDevices/DeviceAdapters/Utilities/builddir
-	cp src/mmCoreAndDevices/DeviceAdapters/Utilities/builddir/libmmgr_dal_Utilities.dylib tests/adapters/darwin/libmmgr_dal_Utilities
-
-build-sequencetester:
-	just build-mmdevice
-	mkdir -p src/mmCoreAndDevices/DeviceAdapters/SequenceTester/subprojects
-	rm -f src/mmCoreAndDevices/DeviceAdapters/SequenceTester/subprojects/MMDevice
-	ln -s ../../../MMDevice src/mmCoreAndDevices/DeviceAdapters/SequenceTester/subprojects/MMDevice
-
-	meson setup src/mmCoreAndDevices/DeviceAdapters/SequenceTester/builddir src/mmCoreAndDevices/DeviceAdapters/SequenceTester
-	meson compile -C src/mmCoreAndDevices/DeviceAdapters/SequenceTester/builddir
-	cp src/mmCoreAndDevices/DeviceAdapters/SequenceTester/builddir/libmmgr_dal_SequenceTester.dylib tests/adapters/darwin/libmmgr_dal_SequenceTester
-	cp src/mmCoreAndDevices/DeviceAdapters/SequenceTester/builddir/libmmgr_dal_SequenceTester.dylib tests/adapters/darwin/libmmgr_dal_SequenceTester
+	meson setup src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir src/mmCoreAndDevices/DeviceAdapters/{{dir}}
+	meson compile -C src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir
