@@ -1,9 +1,0 @@
-<project name="HIDManager">
-   <import file="../../../buildscripts/deviceadapter.xml"/>
-
-	<property name="hidapi.libs" location="${mm.thirdpartypublic}/hidapi/hidapi-0.11.2/windows"/>
-
-	<target name="install-x64">
-		<copy todir="${mm.dll.installdir}" file="${hidapi.libs}/x64/hidapi.dll"/>
-	</target>
-</project>
