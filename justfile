@@ -71,3 +71,10 @@ build-adapter dir:
 
 	meson setup src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir src/mmCoreAndDevices/DeviceAdapters/{{dir}}
 	meson compile -C src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir
+
+	# # copy to tests dir...
+	# # this is made annoying because the extension is platform dependent and needs to be just right for
+	# # micromanager to pick it up
+	# file=$(find src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir -type f -name 'libmmgr_dal_*' ! -name '*.p*') && \
+	# filename=$(basename "$file" | sed 's/\.[^.]*$//') && \
+	# cp "$file" "tests/adapters/$filename"
