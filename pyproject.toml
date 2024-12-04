@@ -11,25 +11,42 @@ build-backend = 'mesonpy'
 requires-python = ">=3.9"
 name = "pymmcore-nano"
 dynamic = ['version']
-description = "CMMCore wrapper for Python, using nanobind"
+description = "Alternative python bindings for MMCore, Micro-Manager's device control layer"
 readme = "README.md"
-dependencies = ["numpy"]
+license = { text = "LGPL-2.1-only" }
+authors = [
+    { name = "Micro-Manager Team" },
+    { name = "Mark Tsuchida", email = "marktsuchida@gmail.com" },
+    { name = "Talley Lambert", email = "talley.lambert@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = ["numpy>=1.25"]
 
 [dependency-groups]
 dev = [
+    "gcovr",
     "ipython",
     "meson-python",
-    "nanobind",
-    "rust-just",
     "mypy",
+    "nanobind",
     "ninja",
     "pdbpp; sys_platform != 'win32'",
     "pre-commit",
-    "pytest",
-    "ruff",
     "pytest-cov",
-    "gcovr",
+    "pytest",
     "rich",
+    "ruff",
+    "rust-just",
 ]
 
 # https://docs.pytest.org/

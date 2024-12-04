@@ -1,5 +1,11 @@
 # pymmcore-nano
 
+[![License](https://img.shields.io/pypi/l/pymmcore-nano.svg?color=green)](https://github.com/pymmcore-plus/pymmcore-nano/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/pymmcore-nano.svg?color=green)](https://pypi.org/project/pymmcore-nano)
+[![Python Version](https://img.shields.io/pypi/pyversions/pymmcore-nano.svg?color=green)](https://python.org)
+[![CI](https://github.com/pymmcore-plus/pymmcore-nano/actions/workflows/ci.yml/badge.svg)](https://github.com/pymmcore-plus/pymmcore-nano/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/pymmcore-plus/pymmcore-nano/branch/main/graph/badge.svg)](https://codecov.io/gh/pymmcore-plus/pymmcore-nano)
+
 Experimental python bindings for CMMCore using nanobind.
 
 ## Clone repo
