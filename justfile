@@ -15,6 +15,7 @@ install:
 
 # quick build after having already setup the build directory
 build:
+	just clean-cov
 	meson compile -C {{ builddir }}
 
 # clean up all build artifacts
