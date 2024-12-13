@@ -79,8 +79,8 @@ np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, uns
 }
 
 // only reason we're making two functions here is that i had a hell of a time
-// trying to create std::initializer_list dynamically based on numComponents (only on Linux)
-// so we create two constructors
+// trying to create std::initializer_list dynamically based on numComponents
+// (only on Linux) so we create two constructors
 np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
                             unsigned byteDepth) {
   const unsigned out_byteDepth = byteDepth / 4;  // break up the 4 components
@@ -438,6 +438,12 @@ NB_MODULE(_pymmcore_nano, m) {
       .value("Uninitialized", DeviceInitializationState::Uninitialized)
       .value("InitializedSuccessfully", DeviceInitializationState::InitializedSuccessfully)
       .value("InitializationFailed", DeviceInitializationState::InitializationFailed);
+
+  nb::enum_<MM::StorageDataType>(m, "StorageDataType", nb::is_arithmetic())
+      .value("StorageDataType_UNKNOWN", MM::StorageDataType::StorageDataType_UNKNOWN)
+      .value("StorageDataType_GRAY8", MM::StorageDataType::StorageDataType_GRAY8)
+      .value("StorageDataType_GRAY16", MM::StorageDataType::StorageDataType_GRAY16)
+      .value("StorageDataType_RGB32", MM::StorageDataType::StorageDataType_RGB32);
 
 // the SWIG wrapper doesn't create enums, it puts them all in the top level
 // so for backwards compatibility we define them here as well
@@ -849,6 +855,18 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("setSLMDevice", &CMMCore::setSLMDevice, "slmLabel"_a)
       .def("setGalvoDevice", &CMMCore::setGalvoDevice, "galvoLabel"_a)
       .def("setChannelGroup", &CMMCore::setChannelGroup, "channelGroup"_a)
+
+      // Storage
+      .def("setStorageDevice", &CMMCore::setStorageDevice, "storageLabel"_a)
+      .def("getStorageDevice", &CMMCore::getStorageDevice)
+      .def("createDataset", &CMMCore::createDataset, "path"_a, "name"_a, "shape"_a, "pixelType"_a, "meta"_a)
+      .def("isDatasetOpen", &CMMCore::isDatasetOpen, "dataset"_a)
+      .def("getDatasetPath", &CMMCore::getDatasetPath, "dataset"_a)
+      .def("getDatasetShape", &CMMCore::getDatasetShape, "dataset"_a)
+      .def("getDatasetPixelType", &CMMCore::getDatasetPixelType, "dataset"_a)
+
+      .def("getSummaryMeta", &CMMCore::getSummaryMeta, "dataset"_a)
+      .def("snapAndSave", &CMMCore::snapAndSave, "dataset"_a, "coordinates"_a, "meta"_a)
 
       .def("getSystemStateCache", &CMMCore::getSystemStateCache)
       .def("updateSystemStateCache", &CMMCore::updateSystemStateCache)

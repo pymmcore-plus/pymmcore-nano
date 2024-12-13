@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/acquire-project/acquire-zarr
+revision = v0.0.2
+depth = 1
+method = cmake
+
+[provide]
+acquire-zarr = acquire_zarr_dep

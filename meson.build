@@ -46,6 +46,7 @@ mmcore_sources = files(
     'src/mmCoreAndDevices/MMCore/Devices/SLMInstance.cpp',
     'src/mmCoreAndDevices/MMCore/Devices/StageInstance.cpp',
     'src/mmCoreAndDevices/MMCore/Devices/StateInstance.cpp',
+    'src/mmCoreAndDevices/MMCore/Devices/StorageInstance.cpp',
     'src/mmCoreAndDevices/MMCore/Devices/XYStageInstance.cpp',
     'src/mmCoreAndDevices/MMCore/Error.cpp',
     'src/mmCoreAndDevices/MMCore/FrameBuffer.cpp',
