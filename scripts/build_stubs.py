@@ -46,8 +46,9 @@ def build_stub(module_path: Path, output_path: str):
 
     dest.write_text(stub_txt)
     ruff = Path(sys.executable).parent / "ruff"
-    subprocess.run([str(ruff), "format", output_path], check=True)
-    subprocess.run([str(ruff), "check", "--fix-only", output_path])
+    _ruff = str(ruff) if ruff.exists() else "ruff"
+    subprocess.run([_ruff, "format", output_path], check=True)
+    subprocess.run([_ruff, "check", "--fix-only", output_path])
 
 
 if __name__ == "__main__":
