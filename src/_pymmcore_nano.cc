@@ -28,18 +28,25 @@ using StrVec = std::vector<std::string>;
  * methods.
  *
  */
-np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
-                                  unsigned byteDepth) {
+np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width,
+                                  unsigned height, unsigned byteDepth) {
   std::initializer_list<size_t> new_shape = {height, width};
   std::initializer_list<int64_t> strides = {width, 1};
 
   // Determine the dtype based on the element size
   nb::dlpack::dtype new_dtype;
   switch (byteDepth) {
-    case 1: new_dtype = nb::dtype<uint8_t>(); break;
-    case 2: new_dtype = nb::dtype<uint16_t>(); break;
-    case 4: new_dtype = nb::dtype<uint32_t>(); break;
-    default: throw std::invalid_argument("Unsupported element size");
+  case 1:
+    new_dtype = nb::dtype<uint8_t>();
+    break;
+  case 2:
+    new_dtype = nb::dtype<uint16_t>();
+    break;
+  case 4:
+    new_dtype = nb::dtype<uint32_t>();
+    break;
+  default:
+    throw std::invalid_argument("Unsupported element size");
   }
 
   // NOTE: I am definitely *not* sure that I've done this owner correctly.
@@ -79,27 +86,36 @@ np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, uns
 }
 
 // only reason we're making two functions here is that i had a hell of a time
-// trying to create std::initializer_list dynamically based on numComponents (only on Linux)
-// so we create two constructors
-np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
-                            unsigned byteDepth) {
-  const unsigned out_byteDepth = byteDepth / 4;  // break up the 4 components
+// trying to create std::initializer_list dynamically based on numComponents
+// (only on Linux) so we create two constructors
+np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width,
+                            unsigned height, unsigned byteDepth) {
+  const unsigned out_byteDepth = byteDepth / 4; // break up the 4 components
 
   std::initializer_list<size_t> new_shape = {height, width, 3};
   // Note the negative stride for the last dimension, data comes in as BGRA
   // we want to invert that to be ARGB
   std::initializer_list<int64_t> strides = {width * byteDepth, byteDepth, -1};
-  // offset the buffer pointer (based on the byteDepth) to skip the alpha channel
-  // so we end up with just RGB
-  const uint8_t *offset_buf = static_cast<const uint8_t *>(pBuf) + out_byteDepth * 2;
+  // offset the buffer pointer (based on the byteDepth) to skip the alpha
+  // channel so we end up with just RGB
+  const uint8_t *offset_buf =
+      static_cast<const uint8_t *>(pBuf) + out_byteDepth * 2;
 
   // Determine the dtype based on the element size
   nb::dlpack::dtype new_dtype;
-  switch (out_byteDepth) {  // all RGB formats have 4 components in a single "pixel"
-    case 1: new_dtype = nb::dtype<uint8_t>(); break;
-    case 2: new_dtype = nb::dtype<uint16_t>(); break;
-    case 4: new_dtype = nb::dtype<uint32_t>(); break;
-    default: throw std::invalid_argument("Unsupported element size");
+  switch (
+      out_byteDepth) { // all RGB formats have 4 components in a single "pixel"
+  case 1:
+    new_dtype = nb::dtype<uint8_t>();
+    break;
+  case 2:
+    new_dtype = nb::dtype<uint16_t>();
+    break;
+  case 4:
+    new_dtype = nb::dtype<uint32_t>();
+    break;
+  default:
+    throw std::invalid_argument("Unsupported element size");
   }
   nb::capsule owner(pBuf, [](void *p) noexcept {});
 
@@ -170,15 +186,51 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
   }
 }
 
+void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
+                        long expectedHeight, long bytesPerPixel) {
+  // Check dtype
+  if (pixels.dtype() != nb::dtype<uint8_t>()) {
+    throw std::invalid_argument("Pixel array type is wrong. Expected uint8.");
+  }
+
+  // Check dimensions
+  if (pixels.ndim() != 2 && pixels.ndim() != 3) {
+    throw std::invalid_argument(
+        "Pixels must be a 2D numpy array [h,w] of uint8, or a 3D numpy array "
+        "[h,w,c] of uint8 with 3 color channels [R,G,B].");
+  }
+
+  // Check shape
+  if (pixels.shape(0) != expectedHeight || pixels.shape(1) != expectedWidth) {
+    throw std::invalid_argument(
+        "Image dimensions are wrong for this SLM. Expected (" +
+        std::to_string(expectedHeight) + ", " + std::to_string(expectedWidth) +
+        "), but received (" + std::to_string(pixels.shape(0)) + ", " +
+        std::to_string(pixels.shape(1)) + ").");
+  }
+
+  // Check total bytes
+  long expectedBytes = expectedWidth * expectedHeight * bytesPerPixel;
+  if (pixels.nbytes() != expectedBytes) {
+    throw std::invalid_argument(
+        "Image size is wrong for this SLM. Expected " +
+        std::to_string(expectedBytes) + " bytes, but received " +
+        std::to_string(pixels.nbytes()) + " bytes. Does this SLM support RGB?");
+  }
+
+  // Ensure C-contiguous layout
+  // TODO
+}
+
 ///////////////// Trampoline class for MMEventCallback ///////////////////
 
 // Allow Python to override virtual functions in MMEventCallback
 // https://nanobind.readthedocs.io/en/latest/classes.html#overriding-virtual-functions-in-python
 
 class PyMMEventCallback : public MMEventCallback {
- public:
+public:
   NB_TRAMPOLINE(MMEventCallback,
-                11);  // Total number of overridable virtual methods.
+                11); // Total number of overridable virtual methods.
 
   void onPropertiesChanged() override { NB_OVERRIDE(onPropertiesChanged); }
 
@@ -191,18 +243,21 @@ class PyMMEventCallback : public MMEventCallback {
     NB_OVERRIDE(onChannelGroupChanged, newChannelGroupName);
   }
 
-  void onConfigGroupChanged(const char *groupName, const char *newConfigName) override {
+  void onConfigGroupChanged(const char *groupName,
+                            const char *newConfigName) override {
     NB_OVERRIDE(onConfigGroupChanged, groupName, newConfigName);
   }
 
-  void onSystemConfigurationLoaded() override { NB_OVERRIDE(onSystemConfigurationLoaded); }
+  void onSystemConfigurationLoaded() override {
+    NB_OVERRIDE(onSystemConfigurationLoaded);
+  }
 
   void onPixelSizeChanged(double newPixelSizeUm) override {
     NB_OVERRIDE(onPixelSizeChanged, newPixelSizeUm);
   }
 
-  void onPixelSizeAffineChanged(double v0, double v1, double v2, double v3, double v4,
-                                double v5) override {
+  void onPixelSizeAffineChanged(double v0, double v1, double v2, double v3,
+                                double v4, double v5) override {
     NB_OVERRIDE(onPixelSizeAffineChanged, v0, v1, v2, v3, v4, v5);
   }
 
@@ -245,8 +300,9 @@ NB_MODULE(_pymmcore_nano, m) {
       std::tuple(MMCore_versionMajor, MMCore_versionMinor, MMCore_versionPatch);
   // the final combined version
   m.attr("PYMMCORE_NANO_VERSION") = PYMMCORE_NANO_VERSION;
-  m.attr("__version__") =
-      version + "." + std::to_string(DEVICE_INTERFACE_VERSION) + "." + PYMMCORE_NANO_VERSION;
+  m.attr("__version__") = version + "." +
+                          std::to_string(DEVICE_INTERFACE_VERSION) + "." +
+                          PYMMCORE_NANO_VERSION;
 
   m.attr("MM_CODE_OK") = MM_CODE_OK;
   m.attr("MM_CODE_ERR") = MM_CODE_ERR;
@@ -275,7 +331,8 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("DEVICE_BUFFER_OVERFLOW") = DEVICE_BUFFER_OVERFLOW;
   m.attr("DEVICE_NONEXISTENT_CHANNEL") = DEVICE_NONEXISTENT_CHANNEL;
   m.attr("DEVICE_INVALID_PROPERTY_LIMITS") = DEVICE_INVALID_PROPERTY_LIMTS;
-  m.attr("DEVICE_INVALID_PROPERTY_LIMTS") = DEVICE_INVALID_PROPERTY_LIMTS;  // Fix Typo
+  m.attr("DEVICE_INVALID_PROPERTY_LIMTS") =
+      DEVICE_INVALID_PROPERTY_LIMTS; // Fix Typo
   m.attr("DEVICE_SNAP_IMAGE_FAILED") = DEVICE_SNAP_IMAGE_FAILED;
   m.attr("DEVICE_IMAGE_PARAMS_FAILED") = DEVICE_IMAGE_PARAMS_FAILED;
   m.attr("DEVICE_CORE_FOCUS_STAGE_UNDEF") = DEVICE_CORE_FOCUS_STAGE_UNDEF;
@@ -284,7 +341,8 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("DEVICE_CAMERA_BUSY_ACQUIRING") = DEVICE_CAMERA_BUSY_ACQUIRING;
   m.attr("DEVICE_INCOMPATIBLE_IMAGE") = DEVICE_INCOMPATIBLE_IMAGE;
   m.attr("DEVICE_CAN_NOT_SET_PROPERTY") = DEVICE_CAN_NOT_SET_PROPERTY;
-  m.attr("DEVICE_CORE_CHANNEL_PRESETS_FAILED") = DEVICE_CORE_CHANNEL_PRESETS_FAILED;
+  m.attr("DEVICE_CORE_CHANNEL_PRESETS_FAILED") =
+      DEVICE_CORE_CHANNEL_PRESETS_FAILED;
   m.attr("DEVICE_LOCALLY_DEFINED_ERROR") = DEVICE_LOCALLY_DEFINED_ERROR;
   m.attr("DEVICE_NOT_CONNECTED") = DEVICE_NOT_CONNECTED;
   m.attr("DEVICE_COMM_HUB_MISSING") = DEVICE_COMM_HUB_MISSING;
@@ -313,7 +371,8 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("g_Keyword_EMGain") = MM::g_Keyword_EMGain;
   m.attr("g_Keyword_Offset") = MM::g_Keyword_Offset;
   m.attr("g_Keyword_CCDTemperature") = MM::g_Keyword_CCDTemperature;
-  m.attr("g_Keyword_CCDTemperatureSetPoint") = MM::g_Keyword_CCDTemperatureSetPoint;
+  m.attr("g_Keyword_CCDTemperatureSetPoint") =
+      MM::g_Keyword_CCDTemperatureSetPoint;
   m.attr("g_Keyword_State") = MM::g_Keyword_State;
   m.attr("g_Keyword_Label") = MM::g_Keyword_Label;
   m.attr("g_Keyword_Position") = MM::g_Keyword_Position;
@@ -420,24 +479,31 @@ NB_MODULE(_pymmcore_nano, m) {
 
   nb::enum_<MM::FocusDirection>(m, "FocusDirection", nb::is_arithmetic())
       .value("FocusDirectionUnknown", MM::FocusDirection::FocusDirectionUnknown)
-      .value("FocusDirectionTowardSample", MM::FocusDirection::FocusDirectionTowardSample)
-      .value("FocusDirectionAwayFromSample", MM::FocusDirection::FocusDirectionAwayFromSample);
+      .value("FocusDirectionTowardSample",
+             MM::FocusDirection::FocusDirectionTowardSample)
+      .value("FocusDirectionAwayFromSample",
+             MM::FocusDirection::FocusDirectionAwayFromSample);
 
-  nb::enum_<MM::DeviceNotification>(m, "DeviceNotification", nb::is_arithmetic())
+  nb::enum_<MM::DeviceNotification>(m, "DeviceNotification",
+                                    nb::is_arithmetic())
       .value("Attention", MM::DeviceNotification::Attention)
       .value("Done", MM::DeviceNotification::Done)
       .value("StatusChanged", MM::DeviceNotification::StatusChanged);
 
-  nb::enum_<MM::DeviceDetectionStatus>(m, "DeviceDetectionStatus", nb::is_arithmetic())
+  nb::enum_<MM::DeviceDetectionStatus>(m, "DeviceDetectionStatus",
+                                       nb::is_arithmetic())
       .value("Unimplemented", MM::DeviceDetectionStatus::Unimplemented)
       .value("Misconfigured", MM::DeviceDetectionStatus::Misconfigured)
       .value("CanNotCommunicate", MM::DeviceDetectionStatus::CanNotCommunicate)
       .value("CanCommunicate", MM::DeviceDetectionStatus::CanCommunicate);
 
-  nb::enum_<DeviceInitializationState>(m, "DeviceInitializationState", nb::is_arithmetic())
+  nb::enum_<DeviceInitializationState>(m, "DeviceInitializationState",
+                                       nb::is_arithmetic())
       .value("Uninitialized", DeviceInitializationState::Uninitialized)
-      .value("InitializedSuccessfully", DeviceInitializationState::InitializedSuccessfully)
-      .value("InitializationFailed", DeviceInitializationState::InitializationFailed);
+      .value("InitializedSuccessfully",
+             DeviceInitializationState::InitializedSuccessfully)
+      .value("InitializationFailed",
+             DeviceInitializationState::InitializationFailed);
 
 // the SWIG wrapper doesn't create enums, it puts them all in the top level
 // so for backwards compatibility we define them here as well
@@ -454,7 +520,8 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("GenericDevice") = static_cast<int>(MM::DeviceType::GenericDevice);
   m.attr("AutoFocusDevice") = static_cast<int>(MM::DeviceType::AutoFocusDevice);
   m.attr("CoreDevice") = static_cast<int>(MM::DeviceType::CoreDevice);
-  m.attr("ImageProcessorDevice") = static_cast<int>(MM::DeviceType::ImageProcessorDevice);
+  m.attr("ImageProcessorDevice") =
+      static_cast<int>(MM::DeviceType::ImageProcessorDevice);
   m.attr("SignalIODevice") = static_cast<int>(MM::DeviceType::SignalIODevice);
   m.attr("MagnifierDevice") = static_cast<int>(MM::DeviceType::MagnifierDevice);
   m.attr("SLMDevice") = static_cast<int>(MM::DeviceType::SLMDevice);
@@ -470,7 +537,8 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("BeforeGet") = static_cast<int>(MM::ActionType::BeforeGet);
   m.attr("AfterSet") = static_cast<int>(MM::ActionType::AfterSet);
   m.attr("IsSequenceable") = static_cast<int>(MM::ActionType::IsSequenceable);
-  m.attr("AfterLoadSequence") = static_cast<int>(MM::ActionType::AfterLoadSequence);
+  m.attr("AfterLoadSequence") =
+      static_cast<int>(MM::ActionType::AfterLoadSequence);
   m.attr("StartSequence") = static_cast<int>(MM::ActionType::StartSequence);
   m.attr("StopSequence") = static_cast<int>(MM::ActionType::StopSequence);
 
@@ -479,7 +547,8 @@ NB_MODULE(_pymmcore_nano, m) {
   m.attr("USBPort") = static_cast<int>(MM::PortType::USBPort);
   m.attr("HIDPort") = static_cast<int>(MM::PortType::HIDPort);
 
-  m.attr("FocusDirectionUnknown") = static_cast<int>(MM::FocusDirection::FocusDirectionUnknown);
+  m.attr("FocusDirectionUnknown") =
+      static_cast<int>(MM::FocusDirection::FocusDirectionUnknown);
   m.attr("FocusDirectionTowardSample") =
       static_cast<int>(MM::FocusDirection::FocusDirectionTowardSample);
   m.attr("FocusDirectionAwayFromSample") =
@@ -487,14 +556,20 @@ NB_MODULE(_pymmcore_nano, m) {
 
   m.attr("Attention") = static_cast<int>(MM::DeviceNotification::Attention);
   m.attr("Done") = static_cast<int>(MM::DeviceNotification::Done);
-  m.attr("StatusChanged") = static_cast<int>(MM::DeviceNotification::StatusChanged);
+  m.attr("StatusChanged") =
+      static_cast<int>(MM::DeviceNotification::StatusChanged);
 
-  m.attr("Unimplemented") = static_cast<int>(MM::DeviceDetectionStatus::Unimplemented);
-  m.attr("Misconfigured") = static_cast<int>(MM::DeviceDetectionStatus::Misconfigured);
-  m.attr("CanNotCommunicate") = static_cast<int>(MM::DeviceDetectionStatus::CanNotCommunicate);
-  m.attr("CanCommunicate") = static_cast<int>(MM::DeviceDetectionStatus::CanCommunicate);
+  m.attr("Unimplemented") =
+      static_cast<int>(MM::DeviceDetectionStatus::Unimplemented);
+  m.attr("Misconfigured") =
+      static_cast<int>(MM::DeviceDetectionStatus::Misconfigured);
+  m.attr("CanNotCommunicate") =
+      static_cast<int>(MM::DeviceDetectionStatus::CanNotCommunicate);
+  m.attr("CanCommunicate") =
+      static_cast<int>(MM::DeviceDetectionStatus::CanCommunicate);
 
-  m.attr("Uninitialized") = static_cast<int>(DeviceInitializationState::Uninitialized);
+  m.attr("Uninitialized") =
+      static_cast<int>(DeviceInitializationState::Uninitialized);
   m.attr("InitializedSuccessfully") =
       static_cast<int>(DeviceInitializationState::InitializedSuccessfully);
   m.attr("InitializationFailed") =
@@ -507,32 +582,43 @@ NB_MODULE(_pymmcore_nano, m) {
   nb::class_<Configuration>(m, "Configuration")
       .def(nb::init<>())
       .def("addSetting", &Configuration::addSetting, "setting"_a)
-      .def("deleteSetting", &Configuration::deleteSetting, "device"_a, "property"_a)
-      .def("isPropertyIncluded", &Configuration::isPropertyIncluded, "device"_a, "property"_a)
-      .def("isConfigurationIncluded", &Configuration::isConfigurationIncluded, "cfg"_a)
+      .def("deleteSetting", &Configuration::deleteSetting, "device"_a,
+           "property"_a)
+      .def("isPropertyIncluded", &Configuration::isPropertyIncluded, "device"_a,
+           "property"_a)
+      .def("isConfigurationIncluded", &Configuration::isConfigurationIncluded,
+           "cfg"_a)
       .def("isSettingIncluded", &Configuration::isSettingIncluded, "setting"_a)
-      .def("getSetting", nb::overload_cast<size_t>(&Configuration::getSetting, nb::const_),
+      .def("getSetting",
+           nb::overload_cast<size_t>(&Configuration::getSetting, nb::const_),
            "index"_a)
       .def("getSetting",
-           nb::overload_cast<const char *, const char *>(&Configuration::getSetting),
+           nb::overload_cast<const char *, const char *>(
+               &Configuration::getSetting),
            "device"_a, "property"_a)
       .def("size", &Configuration::size)
       .def("getVerbose", &Configuration::getVerbose);
 
   nb::class_<PropertySetting>(m, "PropertySetting")
-      .def(nb::init<const char *, const char *, const char *, bool>(), "deviceLabel"_a,
-           "prop"_a, "value"_a, "readOnly"_a = false,
+      .def(nb::init<const char *, const char *, const char *, bool>(),
+           "deviceLabel"_a, "prop"_a, "value"_a, "readOnly"_a = false,
            "Constructor specifying the entire contents")
       .def(nb::init<>(), "Default constructor")
-      .def("getDeviceLabel", &PropertySetting::getDeviceLabel, "Returns the device label")
-      .def("getPropertyName", &PropertySetting::getPropertyName, "Returns the property name")
-      .def("getReadOnly", &PropertySetting::getReadOnly, "Returns the read-only status")
-      .def("getPropertyValue", &PropertySetting::getPropertyValue, "Returns the property value")
+      .def("getDeviceLabel", &PropertySetting::getDeviceLabel,
+           "Returns the device label")
+      .def("getPropertyName", &PropertySetting::getPropertyName,
+           "Returns the property name")
+      .def("getReadOnly", &PropertySetting::getReadOnly,
+           "Returns the read-only status")
+      .def("getPropertyValue", &PropertySetting::getPropertyValue,
+           "Returns the property value")
       .def("getKey", &PropertySetting::getKey, "Returns the unique key")
-      .def("getVerbose", &PropertySetting::getVerbose, "Returns a verbose description")
+      .def("getVerbose", &PropertySetting::getVerbose,
+           "Returns a verbose description")
       .def("isEqualTo", &PropertySetting::isEqualTo, "other"_a,
            "Checks if this property setting is equal to another")
-      .def_static("generateKey", &PropertySetting::generateKey, "device"_a, "prop"_a,
+      .def_static("generateKey", &PropertySetting::generateKey, "device"_a,
+                  "prop"_a,
                   "Generates a unique key based on device and property");
 
   nb::class_<Metadata>(m, "Metadata")
@@ -541,12 +627,16 @@ NB_MODULE(_pymmcore_nano, m) {
       // Member functions
       .def("Clear", &Metadata::Clear, "Clears all tags")
       .def("GetKeys", &Metadata::GetKeys, "Returns all tag keys")
-      .def("HasTag", &Metadata::HasTag, "key"_a, "Checks if a tag exists for the given key")
-      .def("GetSingleTag", &Metadata::GetSingleTag, "key"_a, "Gets a single tag by key")
-      .def("GetArrayTag", &Metadata::GetArrayTag, "key"_a, "Gets an array tag by key")
+      .def("HasTag", &Metadata::HasTag, "key"_a,
+           "Checks if a tag exists for the given key")
+      .def("GetSingleTag", &Metadata::GetSingleTag, "key"_a,
+           "Gets a single tag by key")
+      .def("GetArrayTag", &Metadata::GetArrayTag, "key"_a,
+           "Gets an array tag by key")
       .def("SetTag", &Metadata::SetTag, "tag"_a, "Sets a tag")
       .def("RemoveTag", &Metadata::RemoveTag, "key"_a, "Removes a tag by key")
-      .def("Merge", &Metadata::Merge, "newTags"_a, "Merges new tags into the metadata")
+      .def("Merge", &Metadata::Merge, "newTags"_a,
+           "Merges new tags into the metadata")
       .def("Serialize", &Metadata::Serialize, "Serializes the metadata")
       .def("Restore", &Metadata::Restore, "stream"_a,
            "Restores metadata from a serialized string")
@@ -555,8 +645,10 @@ NB_MODULE(_pymmcore_nano, m) {
       // in bindings)
       .def(
           "PutTag",
-          [](Metadata &self, const std::string &key, const std::string &deviceLabel,
-             const std::string &value) { self.PutTag(key, deviceLabel, value); },
+          [](Metadata &self, const std::string &key,
+             const std::string &deviceLabel, const std::string &value) {
+            self.PutTag(key, deviceLabel, value);
+          },
           "key"_a, "deviceLabel"_a, "value"_a, "Adds a MetadataSingleTag")
 
       .def(
@@ -571,12 +663,13 @@ NB_MODULE(_pymmcore_nano, m) {
              MetadataSingleTag tag = self.GetSingleTag(key.c_str());
              return tag.GetValue();
            })
-      .def("__setitem__",
-           [](Metadata &self, const std::string &key, const std::string &value) {
-             MetadataSingleTag tag(key.c_str(), "__", false);
-             tag.SetValue(value.c_str());
-             self.SetTag(tag);
-           })
+      .def(
+          "__setitem__",
+          [](Metadata &self, const std::string &key, const std::string &value) {
+            MetadataSingleTag tag(key.c_str(), "__", false);
+            tag.SetValue(value.c_str());
+            self.SetTag(tag);
+          })
       .def("__delitem__", &Metadata::RemoveTag);
   //  .def("__iter__",
   //       [m](Metadata &self) {
@@ -589,19 +682,26 @@ NB_MODULE(_pymmcore_nano, m) {
       // Member functions
       .def("GetDevice", &MetadataTag::GetDevice, "Returns the device label")
       .def("GetName", &MetadataTag::GetName, "Returns the name of the tag")
-      .def("GetQualifiedName", &MetadataTag::GetQualifiedName, "Returns the qualified name")
-      .def("IsReadOnly", &MetadataTag::IsReadOnly, "Checks if the tag is read-only")
-      .def("SetDevice", &MetadataTag::SetDevice, "device"_a, "Sets the device label")
-      .def("SetName", &MetadataTag::SetName, "name"_a, "Sets the name of the tag")
-      .def("SetReadOnly", &MetadataTag::SetReadOnly, "readOnly"_a, "Sets the read-only status")
+      .def("GetQualifiedName", &MetadataTag::GetQualifiedName,
+           "Returns the qualified name")
+      .def("IsReadOnly", &MetadataTag::IsReadOnly,
+           "Checks if the tag is read-only")
+      .def("SetDevice", &MetadataTag::SetDevice, "device"_a,
+           "Sets the device label")
+      .def("SetName", &MetadataTag::SetName, "name"_a,
+           "Sets the name of the tag")
+      .def("SetReadOnly", &MetadataTag::SetReadOnly, "readOnly"_a,
+           "Sets the read-only status")
       // Virtual functions
       .def("ToSingleTag", &MetadataTag::ToSingleTag,
            "Converts to MetadataSingleTag if applicable")
-      .def("ToArrayTag", &MetadataTag::ToArrayTag, "Converts to MetadataArrayTag if applicable")
+      .def("ToArrayTag", &MetadataTag::ToArrayTag,
+           "Converts to MetadataArrayTag if applicable")
       .def("Clone", &MetadataTag::Clone, "Creates a clone of the MetadataTag")
-      .def("Serialize", &MetadataTag::Serialize, "Serializes the MetadataTag to a string")
-      .def("Restore", nb::overload_cast<const char *>(&MetadataTag::Restore), "stream"_a,
-           "Restores from a serialized string");
+      .def("Serialize", &MetadataTag::Serialize,
+           "Serializes the MetadataTag to a string")
+      .def("Restore", nb::overload_cast<const char *>(&MetadataTag::Restore),
+           "stream"_a, "Restores from a serialized string");
   // Ommitting the std::istringstream& overload: Python doesn't have a
   // stringstream equivalent
   //  .def("Restore",
@@ -614,43 +714,50 @@ NB_MODULE(_pymmcore_nano, m) {
 
   nb::class_<MetadataSingleTag, MetadataTag>(m, "MetadataSingleTag")
       .def(nb::init<>(), "Default constructor")
-      .def(nb::init<const char *, const char *, bool>(), "name"_a, "device"_a, "readOnly"_a,
-           "Parameterized constructor")
+      .def(nb::init<const char *, const char *, bool>(), "name"_a, "device"_a,
+           "readOnly"_a, "Parameterized constructor")
       // Member functions
       .def("GetValue", &MetadataSingleTag::GetValue, "Returns the value")
       .def("SetValue", &MetadataSingleTag::SetValue, "val"_a, "Sets the value")
       .def("ToSingleTag", &MetadataSingleTag::ToSingleTag,
            "Returns this object as MetadataSingleTag")
       .def("Clone", &MetadataSingleTag::Clone, "Clones this tag")
-      .def("Serialize", &MetadataSingleTag::Serialize, "Serializes this tag to a string")
+      .def("Serialize", &MetadataSingleTag::Serialize,
+           "Serializes this tag to a string")
       // Omitting the std::istringstream& overload: Python doesn't have a
       // stringstream equivalent
       //  .def("Restore",
       //  nb::overload_cast<std::istringstream&>(&MetadataSingleTag::Restore),
       //  "istream"_a, "Restores from an input stream")
-      .def("Restore", nb::overload_cast<const char *>(&MetadataSingleTag::Restore), "stream"_a,
-           "Restores from a serialized string");
+      .def("Restore",
+           nb::overload_cast<const char *>(&MetadataSingleTag::Restore),
+           "stream"_a, "Restores from a serialized string");
 
   nb::class_<MetadataArrayTag, MetadataTag>(m, "MetadataArrayTag")
       .def(nb::init<>(), "Default constructor")
-      .def(nb::init<const char *, const char *, bool>(), "name"_a, "device"_a, "readOnly"_a,
-           "Parameterized constructor")
+      .def(nb::init<const char *, const char *, bool>(), "name"_a, "device"_a,
+           "readOnly"_a, "Parameterized constructor")
       .def("ToArrayTag", &MetadataArrayTag::ToArrayTag,
            "Returns this object as MetadataArrayTag")
-      .def("AddValue", &MetadataArrayTag::AddValue, "val"_a, "Adds a value to the array")
+      .def("AddValue", &MetadataArrayTag::AddValue, "val"_a,
+           "Adds a value to the array")
       .def("SetValue", &MetadataArrayTag::SetValue, "val"_a, "idx"_a,
            "Sets a value at a specific index")
-      .def("GetValue", &MetadataArrayTag::GetValue, "idx"_a, "Gets a value at a specific index")
-      .def("GetSize", &MetadataArrayTag::GetSize, "Returns the size of the array")
+      .def("GetValue", &MetadataArrayTag::GetValue, "idx"_a,
+           "Gets a value at a specific index")
+      .def("GetSize", &MetadataArrayTag::GetSize,
+           "Returns the size of the array")
       .def("Clone", &MetadataArrayTag::Clone, "Clones this tag")
-      .def("Serialize", &MetadataArrayTag::Serialize, "Serializes this tag to a string")
+      .def("Serialize", &MetadataArrayTag::Serialize,
+           "Serializes this tag to a string")
       // Omitting the std::istringstream& overload: Python doesn't have a
       // stringstream equivalent
       //  .def("Restore",
       //  nb::overload_cast<std::istringstream&>(&MetadataArrayTag::Restore),
       //       "istream"_a, "Restores from an input stream")
-      .def("Restore", nb::overload_cast<const char *>(&MetadataArrayTag::Restore), "stream"_a,
-           "Restores from a serialized string");
+      .def("Restore",
+           nb::overload_cast<const char *>(&MetadataArrayTag::Restore),
+           "stream"_a, "Restores from a serialized string");
 
   nb::class_<MMEventCallback, PyMMEventCallback>(m, "MMEventCallback")
       .def(nb::init<>())
@@ -658,32 +765,40 @@ NB_MODULE(_pymmcore_nano, m) {
       // Virtual methods
       .def("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
            "Called when properties are changed")
-      .def("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
-           "propValue"_a, "Called when a specific property is changed")
+      .def("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a,
+           "propName"_a, "propValue"_a,
+           "Called when a specific property is changed")
       .def("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
            "newChannelGroupName"_a, "Called when the channel group changes")
-      .def("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
-           "newConfigName"_a, "Called when a configuration group changes")
-      .def("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
+      .def("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged,
+           "groupName"_a, "newConfigName"_a,
+           "Called when a configuration group changes")
+      .def("onSystemConfigurationLoaded",
+           &MMEventCallback::onSystemConfigurationLoaded,
            "Called when the system configuration is loaded")
-      .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
-           "Called when the pixel size changes")
-      .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
-           "v1"_a, "v2"_a, "v3"_a, "v4"_a, "v5"_a,
+      .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged,
+           "newPixelSizeUm"_a, "Called when the pixel size changes")
+      .def("onPixelSizeAffineChanged",
+           &MMEventCallback::onPixelSizeAffineChanged, "v0"_a, "v1"_a, "v2"_a,
+           "v3"_a, "v4"_a, "v5"_a,
            "Called when the pixel size affine transformation changes")
       // These bindings are ugly lambda workarounds because the original methods
       // take char* instead of const char*
       // https://github.com/micro-manager/mmCoreAndDevices/pull/530
       .def(
           "onSLMExposureChanged",
-          [](MMEventCallback &self, const std::string &name, double newExposure) {
-            self.onSLMExposureChanged(const_cast<char *>(name.c_str()), newExposure);
+          [](MMEventCallback &self, const std::string &name,
+             double newExposure) {
+            self.onSLMExposureChanged(const_cast<char *>(name.c_str()),
+                                      newExposure);
           },
           "name"_a, "newExposure"_a)
       .def(
           "onExposureChanged",
-          [&](MMEventCallback &self, const std::string &name, double newExposure) {
-            self.onExposureChanged(const_cast<char *>(name.c_str()), newExposure);
+          [&](MMEventCallback &self, const std::string &name,
+              double newExposure) {
+            self.onExposureChanged(const_cast<char *>(name.c_str()),
+                                   newExposure);
           },
           "name"_a, "newExposure"_a)
       .def(
@@ -694,8 +809,10 @@ NB_MODULE(_pymmcore_nano, m) {
           "name"_a, "pos"_a)
       .def(
           "onXYStagePositionChanged",
-          [&](MMEventCallback &self, const std::string &name, double xpos, double ypos) {
-            self.onXYStagePositionChanged(const_cast<char *>(name.c_str()), xpos, ypos);
+          [&](MMEventCallback &self, const std::string &name, double xpos,
+              double ypos) {
+            self.onXYStagePositionChanged(const_cast<char *>(name.c_str()),
+                                          xpos, ypos);
           },
           "name"_a, "xpos"_a, "ypos"_a);
 
@@ -754,7 +871,8 @@ NB_MODULE(_pymmcore_nano, m) {
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool truncate) {
-    self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);  // convert to string
+    self.setPrimaryLogFile(nb::str(filename).c_str(),
+                           truncate); // convert to string
           },
           "filename"_a, "truncate"_a = false)
 
@@ -772,8 +890,8 @@ NB_MODULE(_pymmcore_nano, m) {
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool enableDebug, bool truncate, bool synchronous) {
-    return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug, truncate,
-                                      synchronous);
+    return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug,
+                                      truncate, synchronous);
           },
           "filename"_a, "enableDebug"_a, "truncate"_a = true, "synchronous"_a = false)
       .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
@@ -917,15 +1035,15 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("getROI",
            [](CMMCore& self) {
     int x, y, xSize, ySize;
-    self.getROI(x, y, xSize, ySize);             // Call C++ method
-    return std::make_tuple(x, y, xSize, ySize);  // Return a tuple
+    self.getROI(x, y, xSize, ySize);            // Call C++ method
+    return std::make_tuple(x, y, xSize, ySize); // Return a tuple
            })
       .def(
           "getROI",
           [](CMMCore& self, const char* label) {
     int x, y, xSize, ySize;
-    self.getROI(label, x, y, xSize, ySize);      // Call the C++ method
-    return std::make_tuple(x, y, xSize, ySize);  // Return as Python tuple
+    self.getROI(label, x, y, xSize, ySize);     // Call the C++ method
+    return std::make_tuple(x, y, xSize, ySize); // Return as Python tuple
           },
           "label"_a)
       .def("clearROI", &CMMCore::clearROI)
@@ -1224,10 +1342,18 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("readFromSerialPort", &CMMCore::readFromSerialPort, "portLabel"_a)
 
       // SLM Control
-      .def("setSLMImage", nb::overload_cast<const char*, unsigned char*>(&CMMCore::setSLMImage),
+      // setSLMImage accepts a second argument (pixels) of either unsigned char* or unsigned int*
+      .def("setSLMImage", [](CMMCore& self, const char* slmLabel, const nb::ndarray<uint8_t> &pixels) -> void
+          {
+              long expectedWidth = self.getSLMWidth(slmLabel);
+              long expectedHeight = self.getSLMHeight(slmLabel);
+              long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
+              validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel);
+
+              // Cast the numpy array to a pointer to unsigned char
+              self.setSLMImage(slmLabel, reinterpret_cast<unsigned char*>(pixels.data()));
+          },
            "slmLabel"_a, "pixels"_a)
-      //  .def("setSLMImage", nb::overload_cast<const char*, imgRGB32>(&CMMCore::setSLMImage),
-      //       "slmLabel"_a, "pixels"_a)
       .def("setSLMPixelsTo",
            nb::overload_cast<const char*, unsigned char>(&CMMCore::setSLMPixelsTo), "slmLabel"_a,
            "intensity"_a)
@@ -1246,7 +1372,17 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("getSLMSequenceMaxLength", &CMMCore::getSLMSequenceMaxLength, "slmLabel"_a)
       .def("startSLMSequence", &CMMCore::startSLMSequence, "slmLabel"_a)
       .def("stopSLMSequence", &CMMCore::stopSLMSequence, "slmLabel"_a)
-      //  .def("loadSLMSequence", &CMMCore::loadSLMSequence, "slmLabel"_a, "imageSequence"_a)
+      .def("loadSLMSequence", [](CMMCore& self, const char* slmLabel, std::vector<nb::ndarray<uint8_t>> &imageSequence) -> void {
+        long expectedWidth = self.getSLMWidth(slmLabel);
+        long expectedHeight = self.getSLMHeight(slmLabel);
+        long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
+        std::vector<unsigned char*> inputVector;
+        for (auto &image : imageSequence) {
+          validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel);
+          inputVector.push_back(reinterpret_cast<unsigned char*>(image.data()));
+        }
+        self.loadSLMSequence(slmLabel, inputVector);
+      },"slmLabel"_a, "pixels"_a)
 
       // Galvo Control
       .def("pointGalvoAndFire", &CMMCore::pointGalvoAndFire, "galvoLabel"_a, "x"_a, "y"_a,
@@ -1256,9 +1392,9 @@ NB_MODULE(_pymmcore_nano, m) {
       .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a)
       .def("getGalvoPosition",
            [](CMMCore& self, const char* galvoLabel) {
-    double x, y;
-    self.getGalvoPosition(galvoLabel, x, y);  // Call C++ method
-    return std::make_tuple(x, y);             // Return a tuple
+      double x, y;
+      self.getGalvoPosition(galvoLabel, x, y); // Call C++ method
+      return std::make_tuple(x, y);            // Return a tuple
            })
       .def("setGalvoIlluminationState", &CMMCore::setGalvoIlluminationState, "galvoLabel"_a,
            "on"_a)
