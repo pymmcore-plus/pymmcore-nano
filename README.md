@@ -35,7 +35,7 @@ uv sync --no-install-project
 just install
 ```
 
-### test
+### Test
 
 Regardless of whether the environment is active, you can run:
 
@@ -49,6 +49,21 @@ or, if the environment is active:
 
 ```sh
 pytest
+```
+
+### Building Device Adapters
+
+This repo contains a few device adapters that are useful for testing,
+in src/mmCoreAndDevices/DeviceAdapters.  To build these, you can run:
+
+```sh
+just build-devices
+```
+
+Or, to build a specific device within the DeviceAdapters subdirectory, you can run:
+
+```sh
+just build-adapter DemoCamera
 ```
 
 ### Updating `mmCoreAndDevices` source code

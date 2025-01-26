@@ -2,12 +2,13 @@
 
 This subtree was cloned from:
 
-<https://github.com/micro-manager/mmCoreAndDevices.git@870fdb121ba977ab00fb1032cab320457a811cf1>
+<https://github.com/micro-manager/mmCoreAndDevices.git@f2a5c90432635bd3ff176953c7c3b39039009bb0>
 
 To pull in upstream changes, from the root of this project run:
 
 ```sh
-git subtree pull --prefix=src/mmCoreAndDevices https://github.com/micro-manager/mmCoreAndDevices main --squash
+python scripts/update_sources.py
+python scripts/patch_sources.py
 ```
 
 This subtree should never diverge far from the upstream repository (with the
