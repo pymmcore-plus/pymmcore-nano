@@ -645,8 +645,8 @@ InitializedSuccessfully: int = 1
 Integer: int = 3
 InvalidPort: int = 0
 IsSequenceable: int = 3
-MMCore_version: str = "11.2.1"
-MMCore_version_info: tuple = (11, 2, 1)
+MMCore_version: str = "11.3.0"
+MMCore_version_info: tuple = (11, 3, 0)
 
 class MMEventCallback:
     def __init__(self) -> None: ...
@@ -791,7 +791,7 @@ class MetadataTag:
 
 Misconfigured: int = -1
 NoAction: int = 0
-PYMMCORE_NANO_VERSION: str = "0.dev2"
+PYMMCORE_NANO_VERSION: str = "0.dev3"
 
 class PortType(enum.IntEnum):
     InvalidPort = 0

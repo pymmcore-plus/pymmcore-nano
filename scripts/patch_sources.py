@@ -23,6 +23,7 @@ def patch_to_cpp17(file_path: str) -> None:
     Path(file_path).write_text(patched_content, encoding="utf-8")
 
 
+# https://github.com/micro-manager/mmCoreAndDevices/pull/532 (pending)
 def patch_img_metadata_error() -> None:
     # Define the lines to insert
     new_lines = [
@@ -51,6 +52,7 @@ def patch_img_metadata_error() -> None:
     file.write_text("".join(lines), encoding="utf-8")
 
 
+# https://github.com/micro-manager/mmCoreAndDevices/pull/533 (not planned)
 def patch_version():
     """Expose the version numbers as extern variables in MMCore.h."""
     MMCore_h = MMCORE / "MMCore.h"
@@ -73,10 +75,14 @@ def patch_version():
     MMCore_h.write_text("".join(lines), encoding="utf-8")
 
 
-if __name__ == "__main__":
+def main():
     for file in itertools.chain(MMCORE.rglob("*"), MMDEVICE.rglob("*")):
         if file.suffix in {".cpp", ".h"}:
             patch_to_cpp17(str(file))
 
     patch_img_metadata_error()
     patch_version()
+
+
+if __name__ == "__main__":
+    main()

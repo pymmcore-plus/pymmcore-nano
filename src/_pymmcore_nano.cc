@@ -241,19 +241,19 @@ class PyMMEventCallback : public MMEventCallback {
     NB_OVERRIDE(onPixelSizeAffineChanged, v0, v1, v2, v3, v4, v5);
   }
 
-  void onStagePositionChanged(char *name, double pos) override {
+  void onStagePositionChanged(const char *name, double pos) override {
     NB_OVERRIDE(onStagePositionChanged, name, pos);
   }
 
-  void onXYStagePositionChanged(char *name, double xpos, double ypos) override {
+  void onXYStagePositionChanged(const char *name, double xpos, double ypos) override {
     NB_OVERRIDE(onXYStagePositionChanged, name, xpos, ypos);
   }
 
-  void onExposureChanged(char *name, double newExposure) override {
+  void onExposureChanged(const char *name, double newExposure) override {
     NB_OVERRIDE(onExposureChanged, name, newExposure);
   }
 
-  void onSLMExposureChanged(char *name, double newExposure) override {
+  void onSLMExposureChanged(const char *name, double newExposure) override {
     NB_OVERRIDE(onSLMExposureChanged, name, newExposure);
   }
 };
