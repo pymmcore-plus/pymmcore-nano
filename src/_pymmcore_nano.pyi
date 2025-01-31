@@ -794,6 +794,7 @@ class MetadataTag:
         """Restores from a serialized string"""
 
 Misconfigured: int = -1
+NO_GIL: int = 1
 NoAction: int = 0
 PYMMCORE_NANO_VERSION: str = "0"
 

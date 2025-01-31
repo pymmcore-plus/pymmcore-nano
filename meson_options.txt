@@ -1,0 +1,6 @@
+option(
+    'hold_gil',
+    type: 'boolean',
+    value: false,
+    description: 'Define HOLD_GIL for controlling GIL behavior.  By default, the GIL is released during long-running C++ calls.  This can be disabled by setting this option.',
+)

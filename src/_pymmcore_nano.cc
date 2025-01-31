@@ -23,8 +23,10 @@ const std::string PYMMCORE_NANO_VERSION = "0";
 // Python.  By default, the GIL is released for most calls into C++ from Python.
 #ifdef HOLD_GIL
 #define NB_DEF_GIL(...) .def(__VA_ARGS__)
+#define NO_GIL 0
 #else
 #define NB_DEF_GIL(...) .def(__VA_ARGS__, nb::call_guard<nb::gil_scoped_release>())
+#define NO_GIL 1
 #endif
 
 ///////////////// NUMPY ARRAY HELPERS ///////////////////
@@ -281,6 +283,7 @@ NB_MODULE(_pymmcore_nano, m) {
 
   /////////////////// Module Attributes ///////////////////
 
+  m.attr("NO_GIL") = NO_GIL;
   m.attr("DEVICE_INTERFACE_VERSION") = DEVICE_INTERFACE_VERSION;
   m.attr("MODULE_INTERFACE_VERSION") = MODULE_INTERFACE_VERSION;
   std::string version = std::to_string(MMCore_versionMajor) + "." +
