@@ -10,6 +10,7 @@ install:
 		--no-build-isolation \
 		--no-deps \
 		--force-reinstall \
+		# -C=setup-args="-Db_coverage=true" \
 		# -C=setup-args="-Dhold_gil=true" \
 		-C=setup-args="-Dbuildtype=debugoptimized" \
 		-C=editable-verbose=true -v
