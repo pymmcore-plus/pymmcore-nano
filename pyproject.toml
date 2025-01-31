@@ -30,7 +30,10 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
-dependencies = ["numpy>=1.25"]
+dependencies = [
+    "clang-format>=19.1.7",
+    "numpy>=1.25",
+]
 
 [dependency-groups]
 dev = [
