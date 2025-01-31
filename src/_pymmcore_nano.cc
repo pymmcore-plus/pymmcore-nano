@@ -755,7 +755,7 @@ NB_MODULE(_pymmcore_nano, m) {
           "loadSystemConfiguration",
           [](CMMCore& self,
              nb::object fileName) {  // accept any object that can be cast to a string (e.g. Path)
-                self.loadSystemConfiguration(nb::str(fileName).c_str());
+            self.loadSystemConfiguration(nb::str(fileName).c_str());
           },
           "fileName"_a)
 
@@ -787,8 +787,8 @@ NB_MODULE(_pymmcore_nano, m) {
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool truncate) {
-                                    self.setPrimaryLogFile(nb::str(filename).c_str(),
-                                                           truncate);  // convert to string
+            self.setPrimaryLogFile(nb::str(filename).c_str(),
+                                   truncate);  // convert to string
           },
           "filename"_a, "truncate"_a = false)
 
@@ -806,9 +806,8 @@ NB_MODULE(_pymmcore_nano, m) {
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool enableDebug, bool truncate, bool synchronous) {
-                                                        return self.startSecondaryLogFile(
-                                                            nb::str(filename).c_str(),
-                                                            enableDebug, truncate, synchronous);
+            return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug, truncate,
+                                              synchronous);
           },
           "filename"_a, "enableDebug"_a, "truncate"_a = true, "synchronous"_a = false)
       .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
