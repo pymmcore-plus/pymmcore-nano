@@ -36,17 +36,10 @@ np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, uns
     // Determine the dtype based on the element size
     nb::dlpack::dtype new_dtype;
     switch (byteDepth) {
-    case 1:
-        new_dtype = nb::dtype<uint8_t>();
-        break;
-    case 2:
-        new_dtype = nb::dtype<uint16_t>();
-        break;
-    case 4:
-        new_dtype = nb::dtype<uint32_t>();
-        break;
-    default:
-        throw std::invalid_argument("Unsupported element size");
+    case 1: new_dtype = nb::dtype<uint8_t>(); break;
+    case 2: new_dtype = nb::dtype<uint16_t>(); break;
+    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    default: throw std::invalid_argument("Unsupported element size");
     }
 
     // NOTE: I am definitely *not* sure that I've done this owner correctly.
@@ -103,17 +96,10 @@ np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned 
     // Determine the dtype based on the element size
     nb::dlpack::dtype new_dtype;
     switch (out_byteDepth) { // all RGB formats have 4 components in a single "pixel"
-    case 1:
-        new_dtype = nb::dtype<uint8_t>();
-        break;
-    case 2:
-        new_dtype = nb::dtype<uint16_t>();
-        break;
-    case 4:
-        new_dtype = nb::dtype<uint32_t>();
-        break;
-    default:
-        throw std::invalid_argument("Unsupported element size");
+    case 1: new_dtype = nb::dtype<uint8_t>(); break;
+    case 2: new_dtype = nb::dtype<uint16_t>(); break;
+    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    default: throw std::invalid_argument("Unsupported element size");
     }
     nb::capsule owner(pBuf, [](void *p) noexcept {});
 
