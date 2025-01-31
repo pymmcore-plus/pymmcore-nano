@@ -16,6 +16,17 @@ using namespace nb::literals;
 
 const std::string PYMMCORE_NANO_VERSION = "0";
 
+///////////////// GIL_MACROS ///////////////////
+
+// If you define HOLD_GIL in your build (e.g. -DHOLD_GIL),
+// then the GIL will be held for the duration of all calls into C++ from
+// Python.  By default, the GIL is released for most calls into C++ from Python.
+#ifdef HOLD_GIL
+#define NB_DEF_GIL(...) .def(__VA_ARGS__)
+#else
+#define NB_DEF_GIL(...) .def(__VA_ARGS__, nb::call_guard<nb::gil_scoped_release>())
+#endif
+
 ///////////////// NUMPY ARRAY HELPERS ///////////////////
 
 // Alias for read-only NumPy array
@@ -691,48 +702,32 @@ NB_MODULE(_pymmcore_nano, m) {
       .def(nb::init<>())
 
       // Virtual methods
-      .def("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
+      // clang-format off
+      NB_DEF_GIL("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
            "Called when properties are changed")
-      .def("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
+      NB_DEF_GIL("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
            "propValue"_a, "Called when a specific property is changed")
-      .def("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
+      NB_DEF_GIL("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
            "newChannelGroupName"_a, "Called when the channel group changes")
-      .def("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
+      NB_DEF_GIL("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
            "newConfigName"_a, "Called when a configuration group changes")
-      .def("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
+      NB_DEF_GIL("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
            "Called when the system configuration is loaded")
-      .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
+      NB_DEF_GIL("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
            "Called when the pixel size changes")
-      .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
+      NB_DEF_GIL("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
            "v1"_a, "v2"_a, "v3"_a, "v4"_a, "v5"_a,
            "Called when the pixel size affine transformation changes")
-      // These bindings are ugly lambda workarounds because the original methods
-      // take char* instead of const char*
-      // https://github.com/micro-manager/mmCoreAndDevices/pull/530
-      .def(
-          "onSLMExposureChanged",
-          [](MMEventCallback &self, const std::string &name, double newExposure) {
-            self.onSLMExposureChanged(const_cast<char *>(name.c_str()), newExposure);
-          },
-          "name"_a, "newExposure"_a)
-      .def(
-          "onExposureChanged",
-          [&](MMEventCallback &self, const std::string &name, double newExposure) {
-            self.onExposureChanged(const_cast<char *>(name.c_str()), newExposure);
-          },
-          "name"_a, "newExposure"_a)
-      .def(
-          "onStagePositionChanged",
-          [&](MMEventCallback &self, const std::string &name, double pos) {
-            self.onStagePositionChanged(const_cast<char *>(name.c_str()), pos);
-          },
-          "name"_a, "pos"_a)
-      .def(
-          "onXYStagePositionChanged",
-          [&](MMEventCallback &self, const std::string &name, double xpos, double ypos) {
-            self.onXYStagePositionChanged(const_cast<char *>(name.c_str()), xpos, ypos);
-          },
-          "name"_a, "xpos"_a, "ypos"_a);
+      NB_DEF_GIL("onSLMExposureChanged", &MMEventCallback::onSLMExposureChanged, "name"_a,
+           "newExposure"_a, "Called when the SLM exposure changes")
+      NB_DEF_GIL("onExposureChanged", &MMEventCallback::onExposureChanged, "name"_a, "newExposure"_a,
+           "Called when the exposure changes")
+      NB_DEF_GIL("onStagePositionChanged", &MMEventCallback::onStagePositionChanged, "name"_a,
+           "pos"_a, "Called when the stage position changes")
+      NB_DEF_GIL("onXYStagePositionChanged", &MMEventCallback::onXYStagePositionChanged, "name"_a,
+           "xpos"_a, "ypos"_a, "Called when the XY stage position changes")
+      ;
+  // clang-format on
 
   //////////////////// Exceptions ////////////////////
 
@@ -753,594 +748,601 @@ NB_MODULE(_pymmcore_nano, m) {
   nb::class_<CMMCore>(m, "CMMCore")
       .def(nb::init<>())
 
-      .def(
+      NB_DEF_GIL(
           "loadSystemConfiguration",
           [](CMMCore& self,
              nb::object fileName) {  // accept any object that can be cast to a string (e.g. Path)
-    self.loadSystemConfiguration(nb::str(fileName).c_str());
+                self.loadSystemConfiguration(nb::str(fileName).c_str());
           },
           "fileName"_a)
 
-      .def("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a)
+      NB_DEF_GIL("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a)
       .def_static("enableFeature", &CMMCore::enableFeature, "name"_a, "enable"_a)
       .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a)
-      .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a)
-      .def("unloadDevice", &CMMCore::unloadDevice, "label"_a)
-      .def("unloadAllDevices", &CMMCore::unloadAllDevices)
-      .def("initializeAllDevices", &CMMCore::initializeAllDevices)
-      .def("initializeDevice", &CMMCore::initializeDevice, "label"_a)
-      .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a)
-      .def("reset", &CMMCore::reset)
-      .def("unloadLibrary", &CMMCore::unloadLibrary, "moduleName"_a)
-      .def("updateCoreProperties", &CMMCore::updateCoreProperties)
-      .def("getCoreErrorText", &CMMCore::getCoreErrorText, "code"_a)
-      .def("getVersionInfo", &CMMCore::getVersionInfo)
-      .def("getAPIVersionInfo", &CMMCore::getAPIVersionInfo)
-      .def("getSystemState", &CMMCore::getSystemState)
-      .def("setSystemState", &CMMCore::setSystemState, "conf"_a)
-      .def("getConfigState", &CMMCore::getConfigState, "group"_a, "config"_a)
-      .def("getConfigGroupState", nb::overload_cast<const char*>(&CMMCore::getConfigGroupState),
+      NB_DEF_GIL("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a)
+      NB_DEF_GIL("unloadDevice", &CMMCore::unloadDevice, "label"_a)
+      NB_DEF_GIL("unloadAllDevices", &CMMCore::unloadAllDevices)
+      NB_DEF_GIL("initializeAllDevices", &CMMCore::initializeAllDevices)
+      NB_DEF_GIL("initializeDevice", &CMMCore::initializeDevice, "label"_a)
+      NB_DEF_GIL("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a)
+      NB_DEF_GIL("reset", &CMMCore::reset)
+      NB_DEF_GIL("unloadLibrary", &CMMCore::unloadLibrary, "moduleName"_a)
+      NB_DEF_GIL("updateCoreProperties", &CMMCore::updateCoreProperties)
+      NB_DEF_GIL("getCoreErrorText", &CMMCore::getCoreErrorText, "code"_a)
+      NB_DEF_GIL("getVersionInfo", &CMMCore::getVersionInfo)
+      NB_DEF_GIL("getAPIVersionInfo", &CMMCore::getAPIVersionInfo)
+      NB_DEF_GIL("getSystemState", &CMMCore::getSystemState)
+      NB_DEF_GIL("setSystemState", &CMMCore::setSystemState, "conf"_a)
+      NB_DEF_GIL("getConfigState", &CMMCore::getConfigState, "group"_a, "config"_a)
+      NB_DEF_GIL("getConfigGroupState", nb::overload_cast<const char*>(&CMMCore::getConfigGroupState),
            "group"_a)
-      .def("saveSystemState", &CMMCore::saveSystemState, "fileName"_a)
-      .def("loadSystemState", &CMMCore::loadSystemState, "fileName"_a)
-      .def("registerCallback", &CMMCore::registerCallback, "cb"_a)
-      .def(
+      NB_DEF_GIL("saveSystemState", &CMMCore::saveSystemState, "fileName"_a)
+      NB_DEF_GIL("loadSystemState", &CMMCore::loadSystemState, "fileName"_a)
+      NB_DEF_GIL("registerCallback", &CMMCore::registerCallback, "cb"_a)
+      NB_DEF_GIL(
           "setPrimaryLogFile",
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool truncate) {
-    self.setPrimaryLogFile(nb::str(filename).c_str(),
-                           truncate); // convert to string
+                                    self.setPrimaryLogFile(nb::str(filename).c_str(),
+                                                           truncate);  // convert to string
           },
           "filename"_a, "truncate"_a = false)
 
-      .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile)
-      .def("logMessage", nb::overload_cast<const char*>(&CMMCore::logMessage), "msg"_a)
-      .def("logMessage", nb::overload_cast<const char*, bool>(&CMMCore::logMessage), "msg"_a,
+      NB_DEF_GIL("getPrimaryLogFile", &CMMCore::getPrimaryLogFile)
+      NB_DEF_GIL("logMessage", nb::overload_cast<const char*>(&CMMCore::logMessage), "msg"_a)
+      NB_DEF_GIL("logMessage", nb::overload_cast<const char*, bool>(&CMMCore::logMessage), "msg"_a,
            "debugOnly"_a)
 
-      .def("enableDebugLog", &CMMCore::enableDebugLog, "enable"_a)
-      .def("debugLogEnabled", &CMMCore::debugLogEnabled)
-      .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a)
-      .def("stderrLogEnabled", &CMMCore::stderrLogEnabled)
-      .def(
+      NB_DEF_GIL("enableDebugLog", &CMMCore::enableDebugLog, "enable"_a)
+      NB_DEF_GIL("debugLogEnabled", &CMMCore::debugLogEnabled)
+      NB_DEF_GIL("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a)
+      NB_DEF_GIL("stderrLogEnabled", &CMMCore::stderrLogEnabled)
+      NB_DEF_GIL(
           "startSecondaryLogFile",
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
              bool enableDebug, bool truncate, bool synchronous) {
-    return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug,
-                                      truncate, synchronous);
+                                                        return self.startSecondaryLogFile(
+                                                            nb::str(filename).c_str(),
+                                                            enableDebug, truncate, synchronous);
           },
           "filename"_a, "enableDebug"_a, "truncate"_a = true, "synchronous"_a = false)
-      .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
+      NB_DEF_GIL("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
 
-      .def("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths)
-      .def("setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a)
-      .def("getDeviceAdapterNames", &CMMCore::getDeviceAdapterNames)
-      .def("getAvailableDevices", &CMMCore::getAvailableDevices, "library"_a)
-      .def("getAvailableDeviceDescriptions", &CMMCore::getAvailableDeviceDescriptions, "library"_a)
-      .def("getAvailableDeviceTypes", &CMMCore::getAvailableDeviceTypes, "library"_a)
-      .def("getLoadedDevices", &CMMCore::getLoadedDevices)
-      .def("getLoadedDevicesOfType", &CMMCore::getLoadedDevicesOfType, "devType"_a)
-      .def("getDeviceType", &CMMCore::getDeviceType, "label"_a)
-      .def("getDeviceLibrary", &CMMCore::getDeviceLibrary, "label"_a)
-      .def("getDeviceName", nb::overload_cast<const char*>(&CMMCore::getDeviceName), "label"_a)
-      .def("getDeviceDescription", &CMMCore::getDeviceDescription, "label"_a)
-      .def("getDevicePropertyNames", &CMMCore::getDevicePropertyNames, "label"_a)
-      .def("hasProperty", &CMMCore::hasProperty, "label"_a, "propName"_a)
-      .def("getProperty", &CMMCore::getProperty, "label"_a, "propName"_a)
-      .def("setProperty",
+      NB_DEF_GIL("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths)
+      NB_DEF_GIL("setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a)
+      NB_DEF_GIL("getDeviceAdapterNames", &CMMCore::getDeviceAdapterNames)
+      NB_DEF_GIL("getAvailableDevices", &CMMCore::getAvailableDevices, "library"_a)
+      NB_DEF_GIL("getAvailableDeviceDescriptions", &CMMCore::getAvailableDeviceDescriptions, "library"_a)
+      NB_DEF_GIL("getAvailableDeviceTypes", &CMMCore::getAvailableDeviceTypes, "library"_a)
+      NB_DEF_GIL("getLoadedDevices", &CMMCore::getLoadedDevices)
+      NB_DEF_GIL("getLoadedDevicesOfType", &CMMCore::getLoadedDevicesOfType, "devType"_a)
+      NB_DEF_GIL("getDeviceType", &CMMCore::getDeviceType, "label"_a)
+      NB_DEF_GIL("getDeviceLibrary", &CMMCore::getDeviceLibrary, "label"_a)
+      NB_DEF_GIL("getDeviceName", nb::overload_cast<const char*>(&CMMCore::getDeviceName), "label"_a)
+      NB_DEF_GIL("getDeviceDescription", &CMMCore::getDeviceDescription, "label"_a)
+      NB_DEF_GIL("getDevicePropertyNames", &CMMCore::getDevicePropertyNames, "label"_a)
+      NB_DEF_GIL("hasProperty", &CMMCore::hasProperty, "label"_a, "propName"_a)
+      NB_DEF_GIL("getProperty", &CMMCore::getProperty, "label"_a, "propName"_a)
+      NB_DEF_GIL("setProperty",
            nb::overload_cast<const char*, const char*, const char*>(&CMMCore::setProperty),
            "label"_a, "propName"_a, "propValue"_a)
-      .def("setProperty", nb::overload_cast<const char*, const char*, bool>(&CMMCore::setProperty),
+      NB_DEF_GIL("setProperty", nb::overload_cast<const char*, const char*, bool>(&CMMCore::setProperty),
            "label"_a, "propName"_a, "propValue"_a)
-      .def("setProperty", nb::overload_cast<const char*, const char*, long>(&CMMCore::setProperty),
+      NB_DEF_GIL("setProperty", nb::overload_cast<const char*, const char*, long>(&CMMCore::setProperty),
            "label"_a, "propName"_a, "propValue"_a)
-      .def("setProperty",
+      NB_DEF_GIL("setProperty",
            nb::overload_cast<const char*, const char*, float>(&CMMCore::setProperty), "label"_a,
            "propName"_a, "propValue"_a)
-      .def("getAllowedPropertyValues", &CMMCore::getAllowedPropertyValues, "label"_a, "propName"_a)
-      .def("isPropertyReadOnly", &CMMCore::isPropertyReadOnly, "label"_a, "propName"_a)
-      .def("isPropertyPreInit", &CMMCore::isPropertyPreInit, "label"_a, "propName"_a)
-      .def("isPropertySequenceable", &CMMCore::isPropertySequenceable, "label"_a, "propName"_a)
-      .def("hasPropertyLimits", &CMMCore::hasPropertyLimits, "label"_a, "propName"_a)
-      .def("getPropertyLowerLimit", &CMMCore::getPropertyLowerLimit, "label"_a, "propName"_a)
-      .def("getPropertyUpperLimit", &CMMCore::getPropertyUpperLimit, "label"_a, "propName"_a)
-      .def("getPropertyType", &CMMCore::getPropertyType, "label"_a, "propName"_a)
-      .def("startPropertySequence", &CMMCore::startPropertySequence, "label"_a, "propName"_a)
-      .def("stopPropertySequence", &CMMCore::stopPropertySequence, "label"_a, "propName"_a)
-      .def("getPropertySequenceMaxLength", &CMMCore::getPropertySequenceMaxLength, "label"_a,
+      NB_DEF_GIL("getAllowedPropertyValues", &CMMCore::getAllowedPropertyValues, "label"_a, "propName"_a)
+      NB_DEF_GIL("isPropertyReadOnly", &CMMCore::isPropertyReadOnly, "label"_a, "propName"_a)
+      NB_DEF_GIL("isPropertyPreInit", &CMMCore::isPropertyPreInit, "label"_a, "propName"_a)
+      NB_DEF_GIL("isPropertySequenceable", &CMMCore::isPropertySequenceable, "label"_a, "propName"_a)
+      NB_DEF_GIL("hasPropertyLimits", &CMMCore::hasPropertyLimits, "label"_a, "propName"_a)
+      NB_DEF_GIL("getPropertyLowerLimit", &CMMCore::getPropertyLowerLimit, "label"_a, "propName"_a)
+      NB_DEF_GIL("getPropertyUpperLimit", &CMMCore::getPropertyUpperLimit, "label"_a, "propName"_a)
+      NB_DEF_GIL("getPropertyType", &CMMCore::getPropertyType, "label"_a, "propName"_a)
+      NB_DEF_GIL("startPropertySequence", &CMMCore::startPropertySequence, "label"_a, "propName"_a)
+      NB_DEF_GIL("stopPropertySequence", &CMMCore::stopPropertySequence, "label"_a, "propName"_a)
+      NB_DEF_GIL("getPropertySequenceMaxLength", &CMMCore::getPropertySequenceMaxLength, "label"_a,
            "propName"_a)
-      .def("loadPropertySequence", &CMMCore::loadPropertySequence, "label"_a, "propName"_a,
+      NB_DEF_GIL("loadPropertySequence", &CMMCore::loadPropertySequence, "label"_a, "propName"_a,
            "eventSequence"_a)
-      .def("deviceBusy", &CMMCore::deviceBusy, "label"_a)
-      .def("waitForDevice", nb::overload_cast<const char*>(&CMMCore::waitForDevice), "label"_a)
-      .def("waitForConfig", &CMMCore::waitForConfig, "group"_a, "configName"_a)
-      .def("systemBusy", &CMMCore::systemBusy)
-      .def("waitForSystem", &CMMCore::waitForSystem)
-      .def("deviceTypeBusy", &CMMCore::deviceTypeBusy, "devType"_a)
-      .def("waitForDeviceType", &CMMCore::waitForDeviceType, "devType"_a)
-      .def("getDeviceDelayMs", &CMMCore::getDeviceDelayMs, "label"_a)
-      .def("setDeviceDelayMs", &CMMCore::setDeviceDelayMs, "label"_a, "delayMs"_a)
-      .def("usesDeviceDelay", &CMMCore::usesDeviceDelay, "label"_a)
-      .def("setTimeoutMs", &CMMCore::setTimeoutMs, "timeoutMs"_a)
-      .def("getTimeoutMs", &CMMCore::getTimeoutMs)
-      .def("sleep", &CMMCore::sleep, "intervalMs"_a)
+      NB_DEF_GIL("deviceBusy", &CMMCore::deviceBusy, "label"_a)
+      NB_DEF_GIL("waitForDevice", nb::overload_cast<const char*>(&CMMCore::waitForDevice), "label"_a)
+      NB_DEF_GIL("waitForConfig", &CMMCore::waitForConfig, "group"_a, "configName"_a)
+      NB_DEF_GIL("systemBusy", &CMMCore::systemBusy)
+      NB_DEF_GIL("waitForSystem", &CMMCore::waitForSystem)
+      NB_DEF_GIL("deviceTypeBusy", &CMMCore::deviceTypeBusy, "devType"_a)
+      NB_DEF_GIL("waitForDeviceType", &CMMCore::waitForDeviceType, "devType"_a)
+      NB_DEF_GIL("getDeviceDelayMs", &CMMCore::getDeviceDelayMs, "label"_a)
+      NB_DEF_GIL("setDeviceDelayMs", &CMMCore::setDeviceDelayMs, "label"_a, "delayMs"_a)
+      NB_DEF_GIL("usesDeviceDelay", &CMMCore::usesDeviceDelay, "label"_a)
+      NB_DEF_GIL("setTimeoutMs", &CMMCore::setTimeoutMs, "timeoutMs"_a)
+      NB_DEF_GIL("getTimeoutMs", &CMMCore::getTimeoutMs)
+      NB_DEF_GIL("sleep", &CMMCore::sleep, "intervalMs"_a)
 
-      .def("getCameraDevice", &CMMCore::getCameraDevice)
-      .def("getShutterDevice", &CMMCore::getShutterDevice)
-      .def("getFocusDevice", &CMMCore::getFocusDevice)
-      .def("getXYStageDevice", &CMMCore::getXYStageDevice)
-      .def("getAutoFocusDevice", &CMMCore::getAutoFocusDevice)
-      .def("getImageProcessorDevice", &CMMCore::getImageProcessorDevice)
-      .def("getSLMDevice", &CMMCore::getSLMDevice)
-      .def("getGalvoDevice", &CMMCore::getGalvoDevice)
-      .def("getChannelGroup", &CMMCore::getChannelGroup)
-      .def("setCameraDevice", &CMMCore::setCameraDevice, "cameraLabel"_a)
-      .def("setShutterDevice", &CMMCore::setShutterDevice, "shutterLabel"_a)
-      .def("setFocusDevice", &CMMCore::setFocusDevice, "focusLabel"_a)
-      .def("setXYStageDevice", &CMMCore::setXYStageDevice, "xyStageLabel"_a)
-      .def("setAutoFocusDevice", &CMMCore::setAutoFocusDevice, "focusLabel"_a)
-      .def("setImageProcessorDevice", &CMMCore::setImageProcessorDevice, "procLabel"_a)
-      .def("setSLMDevice", &CMMCore::setSLMDevice, "slmLabel"_a)
-      .def("setGalvoDevice", &CMMCore::setGalvoDevice, "galvoLabel"_a)
-      .def("setChannelGroup", &CMMCore::setChannelGroup, "channelGroup"_a)
+      NB_DEF_GIL("getCameraDevice", &CMMCore::getCameraDevice)
+      NB_DEF_GIL("getShutterDevice", &CMMCore::getShutterDevice)
+      NB_DEF_GIL("getFocusDevice", &CMMCore::getFocusDevice)
+      NB_DEF_GIL("getXYStageDevice", &CMMCore::getXYStageDevice)
+      NB_DEF_GIL("getAutoFocusDevice", &CMMCore::getAutoFocusDevice)
+      NB_DEF_GIL("getImageProcessorDevice", &CMMCore::getImageProcessorDevice)
+      NB_DEF_GIL("getSLMDevice", &CMMCore::getSLMDevice)
+      NB_DEF_GIL("getGalvoDevice", &CMMCore::getGalvoDevice)
+      NB_DEF_GIL("getChannelGroup", &CMMCore::getChannelGroup)
+      NB_DEF_GIL("setCameraDevice", &CMMCore::setCameraDevice, "cameraLabel"_a)
+      NB_DEF_GIL("setShutterDevice", &CMMCore::setShutterDevice, "shutterLabel"_a)
+      NB_DEF_GIL("setFocusDevice", &CMMCore::setFocusDevice, "focusLabel"_a)
+      NB_DEF_GIL("setXYStageDevice", &CMMCore::setXYStageDevice, "xyStageLabel"_a)
+      NB_DEF_GIL("setAutoFocusDevice", &CMMCore::setAutoFocusDevice, "focusLabel"_a)
+      NB_DEF_GIL("setImageProcessorDevice", &CMMCore::setImageProcessorDevice, "procLabel"_a)
+      NB_DEF_GIL("setSLMDevice", &CMMCore::setSLMDevice, "slmLabel"_a)
+      NB_DEF_GIL("setGalvoDevice", &CMMCore::setGalvoDevice, "galvoLabel"_a)
+      NB_DEF_GIL("setChannelGroup", &CMMCore::setChannelGroup, "channelGroup"_a)
 
-      .def("getSystemStateCache", &CMMCore::getSystemStateCache)
-      .def("updateSystemStateCache", &CMMCore::updateSystemStateCache)
-      .def("getPropertyFromCache", &CMMCore::getPropertyFromCache, "deviceLabel"_a, "propName"_a)
-      .def("getCurrentConfigFromCache", &CMMCore::getCurrentConfigFromCache, "groupName"_a)
-      .def("getConfigGroupStateFromCache", &CMMCore::getConfigGroupStateFromCache, "group"_a)
+      NB_DEF_GIL("getSystemStateCache", &CMMCore::getSystemStateCache)
+      NB_DEF_GIL("updateSystemStateCache", &CMMCore::updateSystemStateCache)
+      NB_DEF_GIL("getPropertyFromCache", &CMMCore::getPropertyFromCache, "deviceLabel"_a, "propName"_a)
+      NB_DEF_GIL("getCurrentConfigFromCache", &CMMCore::getCurrentConfigFromCache, "groupName"_a)
+      NB_DEF_GIL("getConfigGroupStateFromCache", &CMMCore::getConfigGroupStateFromCache, "group"_a)
 
-      .def("defineConfig", nb::overload_cast<const char*, const char*>(&CMMCore::defineConfig),
+      NB_DEF_GIL("defineConfig", nb::overload_cast<const char*, const char*>(&CMMCore::defineConfig),
            "groupName"_a, "configName"_a)
-      .def("defineConfig",
+      NB_DEF_GIL("defineConfig",
            nb::overload_cast<const char*, const char*, const char*, const char*, const char*>(
                &CMMCore::defineConfig),
            "groupName"_a, "configName"_a, "deviceLabel"_a, "propName"_a, "value"_a)
-      .def("defineConfigGroup", &CMMCore::defineConfigGroup, "groupName"_a)
-      .def("deleteConfigGroup", &CMMCore::deleteConfigGroup, "groupName"_a)
-      .def("renameConfigGroup", &CMMCore::renameConfigGroup, "oldGroupName"_a, "newGroupName"_a)
-      .def("isGroupDefined", &CMMCore::isGroupDefined, "groupName"_a)
-      .def("isConfigDefined", &CMMCore::isConfigDefined, "groupName"_a, "configName"_a)
-      .def("setConfig", &CMMCore::setConfig, "groupName"_a, "configName"_a)
+      NB_DEF_GIL("defineConfigGroup", &CMMCore::defineConfigGroup, "groupName"_a)
+      NB_DEF_GIL("deleteConfigGroup", &CMMCore::deleteConfigGroup, "groupName"_a)
+      NB_DEF_GIL("renameConfigGroup", &CMMCore::renameConfigGroup, "oldGroupName"_a, "newGroupName"_a)
+      NB_DEF_GIL("isGroupDefined", &CMMCore::isGroupDefined, "groupName"_a)
+      NB_DEF_GIL("isConfigDefined", &CMMCore::isConfigDefined, "groupName"_a, "configName"_a)
+      NB_DEF_GIL("setConfig", &CMMCore::setConfig, "groupName"_a, "configName"_a)
 
-      .def("deleteConfig", nb::overload_cast<const char*, const char*>(&CMMCore::deleteConfig),
+      NB_DEF_GIL("deleteConfig", nb::overload_cast<const char*, const char*>(&CMMCore::deleteConfig),
            "groupName"_a, "configName"_a)
-      .def("deleteConfig",
+      NB_DEF_GIL("deleteConfig",
            nb::overload_cast<const char*, const char*, const char*, const char*>(
                &CMMCore::deleteConfig),
            "groupName"_a, "configName"_a, "deviceLabel"_a, "propName"_a)
 
-      .def("renameConfig", &CMMCore::renameConfig, "groupName"_a, "oldConfigName"_a,
+      NB_DEF_GIL("renameConfig", &CMMCore::renameConfig, "groupName"_a, "oldConfigName"_a,
            "newConfigName"_a)
-      .def("getAvailableConfigGroups", &CMMCore::getAvailableConfigGroups)
-      .def("getAvailableConfigs", &CMMCore::getAvailableConfigs, "configGroup"_a)
-      .def("getCurrentConfig", &CMMCore::getCurrentConfig, "groupName"_a)
-      .def("getConfigData", &CMMCore::getConfigData, "configGroup"_a, "configName"_a)
+      NB_DEF_GIL("getAvailableConfigGroups", &CMMCore::getAvailableConfigGroups)
+      NB_DEF_GIL("getAvailableConfigs", &CMMCore::getAvailableConfigs, "configGroup"_a)
+      NB_DEF_GIL("getCurrentConfig", &CMMCore::getCurrentConfig, "groupName"_a)
+      NB_DEF_GIL("getConfigData", &CMMCore::getConfigData, "configGroup"_a, "configName"_a)
 
-      .def("getCurrentPixelSizeConfig", nb::overload_cast<>(&CMMCore::getCurrentPixelSizeConfig))
-      .def("getCurrentPixelSizeConfig",
+      NB_DEF_GIL("getCurrentPixelSizeConfig", nb::overload_cast<>(&CMMCore::getCurrentPixelSizeConfig))
+      NB_DEF_GIL("getCurrentPixelSizeConfig",
            nb::overload_cast<bool>(&CMMCore::getCurrentPixelSizeConfig), "cached"_a)
-      .def("getPixelSizeUm", nb::overload_cast<>(&CMMCore::getPixelSizeUm))
-      .def("getPixelSizeUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeUm), "cached"_a)
-      .def("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID, "resolutionID"_a)
-      .def("getPixelSizeAffine", nb::overload_cast<>(&CMMCore::getPixelSizeAffine))
-      .def("getPixelSizeAffine", nb::overload_cast<bool>(&CMMCore::getPixelSizeAffine), "cached"_a)
-      .def("getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID, "resolutionID"_a)
-      .def("getMagnificationFactor", &CMMCore::getMagnificationFactor)
-      .def("setPixelSizeUm", &CMMCore::setPixelSizeUm, "resolutionID"_a, "pixSize"_a)
-      .def("setPixelSizeAffine", &CMMCore::setPixelSizeAffine, "resolutionID"_a, "affine"_a)
-      .def("definePixelSizeConfig",
+      NB_DEF_GIL("getPixelSizeUm", nb::overload_cast<>(&CMMCore::getPixelSizeUm))
+      NB_DEF_GIL("getPixelSizeUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeUm), "cached"_a)
+      NB_DEF_GIL("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID, "resolutionID"_a)
+      NB_DEF_GIL("getPixelSizeAffine", nb::overload_cast<>(&CMMCore::getPixelSizeAffine))
+      NB_DEF_GIL("getPixelSizeAffine", nb::overload_cast<bool>(&CMMCore::getPixelSizeAffine), "cached"_a)
+      NB_DEF_GIL("getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID, "resolutionID"_a)
+      NB_DEF_GIL("getMagnificationFactor", &CMMCore::getMagnificationFactor)
+      NB_DEF_GIL("setPixelSizeUm", &CMMCore::setPixelSizeUm, "resolutionID"_a, "pixSize"_a)
+      NB_DEF_GIL("setPixelSizeAffine", &CMMCore::setPixelSizeAffine, "resolutionID"_a, "affine"_a)
+      NB_DEF_GIL("definePixelSizeConfig",
            nb::overload_cast<const char*, const char*, const char*, const char*>(
                &CMMCore::definePixelSizeConfig),
            "resolutionID"_a, "deviceLabel"_a, "propName"_a, "value"_a)
-      .def("definePixelSizeConfig",
+      NB_DEF_GIL("definePixelSizeConfig",
            nb::overload_cast<const char*>(&CMMCore::definePixelSizeConfig), "resolutionID"_a)
-      .def("getAvailablePixelSizeConfigs", &CMMCore::getAvailablePixelSizeConfigs)
-      .def("isPixelSizeConfigDefined", &CMMCore::isPixelSizeConfigDefined, "resolutionID"_a)
-      .def("setPixelSizeConfig", &CMMCore::setPixelSizeConfig, "resolutionID"_a)
-      .def("renamePixelSizeConfig", &CMMCore::renamePixelSizeConfig, "oldConfigName"_a,
+      NB_DEF_GIL("getAvailablePixelSizeConfigs", &CMMCore::getAvailablePixelSizeConfigs)
+      NB_DEF_GIL("isPixelSizeConfigDefined", &CMMCore::isPixelSizeConfigDefined, "resolutionID"_a)
+      NB_DEF_GIL("setPixelSizeConfig", &CMMCore::setPixelSizeConfig, "resolutionID"_a)
+      NB_DEF_GIL("renamePixelSizeConfig", &CMMCore::renamePixelSizeConfig, "oldConfigName"_a,
            "newConfigName"_a)
-      .def("deletePixelSizeConfig", &CMMCore::deletePixelSizeConfig, "configName"_a)
-      .def("getPixelSizeConfigData", &CMMCore::getPixelSizeConfigData, "configName"_a)
+      NB_DEF_GIL("deletePixelSizeConfig", &CMMCore::deletePixelSizeConfig, "configName"_a)
+      NB_DEF_GIL("getPixelSizeConfigData", &CMMCore::getPixelSizeConfigData, "configName"_a)
 
       // Image Acquisition Methods
-      .def("setROI", nb::overload_cast<int, int, int, int>(&CMMCore::setROI), "x"_a, "y"_a,
+      NB_DEF_GIL("setROI", nb::overload_cast<int, int, int, int>(&CMMCore::setROI), "x"_a, "y"_a,
            "xSize"_a, "ySize"_a)
-      .def("setROI", nb::overload_cast<const char*, int, int, int, int>(&CMMCore::setROI),
+      NB_DEF_GIL("setROI", nb::overload_cast<const char*, int, int, int, int>(&CMMCore::setROI),
            "label"_a, "x"_a, "y"_a, "xSize"_a, "ySize"_a)
-      .def("getROI",
+      NB_DEF_GIL("getROI",
            [](CMMCore& self) {
-    int x, y, xSize, ySize;
-    self.getROI(x, y, xSize, ySize);            // Call C++ method
-    return std::make_tuple(x, y, xSize, ySize); // Return a tuple
+                int x, y, xSize, ySize;
+                self.getROI(x, y, xSize, ySize);             // Call C++ method
+                return std::make_tuple(x, y, xSize, ySize);  // Return a tuple
            })
-      .def(
+      NB_DEF_GIL(
           "getROI",
           [](CMMCore& self, const char* label) {
-    int x, y, xSize, ySize;
-    self.getROI(label, x, y, xSize, ySize);     // Call the C++ method
-    return std::make_tuple(x, y, xSize, ySize); // Return as Python tuple
+                    int x, y, xSize, ySize;
+                    self.getROI(label, x, y, xSize, ySize);  // Call the C++ method
+                    return std::make_tuple(x, y, xSize,
+                                           ySize);  // Return as Python tuple
           },
           "label"_a)
-      .def("clearROI", &CMMCore::clearROI)
-      .def("isMultiROISupported", &CMMCore::isMultiROISupported)
-      .def("isMultiROIEnabled", &CMMCore::isMultiROIEnabled)
-      .def("setMultiROI", &CMMCore::setMultiROI, "xs"_a, "ys"_a, "widths"_a, "heights"_a)
-      .def("getMultiROI",
+      NB_DEF_GIL("clearROI", &CMMCore::clearROI)
+      NB_DEF_GIL("isMultiROISupported", &CMMCore::isMultiROISupported)
+      NB_DEF_GIL("isMultiROIEnabled", &CMMCore::isMultiROIEnabled)
+      NB_DEF_GIL("setMultiROI", &CMMCore::setMultiROI, "xs"_a, "ys"_a, "widths"_a, "heights"_a)
+      NB_DEF_GIL("getMultiROI",
            [](CMMCore& self) -> std::tuple<std::vector<unsigned>, std::vector<unsigned>, std::vector<unsigned>,
                                            std::vector<unsigned>> {
-    std::vector<unsigned> xs, ys, widths, heights;
-    self.getMultiROI(xs, ys, widths, heights);
-    return {xs, ys, widths, heights};
+                                std::vector<unsigned> xs, ys, widths, heights;
+                                self.getMultiROI(xs, ys, widths, heights);
+                                return {xs, ys, widths, heights};
            })
 
-      .def("setExposure", nb::overload_cast<double>(&CMMCore::setExposure), "exp"_a)
-      .def("setExposure", nb::overload_cast<const char*, double>(&CMMCore::setExposure),
+      NB_DEF_GIL("setExposure", nb::overload_cast<double>(&CMMCore::setExposure), "exp"_a)
+      NB_DEF_GIL("setExposure", nb::overload_cast<const char*, double>(&CMMCore::setExposure),
            "cameraLabel"_a, "dExp"_a)
-      .def("getExposure", nb::overload_cast<>(&CMMCore::getExposure))
-      .def("getExposure", nb::overload_cast<const char*>(&CMMCore::getExposure), "label"_a)
-      .def("snapImage", &CMMCore::snapImage)
-      .def("getImage",
+      NB_DEF_GIL("getExposure", nb::overload_cast<>(&CMMCore::getExposure))
+      NB_DEF_GIL("getExposure", nb::overload_cast<const char*>(&CMMCore::getExposure), "label"_a)
+      NB_DEF_GIL("snapImage", &CMMCore::snapImage)
+      NB_DEF_GIL("getImage",
            [](CMMCore& self) -> np_array {
-    return create_image_array(self, self.getImage()); })
-      .def("getImage",
+                                            return create_image_array(self, self.getImage()); })
+      NB_DEF_GIL("getImage",
            [](CMMCore& self, unsigned channel) -> np_array {
-    return create_image_array(self, self.getImage(channel));
+                                                return create_image_array(
+                                                    self, self.getImage(channel));
            })
-      .def("getImageWidth", &CMMCore::getImageWidth)
-      .def("getImageHeight", &CMMCore::getImageHeight)
-      .def("getBytesPerPixel", &CMMCore::getBytesPerPixel)
-      .def("getImageBitDepth", &CMMCore::getImageBitDepth)
-      .def("getNumberOfComponents", &CMMCore::getNumberOfComponents)
-      .def("getNumberOfCameraChannels", &CMMCore::getNumberOfCameraChannels)
-      .def("getCameraChannelName", &CMMCore::getCameraChannelName, "channelNr"_a)
-      .def("getImageBufferSize", &CMMCore::getImageBufferSize)
-      .def("setAutoShutter", &CMMCore::setAutoShutter, "state"_a)
-      .def("getAutoShutter", &CMMCore::getAutoShutter)
-      .def("setShutterOpen", nb::overload_cast<bool>(&CMMCore::setShutterOpen), "state"_a)
-      .def("getShutterOpen", nb::overload_cast<>(&CMMCore::getShutterOpen))
-      .def("setShutterOpen", nb::overload_cast<const char*, bool>(&CMMCore::setShutterOpen),
+      NB_DEF_GIL("getImageWidth", &CMMCore::getImageWidth)
+      NB_DEF_GIL("getImageHeight", &CMMCore::getImageHeight)
+      NB_DEF_GIL("getBytesPerPixel", &CMMCore::getBytesPerPixel)
+      NB_DEF_GIL("getImageBitDepth", &CMMCore::getImageBitDepth)
+      NB_DEF_GIL("getNumberOfComponents", &CMMCore::getNumberOfComponents)
+      NB_DEF_GIL("getNumberOfCameraChannels", &CMMCore::getNumberOfCameraChannels)
+      NB_DEF_GIL("getCameraChannelName", &CMMCore::getCameraChannelName, "channelNr"_a)
+      NB_DEF_GIL("getImageBufferSize", &CMMCore::getImageBufferSize)
+      NB_DEF_GIL("setAutoShutter", &CMMCore::setAutoShutter, "state"_a)
+      NB_DEF_GIL("getAutoShutter", &CMMCore::getAutoShutter)
+      NB_DEF_GIL("setShutterOpen", nb::overload_cast<bool>(&CMMCore::setShutterOpen), "state"_a)
+      NB_DEF_GIL("getShutterOpen", nb::overload_cast<>(&CMMCore::getShutterOpen))
+      NB_DEF_GIL("setShutterOpen", nb::overload_cast<const char*, bool>(&CMMCore::setShutterOpen),
            "shutterLabel"_a, "state"_a)
-      .def("getShutterOpen", nb::overload_cast<const char*>(&CMMCore::getShutterOpen),
+      NB_DEF_GIL("getShutterOpen", nb::overload_cast<const char*>(&CMMCore::getShutterOpen),
            "shutterLabel"_a)
-      .def("startSequenceAcquisition",
+      NB_DEF_GIL("startSequenceAcquisition",
            nb::overload_cast<long, double, bool>(&CMMCore::startSequenceAcquisition),
            "numImages"_a, "intervalMs"_a, "stopOnOverflow"_a)
-      .def("startSequenceAcquisition",
+      NB_DEF_GIL("startSequenceAcquisition",
            nb::overload_cast<const char*, long, double, bool>(&CMMCore::startSequenceAcquisition),
            "cameraLabel"_a, "numImages"_a, "intervalMs"_a, "stopOnOverflow"_a)
-      .def("prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition, "cameraLabel"_a)
-      .def("startContinuousSequenceAcquisition", &CMMCore::startContinuousSequenceAcquisition,
+      NB_DEF_GIL("prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition, "cameraLabel"_a)
+      NB_DEF_GIL("startContinuousSequenceAcquisition", &CMMCore::startContinuousSequenceAcquisition,
            "intervalMs"_a)
-      .def("stopSequenceAcquisition", nb::overload_cast<>(&CMMCore::stopSequenceAcquisition))
-      .def("stopSequenceAcquisition",
+      NB_DEF_GIL("stopSequenceAcquisition", nb::overload_cast<>(&CMMCore::stopSequenceAcquisition))
+      NB_DEF_GIL("stopSequenceAcquisition",
            nb::overload_cast<const char*>(&CMMCore::stopSequenceAcquisition), "cameraLabel"_a)
-      .def("isSequenceRunning", nb::overload_cast<>(&CMMCore::isSequenceRunning))
-      .def("isSequenceRunning", nb::overload_cast<const char*>(&CMMCore::isSequenceRunning),
+      NB_DEF_GIL("isSequenceRunning", nb::overload_cast<>(&CMMCore::isSequenceRunning))
+      NB_DEF_GIL("isSequenceRunning", nb::overload_cast<const char*>(&CMMCore::isSequenceRunning),
            "cameraLabel"_a)
-      .def("getLastImage",
+      NB_DEF_GIL("getLastImage",
            [](CMMCore& self) -> np_array {
-    return create_image_array(self, self.getLastImage());
+                                                                                                                                        return create_image_array(
+                                                                                                                                            self,
+                                                                                                                                            self.getLastImage());
            })
-      .def("popNextImage",
+      NB_DEF_GIL("popNextImage",
            [](CMMCore& self) -> np_array {
-    return create_image_array(self, self.popNextImage());
+                                                                                                                                            return create_image_array(
+                                                                                                                                                self,
+                                                                                                                                                self.popNextImage());
            })
       // this is a new overload that returns both the image and the metadata
       // not present in the original C++ API
-      .def(
+      NB_DEF_GIL(
           "getLastImageMD",
           [](CMMCore& self) -> std::tuple<np_array, Metadata> {
-    Metadata md;
-    auto img = self.getLastImageMD(md);
-    return {create_metadata_array(self, img, md), md};
+            Metadata md;
+            auto img = self.getLastImageMD(md);
+            return {create_metadata_array(self, img, md), md};
           },
           "Get the last image in the circular buffer, return as tuple of image and metadata")
-      .def(
+      NB_DEF_GIL(
           "getLastImageMD",
           [](CMMCore& self, Metadata& md) -> np_array {
-    auto img = self.getLastImageMD(md);
-    return create_metadata_array(self, img, md);
+                auto img = self.getLastImageMD(md);
+                return create_metadata_array(self, img, md);
           },
           "md"_a,
           "Get the last image in the circular buffer, store metadata in the provided object")
-      .def(
+      NB_DEF_GIL(
           "getLastImageMD",
           [](CMMCore& self, unsigned channel,
              unsigned slice) -> std::tuple<np_array, Metadata> {
-    Metadata md;
-    auto img = self.getLastImageMD(channel, slice, md);
-    return {create_metadata_array(self, img, md), md};
+                    Metadata md;
+                    auto img = self.getLastImageMD(channel, slice, md);
+                    return {create_metadata_array(self, img, md), md};
           },
           "channel"_a, "slice"_a,
           "Get the last image in the circular buffer for a specific channel and slice, return"
           "as tuple of image and metadata")
-      .def(
+      NB_DEF_GIL(
           "getLastImageMD",
           [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> np_array {
-    auto img = self.getLastImageMD(channel, slice, md);
-    return create_metadata_array(self, img, md);
+                        auto img = self.getLastImageMD(channel, slice, md);
+                        return create_metadata_array(self, img, md);
           },
           "channel"_a, "slice"_a, "md"_a,
           "Get the last image in the circular buffer for a specific channel and slice, store "
           "metadata in the provided object")
 
-      .def(
+      NB_DEF_GIL(
           "popNextImageMD",
           [](CMMCore& self) -> std::tuple<np_array, Metadata> {
-    Metadata md;
-    auto img = self.popNextImageMD(md);
-    return {create_metadata_array(self, img, md), md};
+                            Metadata md;
+                            auto img = self.popNextImageMD(md);
+                            return {create_metadata_array(self, img, md), md};
           },
           "Get the last image in the circular buffer, return as tuple of image and metadata")
-      .def(
+      NB_DEF_GIL(
           "popNextImageMD",
           [](CMMCore& self, Metadata& md) -> np_array {
-    auto img = self.popNextImageMD(md);
-    return create_metadata_array(self, img, md);
+                                auto img = self.popNextImageMD(md);
+                                return create_metadata_array(self, img, md);
           },
           "md"_a,
           "Get the last image in the circular buffer, store metadata in the provided object")
-      .def(
+      NB_DEF_GIL(
           "popNextImageMD",
           [](CMMCore& self, unsigned channel,
              unsigned slice) -> std::tuple<np_array, Metadata> {
-    Metadata md;
-    auto img = self.popNextImageMD(channel, slice, md);
-    return {create_metadata_array(self, img, md), md};
+                                    Metadata md;
+                                    auto img = self.popNextImageMD(channel, slice, md);
+                                    return {create_metadata_array(self, img, md), md};
           },
           "channel"_a, "slice"_a,
           "Get the last image in the circular buffer for a specific channel and slice, return"
           "as tuple of image and metadata")
-      .def(
+      NB_DEF_GIL(
           "popNextImageMD",
           [](CMMCore& self, unsigned channel, unsigned slice, Metadata& md) -> np_array {
-    auto img = self.popNextImageMD(channel, slice, md);
-    return create_metadata_array(self, img, md);
+                                        auto img = self.popNextImageMD(channel, slice, md);
+                                        return create_metadata_array(self, img, md);
           },
           "channel"_a, "slice"_a, "md"_a,
           "Get the last image in the circular buffer for a specific channel and slice, store "
           "metadata in the provided object")
 
-      .def(
+      NB_DEF_GIL(
           "getNBeforeLastImageMD",
           [](CMMCore& self, unsigned long n) -> std::tuple<np_array, Metadata> {
-    Metadata md;
-    auto img = self.getNBeforeLastImageMD(n, md);
-    return {create_metadata_array(self, img, md), md};
+                                            Metadata md;
+                                            auto img = self.getNBeforeLastImageMD(n, md);
+                                            return {create_metadata_array(self, img, md), md};
           },
           "n"_a,
           "Get the nth image before the last image in the circular buffer and return it as a "
           "tuple "
           "of image and metadata")
-      .def(
+      NB_DEF_GIL(
           "getNBeforeLastImageMD",
           [](CMMCore& self, unsigned long n, Metadata& md) -> np_array {
-    auto img = self.getNBeforeLastImageMD(n, md);
-    return create_metadata_array(self, img, md);
+                                                auto img = self.getNBeforeLastImageMD(n, md);
+                                                return create_metadata_array(self, img, md);
           },
           "n"_a, "md"_a,
           "Get the nth image before the last image in the circular buffer and store the metadata "
           "in the provided object")
 
       // Circular Buffer Methods
-      .def("getRemainingImageCount", &CMMCore::getRemainingImageCount)
-      .def("getBufferTotalCapacity", &CMMCore::getBufferTotalCapacity)
-      .def("getBufferFreeCapacity", &CMMCore::getBufferFreeCapacity)
-      .def("isBufferOverflowed", &CMMCore::isBufferOverflowed)
-      .def("setCircularBufferMemoryFootprint", &CMMCore::setCircularBufferMemoryFootprint,
+      NB_DEF_GIL("getRemainingImageCount", &CMMCore::getRemainingImageCount)
+      NB_DEF_GIL("getBufferTotalCapacity", &CMMCore::getBufferTotalCapacity)
+      NB_DEF_GIL("getBufferFreeCapacity", &CMMCore::getBufferFreeCapacity)
+      NB_DEF_GIL("isBufferOverflowed", &CMMCore::isBufferOverflowed)
+      NB_DEF_GIL("setCircularBufferMemoryFootprint", &CMMCore::setCircularBufferMemoryFootprint,
            "sizeMB"_a)
-      .def("getCircularBufferMemoryFootprint", &CMMCore::getCircularBufferMemoryFootprint)
-      .def("initializeCircularBuffer", &CMMCore::initializeCircularBuffer)
-      .def("clearCircularBuffer", &CMMCore::clearCircularBuffer)
+      NB_DEF_GIL("getCircularBufferMemoryFootprint", &CMMCore::getCircularBufferMemoryFootprint)
+      NB_DEF_GIL("initializeCircularBuffer", &CMMCore::initializeCircularBuffer)
+      NB_DEF_GIL("clearCircularBuffer", &CMMCore::clearCircularBuffer)
 
       // Exposure Sequence Methods
-      .def("isExposureSequenceable", &CMMCore::isExposureSequenceable, "cameraLabel"_a)
-      .def("startExposureSequence", &CMMCore::startExposureSequence, "cameraLabel"_a)
-      .def("stopExposureSequence", &CMMCore::stopExposureSequence, "cameraLabel"_a)
-      .def("getExposureSequenceMaxLength", &CMMCore::getExposureSequenceMaxLength, "cameraLabel"_a)
-      .def("loadExposureSequence", &CMMCore::loadExposureSequence, "cameraLabel"_a,
+      NB_DEF_GIL("isExposureSequenceable", &CMMCore::isExposureSequenceable, "cameraLabel"_a)
+      NB_DEF_GIL("startExposureSequence", &CMMCore::startExposureSequence, "cameraLabel"_a)
+      NB_DEF_GIL("stopExposureSequence", &CMMCore::stopExposureSequence, "cameraLabel"_a)
+      NB_DEF_GIL("getExposureSequenceMaxLength", &CMMCore::getExposureSequenceMaxLength, "cameraLabel"_a)
+      NB_DEF_GIL("loadExposureSequence", &CMMCore::loadExposureSequence, "cameraLabel"_a,
            "exposureSequence_ms"_a)
 
       // Autofocus Methods
-      .def("getLastFocusScore", &CMMCore::getLastFocusScore)
-      .def("getCurrentFocusScore", &CMMCore::getCurrentFocusScore)
-      .def("enableContinuousFocus", &CMMCore::enableContinuousFocus, "enable"_a)
-      .def("isContinuousFocusEnabled", &CMMCore::isContinuousFocusEnabled)
-      .def("isContinuousFocusLocked", &CMMCore::isContinuousFocusLocked)
-      .def("isContinuousFocusDrive", &CMMCore::isContinuousFocusDrive, "stageLabel"_a)
-      .def("fullFocus", &CMMCore::fullFocus)
-      .def("incrementalFocus", &CMMCore::incrementalFocus)
-      .def("setAutoFocusOffset", &CMMCore::setAutoFocusOffset, "offset"_a)
-      .def("getAutoFocusOffset", &CMMCore::getAutoFocusOffset)
+      NB_DEF_GIL("getLastFocusScore", &CMMCore::getLastFocusScore)
+      NB_DEF_GIL("getCurrentFocusScore", &CMMCore::getCurrentFocusScore)
+      NB_DEF_GIL("enableContinuousFocus", &CMMCore::enableContinuousFocus, "enable"_a)
+      NB_DEF_GIL("isContinuousFocusEnabled", &CMMCore::isContinuousFocusEnabled)
+      NB_DEF_GIL("isContinuousFocusLocked", &CMMCore::isContinuousFocusLocked)
+      NB_DEF_GIL("isContinuousFocusDrive", &CMMCore::isContinuousFocusDrive, "stageLabel"_a)
+      NB_DEF_GIL("fullFocus", &CMMCore::fullFocus)
+      NB_DEF_GIL("incrementalFocus", &CMMCore::incrementalFocus)
+      NB_DEF_GIL("setAutoFocusOffset", &CMMCore::setAutoFocusOffset, "offset"_a)
+      NB_DEF_GIL("getAutoFocusOffset", &CMMCore::getAutoFocusOffset)
 
       // State Device Control Methods
-      .def("setState", &CMMCore::setState, "stateDeviceLabel"_a, "state"_a)
-      .def("getState", &CMMCore::getState, "stateDeviceLabel"_a)
-      .def("getNumberOfStates", &CMMCore::getNumberOfStates, "stateDeviceLabel"_a)
-      .def("setStateLabel", &CMMCore::setStateLabel, "stateDeviceLabel"_a, "stateLabel"_a)
-      .def("getStateLabel", &CMMCore::getStateLabel, "stateDeviceLabel"_a)
-      .def("defineStateLabel", &CMMCore::defineStateLabel, "stateDeviceLabel"_a, "state"_a,
+      NB_DEF_GIL("setState", &CMMCore::setState, "stateDeviceLabel"_a, "state"_a)
+      NB_DEF_GIL("getState", &CMMCore::getState, "stateDeviceLabel"_a)
+      NB_DEF_GIL("getNumberOfStates", &CMMCore::getNumberOfStates, "stateDeviceLabel"_a)
+      NB_DEF_GIL("setStateLabel", &CMMCore::setStateLabel, "stateDeviceLabel"_a, "stateLabel"_a)
+      NB_DEF_GIL("getStateLabel", &CMMCore::getStateLabel, "stateDeviceLabel"_a)
+      NB_DEF_GIL("defineStateLabel", &CMMCore::defineStateLabel, "stateDeviceLabel"_a, "state"_a,
            "stateLabel"_a)
-      .def("getStateLabels", &CMMCore::getStateLabels, "stateDeviceLabel"_a)
-      .def("getStateFromLabel", &CMMCore::getStateFromLabel, "stateDeviceLabel"_a, "stateLabel"_a)
+      NB_DEF_GIL("getStateLabels", &CMMCore::getStateLabels, "stateDeviceLabel"_a)
+      NB_DEF_GIL("getStateFromLabel", &CMMCore::getStateFromLabel, "stateDeviceLabel"_a, "stateLabel"_a)
 
       // Stage Control Methods
-      .def("setPosition", nb::overload_cast<const char*, double>(&CMMCore::setPosition),
+      NB_DEF_GIL("setPosition", nb::overload_cast<const char*, double>(&CMMCore::setPosition),
            "stageLabel"_a, "position"_a)
-      .def("setPosition", nb::overload_cast<double>(&CMMCore::setPosition), "position"_a)
-      .def("getPosition", nb::overload_cast<const char*>(&CMMCore::getPosition), "stageLabel"_a)
-      .def("getPosition", nb::overload_cast<>(&CMMCore::getPosition))
-      .def("setRelativePosition",
+      NB_DEF_GIL("setPosition", nb::overload_cast<double>(&CMMCore::setPosition), "position"_a)
+      NB_DEF_GIL("getPosition", nb::overload_cast<const char*>(&CMMCore::getPosition), "stageLabel"_a)
+      NB_DEF_GIL("getPosition", nb::overload_cast<>(&CMMCore::getPosition))
+      NB_DEF_GIL("setRelativePosition",
            nb::overload_cast<const char*, double>(&CMMCore::setRelativePosition), "stageLabel"_a,
            "d"_a)
-      .def("setRelativePosition", nb::overload_cast<double>(&CMMCore::setRelativePosition), "d"_a)
-      .def("setOrigin", nb::overload_cast<const char*>(&CMMCore::setOrigin), "stageLabel"_a)
-      .def("setOrigin", nb::overload_cast<>(&CMMCore::setOrigin))
-      .def("setAdapterOrigin", nb::overload_cast<const char*, double>(&CMMCore::setAdapterOrigin),
+      NB_DEF_GIL("setRelativePosition", nb::overload_cast<double>(&CMMCore::setRelativePosition), "d"_a)
+      NB_DEF_GIL("setOrigin", nb::overload_cast<const char*>(&CMMCore::setOrigin), "stageLabel"_a)
+      NB_DEF_GIL("setOrigin", nb::overload_cast<>(&CMMCore::setOrigin))
+      NB_DEF_GIL("setAdapterOrigin", nb::overload_cast<const char*, double>(&CMMCore::setAdapterOrigin),
            "stageLabel"_a, "newZUm"_a)
-      .def("setAdapterOrigin", nb::overload_cast<double>(&CMMCore::setAdapterOrigin), "newZUm"_a)
+      NB_DEF_GIL("setAdapterOrigin", nb::overload_cast<double>(&CMMCore::setAdapterOrigin), "newZUm"_a)
 
       // Focus Direction Methods
-      .def("setFocusDirection", &CMMCore::setFocusDirection, "stageLabel"_a, "sign"_a)
-      .def("getFocusDirection", &CMMCore::getFocusDirection, "stageLabel"_a)
+      NB_DEF_GIL("setFocusDirection", &CMMCore::setFocusDirection, "stageLabel"_a, "sign"_a)
+      NB_DEF_GIL("getFocusDirection", &CMMCore::getFocusDirection, "stageLabel"_a)
 
       // Stage Sequence Methods
-      .def("isStageSequenceable", &CMMCore::isStageSequenceable, "stageLabel"_a)
-      .def("isStageLinearSequenceable", &CMMCore::isStageLinearSequenceable, "stageLabel"_a)
-      .def("startStageSequence", &CMMCore::startStageSequence, "stageLabel"_a)
-      .def("stopStageSequence", &CMMCore::stopStageSequence, "stageLabel"_a)
-      .def("getStageSequenceMaxLength", &CMMCore::getStageSequenceMaxLength, "stageLabel"_a)
-      .def("loadStageSequence", &CMMCore::loadStageSequence, "stageLabel"_a, "positionSequence"_a)
-      .def("setStageLinearSequence", &CMMCore::setStageLinearSequence, "stageLabel"_a, "dZ_um"_a,
+      NB_DEF_GIL("isStageSequenceable", &CMMCore::isStageSequenceable, "stageLabel"_a)
+      NB_DEF_GIL("isStageLinearSequenceable", &CMMCore::isStageLinearSequenceable, "stageLabel"_a)
+      NB_DEF_GIL("startStageSequence", &CMMCore::startStageSequence, "stageLabel"_a)
+      NB_DEF_GIL("stopStageSequence", &CMMCore::stopStageSequence, "stageLabel"_a)
+      NB_DEF_GIL("getStageSequenceMaxLength", &CMMCore::getStageSequenceMaxLength, "stageLabel"_a)
+      NB_DEF_GIL("loadStageSequence", &CMMCore::loadStageSequence, "stageLabel"_a, "positionSequence"_a)
+      NB_DEF_GIL("setStageLinearSequence", &CMMCore::setStageLinearSequence, "stageLabel"_a, "dZ_um"_a,
            "nSlices"_a)
 
       // XY Stage Control Methods
-      .def("setXYPosition",
+      NB_DEF_GIL("setXYPosition",
            nb::overload_cast<const char*, double, double>(&CMMCore::setXYPosition),
            "xyStageLabel"_a, "x"_a, "y"_a)
-      .def("setXYPosition", nb::overload_cast<double, double>(&CMMCore::setXYPosition), "x"_a,
+      NB_DEF_GIL("setXYPosition", nb::overload_cast<double, double>(&CMMCore::setXYPosition), "x"_a,
            "y"_a)
-      .def("setRelativeXYPosition",
+      NB_DEF_GIL("setRelativeXYPosition",
            nb::overload_cast<const char*, double, double>(&CMMCore::setRelativeXYPosition),
            "xyStageLabel"_a, "dx"_a, "dy"_a)
-      .def("setRelativeXYPosition",
+      NB_DEF_GIL("setRelativeXYPosition",
            nb::overload_cast<double, double>(&CMMCore::setRelativeXYPosition), "dx"_a, "dy"_a)
 
-      .def("getXYPosition",
+      NB_DEF_GIL("getXYPosition",
            [](CMMCore& self, const char* xyStageLabel) -> std::tuple<double, double> {
-    double x, y;
-    self.getXYPosition(xyStageLabel, x, y);
-    return {x, y};
+                    double x, y;
+                    self.getXYPosition(xyStageLabel, x, y);
+                    return {x, y};
            },
            "xyStageLabel"_a)
-          .def("getXYPosition",
+          NB_DEF_GIL("getXYPosition",
                [](CMMCore& self) -> std::tuple<double, double> {
-    double x, y;
-    self.getXYPosition(x, y);
-    return {x, y};
+                        double x, y;
+                        self.getXYPosition(x, y);
+                        return {x, y};
                })
-      .def("getXPosition", nb::overload_cast<const char*>(&CMMCore::getXPosition),
+      NB_DEF_GIL("getXPosition", nb::overload_cast<const char*>(&CMMCore::getXPosition),
            "xyStageLabel"_a)
-      .def("getYPosition", nb::overload_cast<const char*>(&CMMCore::getYPosition),
+      NB_DEF_GIL("getYPosition", nb::overload_cast<const char*>(&CMMCore::getYPosition),
            "xyStageLabel"_a)
-      .def("getXPosition", nb::overload_cast<>(&CMMCore::getXPosition))
-      .def("getYPosition", nb::overload_cast<>(&CMMCore::getYPosition))
-      .def("stop", &CMMCore::stop, "xyOrZStageLabel"_a)
-      .def("home", &CMMCore::home, "xyOrZStageLabel"_a)
-      .def("setOriginXY", nb::overload_cast<const char*>(&CMMCore::setOriginXY), "xyStageLabel"_a)
-      .def("setOriginXY", nb::overload_cast<>(&CMMCore::setOriginXY))
-      .def("setOriginX", nb::overload_cast<const char*>(&CMMCore::setOriginX), "xyStageLabel"_a)
-      .def("setOriginX", nb::overload_cast<>(&CMMCore::setOriginX))
-      .def("setOriginY", nb::overload_cast<const char*>(&CMMCore::setOriginY), "xyStageLabel"_a)
-      .def("setOriginY", nb::overload_cast<>(&CMMCore::setOriginY))
-      .def("setAdapterOriginXY",
+      NB_DEF_GIL("getXPosition", nb::overload_cast<>(&CMMCore::getXPosition))
+      NB_DEF_GIL("getYPosition", nb::overload_cast<>(&CMMCore::getYPosition))
+      NB_DEF_GIL("stop", &CMMCore::stop, "xyOrZStageLabel"_a)
+      NB_DEF_GIL("home", &CMMCore::home, "xyOrZStageLabel"_a)
+      NB_DEF_GIL("setOriginXY", nb::overload_cast<const char*>(&CMMCore::setOriginXY), "xyStageLabel"_a)
+      NB_DEF_GIL("setOriginXY", nb::overload_cast<>(&CMMCore::setOriginXY))
+      NB_DEF_GIL("setOriginX", nb::overload_cast<const char*>(&CMMCore::setOriginX), "xyStageLabel"_a)
+      NB_DEF_GIL("setOriginX", nb::overload_cast<>(&CMMCore::setOriginX))
+      NB_DEF_GIL("setOriginY", nb::overload_cast<const char*>(&CMMCore::setOriginY), "xyStageLabel"_a)
+      NB_DEF_GIL("setOriginY", nb::overload_cast<>(&CMMCore::setOriginY))
+      NB_DEF_GIL("setAdapterOriginXY",
            nb::overload_cast<const char*, double, double>(&CMMCore::setAdapterOriginXY),
            "xyStageLabel"_a, "newXUm"_a, "newYUm"_a)
-      .def("setAdapterOriginXY", nb::overload_cast<double, double>(&CMMCore::setAdapterOriginXY),
+      NB_DEF_GIL("setAdapterOriginXY", nb::overload_cast<double, double>(&CMMCore::setAdapterOriginXY),
            "newXUm"_a, "newYUm"_a)
 
       // XY Stage Sequence Methods
-      .def("isXYStageSequenceable", &CMMCore::isXYStageSequenceable, "xyStageLabel"_a)
-      .def("startXYStageSequence", &CMMCore::startXYStageSequence, "xyStageLabel"_a)
-      .def("stopXYStageSequence", &CMMCore::stopXYStageSequence, "xyStageLabel"_a)
-      .def("getXYStageSequenceMaxLength", &CMMCore::getXYStageSequenceMaxLength, "xyStageLabel"_a)
-      .def("loadXYStageSequence", &CMMCore::loadXYStageSequence, "xyStageLabel"_a, "xSequence"_a,
+      NB_DEF_GIL("isXYStageSequenceable", &CMMCore::isXYStageSequenceable, "xyStageLabel"_a)
+      NB_DEF_GIL("startXYStageSequence", &CMMCore::startXYStageSequence, "xyStageLabel"_a)
+      NB_DEF_GIL("stopXYStageSequence", &CMMCore::stopXYStageSequence, "xyStageLabel"_a)
+      NB_DEF_GIL("getXYStageSequenceMaxLength", &CMMCore::getXYStageSequenceMaxLength, "xyStageLabel"_a)
+      NB_DEF_GIL("loadXYStageSequence", &CMMCore::loadXYStageSequence, "xyStageLabel"_a, "xSequence"_a,
            "ySequence"_a)
 
       // Serial Port Control
-      .def("setSerialProperties", &CMMCore::setSerialProperties, "portName"_a, "answerTimeout"_a,
+      NB_DEF_GIL("setSerialProperties", &CMMCore::setSerialProperties, "portName"_a, "answerTimeout"_a,
            "baudRate"_a, "delayBetweenCharsMs"_a, "handshaking"_a, "parity"_a, "stopBits"_a)
-      .def("setSerialPortCommand", &CMMCore::setSerialPortCommand, "portLabel"_a, "command"_a,
+      NB_DEF_GIL("setSerialPortCommand", &CMMCore::setSerialPortCommand, "portLabel"_a, "command"_a,
            "term"_a)
-      .def("getSerialPortAnswer", &CMMCore::getSerialPortAnswer, "portLabel"_a, "term"_a)
-      .def("writeToSerialPort", &CMMCore::writeToSerialPort, "portLabel"_a, "data"_a)
-      .def("readFromSerialPort", &CMMCore::readFromSerialPort, "portLabel"_a)
+      NB_DEF_GIL("getSerialPortAnswer", &CMMCore::getSerialPortAnswer, "portLabel"_a, "term"_a)
+      NB_DEF_GIL("writeToSerialPort", &CMMCore::writeToSerialPort, "portLabel"_a, "data"_a)
+      NB_DEF_GIL("readFromSerialPort", &CMMCore::readFromSerialPort, "portLabel"_a)
 
       // SLM Control
       // setSLMImage accepts a second argument (pixels) of either unsigned char* or unsigned int*
-      .def("setSLMImage", [](CMMCore& self, const char* slmLabel, const nb::ndarray<uint8_t> &pixels) -> void
+      NB_DEF_GIL("setSLMImage", [](CMMCore& self, const char* slmLabel, const nb::ndarray<uint8_t> &pixels) -> void
           {
-              long expectedWidth = self.getSLMWidth(slmLabel);
-              long expectedHeight = self.getSLMHeight(slmLabel);
-              long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
-              validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel);
+            long expectedWidth = self.getSLMWidth(slmLabel);
+            long expectedHeight = self.getSLMHeight(slmLabel);
+            long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
+            validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel);
 
-              // Cast the numpy array to a pointer to unsigned char
-              self.setSLMImage(slmLabel, reinterpret_cast<unsigned char*>(pixels.data()));
+            // Cast the numpy array to a pointer to unsigned char
+            self.setSLMImage(slmLabel, reinterpret_cast<unsigned char *>(pixels.data()));
           },
            "slmLabel"_a, "pixels"_a)
-      .def("setSLMPixelsTo",
+      NB_DEF_GIL("setSLMPixelsTo",
            nb::overload_cast<const char*, unsigned char>(&CMMCore::setSLMPixelsTo), "slmLabel"_a,
            "intensity"_a)
-      .def("setSLMPixelsTo",
+      NB_DEF_GIL("setSLMPixelsTo",
            nb::overload_cast<const char*, unsigned char, unsigned char, unsigned char>(
                &CMMCore::setSLMPixelsTo),
            "slmLabel"_a, "red"_a, "green"_a, "blue"_a)
-      .def("displaySLMImage", &CMMCore::displaySLMImage, "slmLabel"_a)
-      .def("setSLMExposure", &CMMCore::setSLMExposure, "slmLabel"_a, "exposure_ms"_a)
-      .def("getSLMExposure", &CMMCore::getSLMExposure, "slmLabel"_a)
-      .def("getSLMWidth", &CMMCore::getSLMWidth, "slmLabel"_a)
-      .def("getSLMHeight", &CMMCore::getSLMHeight, "slmLabel"_a)
-      .def("getSLMNumberOfComponents", &CMMCore::getSLMNumberOfComponents, "slmLabel"_a)
-      .def("getSLMBytesPerPixel", &CMMCore::getSLMBytesPerPixel, "slmLabel"_a)
+      NB_DEF_GIL("displaySLMImage", &CMMCore::displaySLMImage, "slmLabel"_a)
+      NB_DEF_GIL("setSLMExposure", &CMMCore::setSLMExposure, "slmLabel"_a, "exposure_ms"_a)
+      NB_DEF_GIL("getSLMExposure", &CMMCore::getSLMExposure, "slmLabel"_a)
+      NB_DEF_GIL("getSLMWidth", &CMMCore::getSLMWidth, "slmLabel"_a)
+      NB_DEF_GIL("getSLMHeight", &CMMCore::getSLMHeight, "slmLabel"_a)
+      NB_DEF_GIL("getSLMNumberOfComponents", &CMMCore::getSLMNumberOfComponents, "slmLabel"_a)
+      NB_DEF_GIL("getSLMBytesPerPixel", &CMMCore::getSLMBytesPerPixel, "slmLabel"_a)
       // SLM Sequence
-      .def("getSLMSequenceMaxLength", &CMMCore::getSLMSequenceMaxLength, "slmLabel"_a)
-      .def("startSLMSequence", &CMMCore::startSLMSequence, "slmLabel"_a)
-      .def("stopSLMSequence", &CMMCore::stopSLMSequence, "slmLabel"_a)
-      .def("loadSLMSequence", [](CMMCore& self, const char* slmLabel, std::vector<nb::ndarray<uint8_t>> &imageSequence) -> void {
-        long expectedWidth = self.getSLMWidth(slmLabel);
-        long expectedHeight = self.getSLMHeight(slmLabel);
-        long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
-        std::vector<unsigned char*> inputVector;
-        for (auto &image : imageSequence) {
-          validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel);
-          inputVector.push_back(reinterpret_cast<unsigned char*>(image.data()));
-        }
-        self.loadSLMSequence(slmLabel, inputVector);
+      NB_DEF_GIL("getSLMSequenceMaxLength", &CMMCore::getSLMSequenceMaxLength, "slmLabel"_a)
+      NB_DEF_GIL("startSLMSequence", &CMMCore::startSLMSequence, "slmLabel"_a)
+      NB_DEF_GIL("stopSLMSequence", &CMMCore::stopSLMSequence, "slmLabel"_a)
+      NB_DEF_GIL("loadSLMSequence", [](CMMCore& self, const char* slmLabel, std::vector<nb::ndarray<uint8_t>> &imageSequence) -> void {
+                    long expectedWidth = self.getSLMWidth(slmLabel);
+                    long expectedHeight = self.getSLMHeight(slmLabel);
+                    long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
+                    std::vector<unsigned char *> inputVector;
+                    for (auto &image : imageSequence) {
+                      validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel);
+                      inputVector.push_back(reinterpret_cast<unsigned char *>(image.data()));
+                    }
+                    self.loadSLMSequence(slmLabel, inputVector);
       },"slmLabel"_a, "pixels"_a)
 
       // Galvo Control
-      .def("pointGalvoAndFire", &CMMCore::pointGalvoAndFire, "galvoLabel"_a, "x"_a, "y"_a,
+      NB_DEF_GIL("pointGalvoAndFire", &CMMCore::pointGalvoAndFire, "galvoLabel"_a, "x"_a, "y"_a,
            "pulseTime_us"_a)
-      .def("setGalvoSpotInterval", &CMMCore::setGalvoSpotInterval, "galvoLabel"_a,
+      NB_DEF_GIL("setGalvoSpotInterval", &CMMCore::setGalvoSpotInterval, "galvoLabel"_a,
            "pulseTime_us"_a)
-      .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a)
-      .def("getGalvoPosition",
+      NB_DEF_GIL("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a)
+      NB_DEF_GIL("getGalvoPosition",
            [](CMMCore& self, const char* galvoLabel) {
-      double x, y;
-      self.getGalvoPosition(galvoLabel, x, y); // Call C++ method
-      return std::make_tuple(x, y);            // Return a tuple
+                double x, y;
+                self.getGalvoPosition(galvoLabel, x, y);  // Call C++ method
+                return std::make_tuple(x, y);             // Return a tuple
            })
-      .def("setGalvoIlluminationState", &CMMCore::setGalvoIlluminationState, "galvoLabel"_a,
+      NB_DEF_GIL("setGalvoIlluminationState", &CMMCore::setGalvoIlluminationState, "galvoLabel"_a,
            "on"_a)
-      .def("getGalvoXRange", &CMMCore::getGalvoXRange, "galvoLabel"_a)
-      .def("getGalvoXMinimum", &CMMCore::getGalvoXMinimum, "galvoLabel"_a)
-      .def("getGalvoYRange", &CMMCore::getGalvoYRange, "galvoLabel"_a)
-      .def("getGalvoYMinimum", &CMMCore::getGalvoYMinimum, "galvoLabel"_a)
-      .def("addGalvoPolygonVertex", &CMMCore::addGalvoPolygonVertex, "galvoLabel"_a,
+      NB_DEF_GIL("getGalvoXRange", &CMMCore::getGalvoXRange, "galvoLabel"_a)
+      NB_DEF_GIL("getGalvoXMinimum", &CMMCore::getGalvoXMinimum, "galvoLabel"_a)
+      NB_DEF_GIL("getGalvoYRange", &CMMCore::getGalvoYRange, "galvoLabel"_a)
+      NB_DEF_GIL("getGalvoYMinimum", &CMMCore::getGalvoYMinimum, "galvoLabel"_a)
+      NB_DEF_GIL("addGalvoPolygonVertex", &CMMCore::addGalvoPolygonVertex, "galvoLabel"_a,
            "polygonIndex"_a, "x"_a, "y"_a, R"doc(Add a vertex to a galvo polygon.)doc")
-      .def("deleteGalvoPolygons", &CMMCore::deleteGalvoPolygons, "galvoLabel"_a)
-      .def("loadGalvoPolygons", &CMMCore::loadGalvoPolygons, "galvoLabel"_a)
-      .def("setGalvoPolygonRepetitions", &CMMCore::setGalvoPolygonRepetitions, "galvoLabel"_a,
+      NB_DEF_GIL("deleteGalvoPolygons", &CMMCore::deleteGalvoPolygons, "galvoLabel"_a)
+      NB_DEF_GIL("loadGalvoPolygons", &CMMCore::loadGalvoPolygons, "galvoLabel"_a)
+      NB_DEF_GIL("setGalvoPolygonRepetitions", &CMMCore::setGalvoPolygonRepetitions, "galvoLabel"_a,
            "repetitions"_a)
-      .def("runGalvoPolygons", &CMMCore::runGalvoPolygons, "galvoLabel"_a)
-      .def("runGalvoSequence", &CMMCore::runGalvoSequence, "galvoLabel"_a)
-      .def("getGalvoChannel", &CMMCore::getGalvoChannel, "galvoLabel"_a)
+      NB_DEF_GIL("runGalvoPolygons", &CMMCore::runGalvoPolygons, "galvoLabel"_a)
+      NB_DEF_GIL("runGalvoSequence", &CMMCore::runGalvoSequence, "galvoLabel"_a)
+      NB_DEF_GIL("getGalvoChannel", &CMMCore::getGalvoChannel, "galvoLabel"_a)
 
       // Device Discovery
-      .def("supportsDeviceDetection", &CMMCore::supportsDeviceDetection, "deviceLabel"_a)
-      .def("detectDevice", &CMMCore::detectDevice, "deviceLabel"_a)
+      NB_DEF_GIL("supportsDeviceDetection", &CMMCore::supportsDeviceDetection, "deviceLabel"_a)
+      NB_DEF_GIL("detectDevice", &CMMCore::detectDevice, "deviceLabel"_a)
 
       // Hub and Peripheral Devices
-      .def("getParentLabel", &CMMCore::getParentLabel, "peripheralLabel"_a)
-      .def("setParentLabel", &CMMCore::setParentLabel, "deviceLabel"_a, "parentHubLabel"_a)
-      .def("getInstalledDevices", &CMMCore::getInstalledDevices, "hubLabel"_a)
-      .def("getInstalledDeviceDescription", &CMMCore::getInstalledDeviceDescription, "hubLabel"_a,
+      NB_DEF_GIL("getParentLabel", &CMMCore::getParentLabel, "peripheralLabel"_a)
+      NB_DEF_GIL("setParentLabel", &CMMCore::setParentLabel, "deviceLabel"_a, "parentHubLabel"_a)
+      NB_DEF_GIL("getInstalledDevices", &CMMCore::getInstalledDevices, "hubLabel"_a)
+      NB_DEF_GIL("getInstalledDeviceDescription", &CMMCore::getInstalledDeviceDescription, "hubLabel"_a,
            "peripheralLabel"_a)
-      .def("getLoadedPeripheralDevices", &CMMCore::getLoadedPeripheralDevices, "hubLabel"_a)
+      NB_DEF_GIL("getLoadedPeripheralDevices", &CMMCore::getLoadedPeripheralDevices, "hubLabel"_a)
 
       ;
 }

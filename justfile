@@ -4,6 +4,7 @@ builddir := `ls -d build/cp3* 2>/dev/null | head -n 1`
 
 # install deps and editable package for development
 install:
+	rm -rf build dist builddir
 	uv sync --no-install-project
 	uv pip install -e . \
 		--no-build-isolation \

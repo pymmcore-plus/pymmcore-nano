@@ -666,10 +666,14 @@ class MMEventCallback:
         self, v0: float, v1: float, v2: float, v3: float, v4: float, v5: float
     ) -> None:
         """Called when the pixel size affine transformation changes"""
-    def onSLMExposureChanged(self, name: str, newExposure: float) -> None: ...
-    def onExposureChanged(self, name: str, newExposure: float) -> None: ...
-    def onStagePositionChanged(self, name: str, pos: float) -> None: ...
-    def onXYStagePositionChanged(self, name: str, xpos: float, ypos: float) -> None: ...
+    def onSLMExposureChanged(self, name: str, newExposure: float) -> None:
+        """Called when the SLM exposure changes"""
+    def onExposureChanged(self, name: str, newExposure: float) -> None:
+        """Called when the exposure changes"""
+    def onStagePositionChanged(self, name: str, pos: float) -> None:
+        """Called when the stage position changes"""
+    def onXYStagePositionChanged(self, name: str, xpos: float, ypos: float) -> None:
+        """Called when the XY stage position changes"""
 
 MM_CODE_ERR: int = 1
 MM_CODE_OK: int = 0
