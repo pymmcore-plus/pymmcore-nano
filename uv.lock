@@ -883,13 +883,13 @@ wheels = [
 name = "pymmcore-nano"
 source = { editable = "." }
 dependencies = [
-    { name = "clang-format" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "numpy", version = "2.2.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "clang-format" },
     { name = "gcovr" },
     { name = "ipython", version = "8.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "ipython", version = "8.32.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -914,6 +914,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "clang-format", specifier = ">=19.1.7" },
     { name = "gcovr" },
     { name = "ipython" },
     { name = "meson-python" },

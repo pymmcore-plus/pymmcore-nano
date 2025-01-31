@@ -41,18 +41,18 @@ using StrVec = std::vector<std::string>;
  * methods.
  *
  */
-np_array build_grayscale_np_array(
-    CMMCore &core, void *pBuf, unsigned width, unsigned height, unsigned byteDepth) {
+np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
+                                  unsigned byteDepth) {
     std::initializer_list<size_t> new_shape = {height, width};
     std::initializer_list<int64_t> strides = {width, 1};
 
     // Determine the dtype based on the element size
     nb::dlpack::dtype new_dtype;
     switch (byteDepth) {
-        case 1: new_dtype = nb::dtype<uint8_t>(); break;
-        case 2: new_dtype = nb::dtype<uint16_t>(); break;
-        case 4: new_dtype = nb::dtype<uint32_t>(); break;
-        default: throw std::invalid_argument("Unsupported element size");
+    case 1: new_dtype = nb::dtype<uint8_t>(); break;
+    case 2: new_dtype = nb::dtype<uint16_t>(); break;
+    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    default: throw std::invalid_argument("Unsupported element size");
     }
 
     // NOTE: I am definitely *not* sure that I've done this owner correctly.
@@ -62,44 +62,41 @@ np_array build_grayscale_np_array(
     // https://nanobind.readthedocs.io/en/latest/ndarray.html#returning-arrays-from-c-to-python
     // https://nanobind.readthedocs.io/en/latest/ndarray.html#data-ownership
 
-    // 1. This method comes directly from the docs above
+    // This method comes directly from the docs above
     // but leads to a double free error
+    // nb::capsule owner(data, [](void *p) noexcept { delete[] (float *)p; });
 
-    // nb::capsule owner(pBuf, [](void *p) noexcept { delete[] (float *)p; });
-    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
-
-    // 2. This method ties the lifetime of the buffer to the lifetime of the CMMCore
+    // This method ties the lifetime of the buffer to the lifetime of the CMMCore
     // object but gives a bunch of "nanobind: leaked 6 instances!" warnings at
     // exit. those *could* be hidden with `nb::set_leak_warnings(false);` ... but
-    // not sure if that's a good idea.
+    // not sure if that's a good idea. nb::object owner = nb::cast(core,
+    // nb::rv_policy::reference);
 
-    // nb::object owner = nb::cast(core, nb::rv_policy::reference);
-    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
+    // This would fully copy the data.  It's the safest, but also the slowest.
+    // size_t total_size = std::accumulate(shape.begin(), shape.end(), (size_t)1,
+    // std::multiplies<>()); auto buffer = std::make_unique<uint8_t[]>(total_size
+    // * bytesPerPixel); std::memcpy(buffer.get(), pBuf, total_size *
+    // bytesPerPixel);
+    // // ... then later use buffer.release() as the data pointer in the array
+    // constructor
 
-    // 3. This would fully copy the data.  It's the safest, but also the slowest.
-
-    // size_t total_size =
-    //     std::accumulate(new_shape.begin(), new_shape.end(), (size_t)1, std::multiplies<>());
-    // auto buffer = std::make_unique<uint8_t[]>(total_size * byteDepth);
-    // std::memcpy(buffer.get(), pBuf, total_size * byteDepth);
-    // return np_array(buffer.release(), new_shape, nullptr, strides, new_dtype);
-
-    // 4. This method gives neither leak warnings nor double free errors.
+    // This method gives neither leak warnings nor double free errors.
     // If the core object deletes the buffer prematurely, the numpy array will
     // point to invalid memory, potentially leading to crashes or undefined
     // behavior... so users should  call `img.copy()` if they want to ensure the
     // data is copied.
-
     nb::capsule owner(pBuf, [](void *p) noexcept {});
+
+    // Create the ndarray
     return np_array(pBuf, new_shape, owner, strides, new_dtype);
 }
 
 // only reason we're making two functions here is that i had a hell of a time
 // trying to create std::initializer_list dynamically based on numComponents
 // (only on Linux) so we create two constructors
-np_array build_rgb_np_array(
-    CMMCore &core, void *pBuf, unsigned width, unsigned height, unsigned byteDepth) {
-    const unsigned out_byteDepth = byteDepth / 4;  // break up the 4 components
+np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
+                            unsigned byteDepth) {
+    const unsigned out_byteDepth = byteDepth / 4; // break up the 4 components
 
     std::initializer_list<size_t> new_shape = {height, width, 3};
     // Note the negative stride for the last dimension, data comes in as BGRA
@@ -111,11 +108,11 @@ np_array build_rgb_np_array(
 
     // Determine the dtype based on the element size
     nb::dlpack::dtype new_dtype;
-    switch (out_byteDepth) {  // all RGB formats have 4 components in a single "pixel"
-        case 1: new_dtype = nb::dtype<uint8_t>(); break;
-        case 2: new_dtype = nb::dtype<uint16_t>(); break;
-        case 4: new_dtype = nb::dtype<uint32_t>(); break;
-        default: throw std::invalid_argument("Unsupported element size");
+    switch (out_byteDepth) { // all RGB formats have 4 components in a single "pixel"
+    case 1: new_dtype = nb::dtype<uint8_t>(); break;
+    case 2: new_dtype = nb::dtype<uint16_t>(); break;
+    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    default: throw std::invalid_argument("Unsupported element size");
     }
     nb::capsule owner(pBuf, [](void *p) noexcept {});
 
@@ -186,10 +183,8 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
     }
 }
 
-void validate_slm_image(const nb::ndarray<uint8_t> &pixels,
-                        long expectedWidth,
-                        long expectedHeight,
-                        long bytesPerPixel) {
+void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
+                        long expectedHeight, long bytesPerPixel) {
     // Check dtype
     if (pixels.dtype() != nb::dtype<uint8_t>()) {
         throw std::invalid_argument("Pixel array type is wrong. Expected uint8.");
@@ -230,14 +225,13 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels,
 // https://nanobind.readthedocs.io/en/latest/classes.html#overriding-virtual-functions-in-python
 
 class PyMMEventCallback : public MMEventCallback {
-   public:
+  public:
     NB_TRAMPOLINE(MMEventCallback,
-                  11);  // Total number of overridable virtual methods.
+                  11); // Total number of overridable virtual methods.
 
     void onPropertiesChanged() override { NB_OVERRIDE(onPropertiesChanged); }
 
-    void onPropertyChanged(const char *name,
-                           const char *propName,
+    void onPropertyChanged(const char *name, const char *propName,
                            const char *propValue) override {
         NB_OVERRIDE(onPropertyChanged, name, propName, propValue);
     }
@@ -256,8 +250,8 @@ class PyMMEventCallback : public MMEventCallback {
         NB_OVERRIDE(onPixelSizeChanged, newPixelSizeUm);
     }
 
-    void onPixelSizeAffineChanged(
-        double v0, double v1, double v2, double v3, double v4, double v5) override {
+    void onPixelSizeAffineChanged(double v0, double v1, double v2, double v3, double v4,
+                                  double v5) override {
         NB_OVERRIDE(onPixelSizeAffineChanged, v0, v1, v2, v3, v4, v5);
     }
 
@@ -290,7 +284,6 @@ NB_MODULE(_pymmcore_nano, m) {
 
     /////////////////// Module Attributes ///////////////////
 
-    m.attr("GIL_HELD") = GIL_HELD;
     m.attr("DEVICE_INTERFACE_VERSION") = DEVICE_INTERFACE_VERSION;
     m.attr("MODULE_INTERFACE_VERSION") = MODULE_INTERFACE_VERSION;
     std::string version = std::to_string(MMCore_versionMajor) + "." +
@@ -331,7 +324,7 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("DEVICE_BUFFER_OVERFLOW") = DEVICE_BUFFER_OVERFLOW;
     m.attr("DEVICE_NONEXISTENT_CHANNEL") = DEVICE_NONEXISTENT_CHANNEL;
     m.attr("DEVICE_INVALID_PROPERTY_LIMITS") = DEVICE_INVALID_PROPERTY_LIMTS;
-    m.attr("DEVICE_INVALID_PROPERTY_LIMTS") = DEVICE_INVALID_PROPERTY_LIMTS;  // Fix Typo
+    m.attr("DEVICE_INVALID_PROPERTY_LIMTS") = DEVICE_INVALID_PROPERTY_LIMTS; // Fix Typo
     m.attr("DEVICE_SNAP_IMAGE_FAILED") = DEVICE_SNAP_IMAGE_FAILED;
     m.attr("DEVICE_IMAGE_PARAMS_FAILED") = DEVICE_IMAGE_PARAMS_FAILED;
     m.attr("DEVICE_CORE_FOCUS_STAGE_UNDEF") = DEVICE_CORE_FOCUS_STAGE_UNDEF;
@@ -570,40 +563,29 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("isPropertyIncluded", &Configuration::isPropertyIncluded, "device"_a, "property"_a)
         .def("isConfigurationIncluded", &Configuration::isConfigurationIncluded, "cfg"_a)
         .def("isSettingIncluded", &Configuration::isSettingIncluded, "setting"_a)
-        .def("getSetting",
-             nb::overload_cast<size_t>(&Configuration::getSetting, nb::const_),
+        .def("getSetting", nb::overload_cast<size_t>(&Configuration::getSetting, nb::const_),
              "index"_a)
         .def("getSetting",
              nb::overload_cast<const char *, const char *>(&Configuration::getSetting),
-             "device"_a,
-             "property"_a)
+             "device"_a, "property"_a)
         .def("size", &Configuration::size)
         .def("getVerbose", &Configuration::getVerbose);
 
     nb::class_<PropertySetting>(m, "PropertySetting")
-        .def(nb::init<const char *, const char *, const char *, bool>(),
-             "deviceLabel"_a,
-             "prop"_a,
-             "value"_a,
-             "readOnly"_a = false,
+        .def(nb::init<const char *, const char *, const char *, bool>(), "deviceLabel"_a,
+             "prop"_a, "value"_a, "readOnly"_a = false,
              "Constructor specifying the entire contents")
         .def(nb::init<>(), "Default constructor")
         .def("getDeviceLabel", &PropertySetting::getDeviceLabel, "Returns the device label")
         .def("getPropertyName", &PropertySetting::getPropertyName, "Returns the property name")
         .def("getReadOnly", &PropertySetting::getReadOnly, "Returns the read-only status")
-        .def("getPropertyValue",
-             &PropertySetting::getPropertyValue,
+        .def("getPropertyValue", &PropertySetting::getPropertyValue,
              "Returns the property value")
         .def("getKey", &PropertySetting::getKey, "Returns the unique key")
         .def("getVerbose", &PropertySetting::getVerbose, "Returns a verbose description")
-        .def("isEqualTo",
-             &PropertySetting::isEqualTo,
-             "other"_a,
+        .def("isEqualTo", &PropertySetting::isEqualTo, "other"_a,
              "Checks if this property setting is equal to another")
-        .def_static("generateKey",
-                    &PropertySetting::generateKey,
-                    "device"_a,
-                    "prop"_a,
+        .def_static("generateKey", &PropertySetting::generateKey, "device"_a, "prop"_a,
                     "Generates a unique key based on device and property");
 
     nb::class_<Metadata>(m, "Metadata")
@@ -619,32 +601,23 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("RemoveTag", &Metadata::RemoveTag, "key"_a, "Removes a tag by key")
         .def("Merge", &Metadata::Merge, "newTags"_a, "Merges new tags into the metadata")
         .def("Serialize", &Metadata::Serialize, "Serializes the metadata")
-        .def("Restore",
-             &Metadata::Restore,
-             "stream"_a,
+        .def("Restore", &Metadata::Restore, "stream"_a,
              "Restores metadata from a serialized string")
         .def("Dump", &Metadata::Dump, "Dumps metadata in human-readable format")
         // Template methods (bound using lambdas due to C++ template limitations
         // in bindings)
         .def(
             "PutTag",
-            [](Metadata &self,
-               const std::string &key,
-               const std::string &deviceLabel,
+            [](Metadata &self, const std::string &key, const std::string &deviceLabel,
                const std::string &value) { self.PutTag(key, deviceLabel, value); },
-            "key"_a,
-            "deviceLabel"_a,
-            "value"_a,
-            "Adds a MetadataSingleTag")
+            "key"_a, "deviceLabel"_a, "value"_a, "Adds a MetadataSingleTag")
 
         .def(
             "PutImageTag",
             [](Metadata &self, const std::string &key, const std::string &value) {
                 self.PutImageTag(key, value);
             },
-            "key"_a,
-            "value"_a,
-            "Adds an image tag")
+            "key"_a, "value"_a, "Adds an image tag")
         // MutableMapping Methods:
         .def("__getitem__",
              [](Metadata &self, const std::string &key) {
@@ -673,20 +646,16 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("IsReadOnly", &MetadataTag::IsReadOnly, "Checks if the tag is read-only")
         .def("SetDevice", &MetadataTag::SetDevice, "device"_a, "Sets the device label")
         .def("SetName", &MetadataTag::SetName, "name"_a, "Sets the name of the tag")
-        .def(
-            "SetReadOnly", &MetadataTag::SetReadOnly, "readOnly"_a, "Sets the read-only status")
+        .def("SetReadOnly", &MetadataTag::SetReadOnly, "readOnly"_a,
+             "Sets the read-only status")
         // Virtual functions
-        .def("ToSingleTag",
-             &MetadataTag::ToSingleTag,
+        .def("ToSingleTag", &MetadataTag::ToSingleTag,
              "Converts to MetadataSingleTag if applicable")
-        .def("ToArrayTag",
-             &MetadataTag::ToArrayTag,
+        .def("ToArrayTag", &MetadataTag::ToArrayTag,
              "Converts to MetadataArrayTag if applicable")
         .def("Clone", &MetadataTag::Clone, "Creates a clone of the MetadataTag")
         .def("Serialize", &MetadataTag::Serialize, "Serializes the MetadataTag to a string")
-        .def("Restore",
-             nb::overload_cast<const char *>(&MetadataTag::Restore),
-             "stream"_a,
+        .def("Restore", nb::overload_cast<const char *>(&MetadataTag::Restore), "stream"_a,
              "Restores from a serialized string");
     // Ommitting the std::istringstream& overload: Python doesn't have a
     // stringstream equivalent
@@ -700,16 +669,12 @@ NB_MODULE(_pymmcore_nano, m) {
 
     nb::class_<MetadataSingleTag, MetadataTag>(m, "MetadataSingleTag")
         .def(nb::init<>(), "Default constructor")
-        .def(nb::init<const char *, const char *, bool>(),
-             "name"_a,
-             "device"_a,
-             "readOnly"_a,
+        .def(nb::init<const char *, const char *, bool>(), "name"_a, "device"_a, "readOnly"_a,
              "Parameterized constructor")
         // Member functions
         .def("GetValue", &MetadataSingleTag::GetValue, "Returns the value")
         .def("SetValue", &MetadataSingleTag::SetValue, "val"_a, "Sets the value")
-        .def("ToSingleTag",
-             &MetadataSingleTag::ToSingleTag,
+        .def("ToSingleTag", &MetadataSingleTag::ToSingleTag,
              "Returns this object as MetadataSingleTag")
         .def("Clone", &MetadataSingleTag::Clone, "Clones this tag")
         .def("Serialize", &MetadataSingleTag::Serialize, "Serializes this tag to a string")
@@ -718,30 +683,19 @@ NB_MODULE(_pymmcore_nano, m) {
         //  .def("Restore",
         //  nb::overload_cast<std::istringstream&>(&MetadataSingleTag::Restore),
         //  "istream"_a, "Restores from an input stream")
-        .def("Restore",
-             nb::overload_cast<const char *>(&MetadataSingleTag::Restore),
-             "stream"_a,
-             "Restores from a serialized string");
+        .def("Restore", nb::overload_cast<const char *>(&MetadataSingleTag::Restore),
+             "stream"_a, "Restores from a serialized string");
 
     nb::class_<MetadataArrayTag, MetadataTag>(m, "MetadataArrayTag")
         .def(nb::init<>(), "Default constructor")
-        .def(nb::init<const char *, const char *, bool>(),
-             "name"_a,
-             "device"_a,
-             "readOnly"_a,
+        .def(nb::init<const char *, const char *, bool>(), "name"_a, "device"_a, "readOnly"_a,
              "Parameterized constructor")
-        .def("ToArrayTag",
-             &MetadataArrayTag::ToArrayTag,
+        .def("ToArrayTag", &MetadataArrayTag::ToArrayTag,
              "Returns this object as MetadataArrayTag")
         .def("AddValue", &MetadataArrayTag::AddValue, "val"_a, "Adds a value to the array")
-        .def("SetValue",
-             &MetadataArrayTag::SetValue,
-             "val"_a,
-             "idx"_a,
+        .def("SetValue", &MetadataArrayTag::SetValue, "val"_a, "idx"_a,
              "Sets a value at a specific index")
-        .def("GetValue",
-             &MetadataArrayTag::GetValue,
-             "idx"_a,
+        .def("GetValue", &MetadataArrayTag::GetValue, "idx"_a,
              "Gets a value at a specific index")
         .def("GetSize", &MetadataArrayTag::GetSize, "Returns the size of the array")
         .def("Clone", &MetadataArrayTag::Clone, "Clones this tag")
@@ -751,41 +705,55 @@ NB_MODULE(_pymmcore_nano, m) {
         //  .def("Restore",
         //  nb::overload_cast<std::istringstream&>(&MetadataArrayTag::Restore),
         //       "istream"_a, "Restores from an input stream")
-        .def("Restore",
-             nb::overload_cast<const char *>(&MetadataArrayTag::Restore),
-             "stream"_a,
+        .def("Restore", nb::overload_cast<const char *>(&MetadataArrayTag::Restore), "stream"_a,
              "Restores from a serialized string");
 
     nb::class_<MMEventCallback, PyMMEventCallback>(m, "MMEventCallback")
         .def(nb::init<>())
 
         // Virtual methods
-        // clang-format off
-      .def("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
-           "Called when properties are changed")
-      .def("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
-           "propValue"_a, "Called when a specific property is changed")
-      .def("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
-           "newChannelGroupName"_a, "Called when the channel group changes")
-      .def("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
-           "newConfigName"_a, "Called when a configuration group changes")
-      .def("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
-           "Called when the system configuration is loaded")
-      .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
-           "Called when the pixel size changes")
-      .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
-           "v1"_a, "v2"_a, "v3"_a, "v4"_a, "v5"_a,
-           "Called when the pixel size affine transformation changes")
-      .def("onSLMExposureChanged", &MMEventCallback::onSLMExposureChanged, "name"_a,
-           "newExposure"_a, "Called when the SLM exposure changes")
-      .def("onExposureChanged", &MMEventCallback::onExposureChanged, "name"_a, "newExposure"_a,
-           "Called when the exposure changes")
-      .def("onStagePositionChanged", &MMEventCallback::onStagePositionChanged, "name"_a,
-           "pos"_a, "Called when the stage position changes")
-      .def("onXYStagePositionChanged", &MMEventCallback::onXYStagePositionChanged, "name"_a,
-           "xpos"_a, "ypos"_a, "Called when the XY stage position changes")
-      ;
-    // clang-format on
+        .def("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
+             "Called when properties are changed")
+        .def("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
+             "propValue"_a, "Called when a specific property is changed")
+        .def("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
+             "newChannelGroupName"_a, "Called when the channel group changes")
+        .def("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
+             "newConfigName"_a, "Called when a configuration group changes")
+        .def("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
+             "Called when the system configuration is loaded")
+        .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
+             "Called when the pixel size changes")
+        .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
+             "v1"_a, "v2"_a, "v3"_a, "v4"_a, "v5"_a,
+             "Called when the pixel size affine transformation changes")
+        // These bindings are ugly lambda workarounds because the original methods
+        // take char* instead of const char*
+        // https://github.com/micro-manager/mmCoreAndDevices/pull/530
+        .def(
+            "onSLMExposureChanged",
+            [](MMEventCallback &self, const std::string &name, double newExposure) {
+                self.onSLMExposureChanged(const_cast<char *>(name.c_str()), newExposure);
+            },
+            "name"_a, "newExposure"_a)
+        .def(
+            "onExposureChanged",
+            [&](MMEventCallback &self, const std::string &name, double newExposure) {
+                self.onExposureChanged(const_cast<char *>(name.c_str()), newExposure);
+            },
+            "name"_a, "newExposure"_a)
+        .def(
+            "onStagePositionChanged",
+            [&](MMEventCallback &self, const std::string &name, double pos) {
+                self.onStagePositionChanged(const_cast<char *>(name.c_str()), pos);
+            },
+            "name"_a, "pos"_a)
+        .def(
+            "onXYStagePositionChanged",
+            [&](MMEventCallback &self, const std::string &name, double xpos, double ypos) {
+                self.onXYStagePositionChanged(const_cast<char *>(name.c_str()), xpos, ypos);
+            },
+            "name"_a, "xpos"_a, "ypos"_a);
 
     //////////////////// Exceptions ////////////////////
 
@@ -808,9 +776,8 @@ NB_MODULE(_pymmcore_nano, m) {
 
         .def(
             "loadSystemConfiguration",
-            [](CMMCore &self,
-               nb::object
-                   fileName) {  // accept any object that can be cast to a string (e.g. Path)
+            // accept any object that can be cast to a string (e.g. Path)
+            [](CMMCore &self, nb::object fileName) {
                 self.loadSystemConfiguration(nb::str(fileName).c_str());
             },
             "fileName"_a)
@@ -841,15 +808,14 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("registerCallback", &CMMCore::registerCallback, "cb"_a)
         .def(
             "setPrimaryLogFile",
-            [](CMMCore &self,
-               nb::object
-                   filename,  // accept any object that can be cast to a string (e.g. Path)
-               bool truncate) {
-                self.setPrimaryLogFile(nb::str(filename).c_str(),
-                                       truncate);  // convert to string
+            // accept any object that can be cast to a string (e.g. Path)
+            [](CMMCore &self, nb::object filename, bool truncate) {
+                // convert to string
+                self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);
             },
             "filename"_a,
             "truncate"_a = false)
+
         .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile)
         .def("logMessage", nb::overload_cast<const char *>(&CMMCore::logMessage), "msg"_a)
         .def("logMessage",
@@ -863,9 +829,9 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("stderrLogEnabled", &CMMCore::stderrLogEnabled)
         .def(
             "startSecondaryLogFile",
+            // accept any object that can be cast to a string (e.g. Path)
             [](CMMCore &self,
-               nb::object
-                   filename,  // accept any object that can be cast to a string (e.g. Path)
+               nb::object filename,
                bool enableDebug,
                bool truncate,
                bool synchronous) {
@@ -1091,9 +1057,8 @@ NB_MODULE(_pymmcore_nano, m) {
             "getROI",
             [](CMMCore &self, const char *label) {
                 int x, y, xSize, ySize;
-                self.getROI(label, x, y, xSize, ySize);  // Call the C++ method
-                return std::make_tuple(x, y, xSize,
-                                       ySize);  // Return as Python tuple
+                self.getROI(label, x, y, xSize, ySize);      // Call the C++ method
+                return std::make_tuple(x, y, xSize, ySize);  // Return as Python tuple
             },
             "label"_a)
         .def("clearROI", &CMMCore::clearROI)
@@ -1269,8 +1234,7 @@ NB_MODULE(_pymmcore_nano, m) {
                 return {create_metadata_array(self, img, md), md};
             },
             "n"_a,
-            "Get the nth image before the last image in the circular buffer and return it as "
-            "a "
+            "Get the nth image before the last image in the circular buffer and return it as a "
             "tuple "
             "of image and metadata")
         .def(

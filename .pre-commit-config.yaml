@@ -20,7 +20,7 @@ repos:
     rev: v19.1.6
     hooks:
       - id: clang-format
-        args: ["-i"]
+        args: [-i]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.6
