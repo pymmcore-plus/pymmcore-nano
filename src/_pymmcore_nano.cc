@@ -836,8 +836,8 @@ NB_MODULE(_pymmcore_nano, m) {
                bool enableDebug,
                bool truncate,
                bool synchronous) {
-                return self.startSecondaryLogFile(
-                    nb::str(filename).c_str(), enableDebug, truncate, synchronous);
+                return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug,
+                                                  truncate, synchronous);
             },
             "filename"_a,
             "enableDebug"_a,
@@ -1050,16 +1050,16 @@ NB_MODULE(_pymmcore_nano, m) {
              "ySize"_a)
         .def("getROI",
              [](CMMCore &self) {
-                 int x, y, xSize, ySize;
-                 self.getROI(x, y, xSize, ySize);             // Call C++ method
-                 return std::make_tuple(x, y, xSize, ySize);  // Return a tuple
+                int x, y, xSize, ySize;
+                self.getROI(x, y, xSize, ySize);            // Call C++ method
+                return std::make_tuple(x, y, xSize, ySize); // Return a tuple
              })
         .def(
             "getROI",
             [](CMMCore &self, const char *label) {
                 int x, y, xSize, ySize;
-                self.getROI(label, x, y, xSize, ySize);      // Call the C++ method
-                return std::make_tuple(x, y, xSize, ySize);  // Return as Python tuple
+                self.getROI(label, x, y, xSize, ySize);     // Call the C++ method
+                return std::make_tuple(x, y, xSize, ySize); // Return as Python tuple
             },
             "label"_a)
         .def("clearROI", &CMMCore::clearROI)
@@ -1071,9 +1071,9 @@ NB_MODULE(_pymmcore_nano, m) {
                                              std::vector<unsigned>,
                                              std::vector<unsigned>,
                                              std::vector<unsigned>> {
-                 std::vector<unsigned> xs, ys, widths, heights;
-                 self.getMultiROI(xs, ys, widths, heights);
-                 return {xs, ys, widths, heights};
+                std::vector<unsigned> xs, ys, widths, heights;
+                self.getMultiROI(xs, ys, widths, heights);
+                return {xs, ys, widths, heights};
              })
 
         .def("setExposure", nb::overload_cast<double>(&CMMCore::setExposure), "exp"_a)
@@ -1089,7 +1089,7 @@ NB_MODULE(_pymmcore_nano, m) {
             [](CMMCore &self) -> np_array { return create_image_array(self, self.getImage()); })
         .def("getImage",
              [](CMMCore &self, unsigned channel) -> np_array {
-                 return create_image_array(self, self.getImage(channel));
+                return create_image_array(self, self.getImage(channel));
              })
         .def("getImageWidth", &CMMCore::getImageWidth)
         .def("getImageHeight", &CMMCore::getImageHeight)
@@ -1137,11 +1137,11 @@ NB_MODULE(_pymmcore_nano, m) {
              "cameraLabel"_a)
         .def("getLastImage",
              [](CMMCore &self) -> np_array {
-                 return create_image_array(self, self.getLastImage());
+                return create_image_array(self, self.getLastImage());
              })
         .def("popNextImage",
              [](CMMCore &self) -> np_array {
-                 return create_image_array(self, self.popNextImage());
+                return create_image_array(self, self.popNextImage());
              })
         // this is a new overload that returns both the image and the metadata
         // not present in the original C++ API
@@ -1380,9 +1380,9 @@ NB_MODULE(_pymmcore_nano, m) {
             "xyStageLabel"_a)
         .def("getXYPosition",
              [](CMMCore &self) -> std::tuple<double, double> {
-                 double x, y;
-                 self.getXYPosition(x, y);
-                 return {x, y};
+                double x, y;
+                self.getXYPosition(x, y);
+                return {x, y};
              })
         .def("getXPosition",
              nb::overload_cast<const char *>(&CMMCore::getXPosition),
@@ -1520,9 +1520,9 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a)
         .def("getGalvoPosition",
              [](CMMCore &self, const char *galvoLabel) {
-                 double x, y;
-                 self.getGalvoPosition(galvoLabel, x, y);  // Call C++ method
-                 return std::make_tuple(x, y);             // Return a tuple
+                double x, y;
+                self.getGalvoPosition(galvoLabel, x, y); // Call C++ method
+                return std::make_tuple(x, y);            // Return a tuple
              })
         .def("setGalvoIlluminationState",
              &CMMCore::setGalvoIlluminationState,
