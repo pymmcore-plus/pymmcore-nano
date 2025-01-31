@@ -1,0 +1,9 @@
+BasedOnStyle: Google
+ColumnLimit: 96
+AllowShortCaseLabelsOnASingleLine: true
+ContinuationIndentWidth: 4
+IndentWidth: 4
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BinPackArguments: false
+BinPackParameters: false
