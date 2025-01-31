@@ -907,10 +907,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "clang-format", specifier = ">=19.1.7" },
-    { name = "numpy", specifier = ">=1.25" },
-]
+requires-dist = [{ name = "numpy", specifier = ">=1.25" }]
 
 [package.metadata.requires-dev]
 dev = [

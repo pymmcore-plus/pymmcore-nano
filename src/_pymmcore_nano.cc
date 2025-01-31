@@ -29,6 +29,7 @@ const std::string PYMMCORE_NANO_VERSION = "0";
 #define GIL_HELD 0
 #endif
 
+
 ///////////////// NUMPY ARRAY HELPERS ///////////////////
 
 // Alias for read-only NumPy array

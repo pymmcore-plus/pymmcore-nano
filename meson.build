@@ -7,12 +7,8 @@ version : '11.3.0.71.0',
   meson_version : '>= 1.2.0',
   default_options : ['cpp_std=c++17']
 )
-
-
-
 py = import('python').find_installation()
 nanobind_dep = dependency('nanobind', static: true)
-
 
 # Run a command to get the Python include path
 python_include_path = run_command(
@@ -89,7 +85,6 @@ if host_machine.system() == 'windows'
     cpp_args += ['-DNOMINMAX', '-D_CRT_SECURE_NO_WARNINGS']
 endif
 
-# Grab the option
 hold_gil_opt = get_option('hold_gil')
 if hold_gil_opt
     cpp_args += ['-DHOLD_GIL']
