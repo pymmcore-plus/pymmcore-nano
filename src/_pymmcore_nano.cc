@@ -706,28 +706,28 @@ NB_MODULE(_pymmcore_nano, m) {
 
       // Virtual methods
       // clang-format off
-      NB_DEF_GIL("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
+      .def("onPropertiesChanged", &MMEventCallback::onPropertiesChanged,
            "Called when properties are changed")
-      NB_DEF_GIL("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
+      .def("onPropertyChanged", &MMEventCallback::onPropertyChanged, "name"_a, "propName"_a,
            "propValue"_a, "Called when a specific property is changed")
-      NB_DEF_GIL("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
+      .def("onChannelGroupChanged", &MMEventCallback::onChannelGroupChanged,
            "newChannelGroupName"_a, "Called when the channel group changes")
-      NB_DEF_GIL("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
+      .def("onConfigGroupChanged", &MMEventCallback::onConfigGroupChanged, "groupName"_a,
            "newConfigName"_a, "Called when a configuration group changes")
-      NB_DEF_GIL("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
+      .def("onSystemConfigurationLoaded", &MMEventCallback::onSystemConfigurationLoaded,
            "Called when the system configuration is loaded")
-      NB_DEF_GIL("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
+      .def("onPixelSizeChanged", &MMEventCallback::onPixelSizeChanged, "newPixelSizeUm"_a,
            "Called when the pixel size changes")
-      NB_DEF_GIL("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
+      .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
            "v1"_a, "v2"_a, "v3"_a, "v4"_a, "v5"_a,
            "Called when the pixel size affine transformation changes")
-      NB_DEF_GIL("onSLMExposureChanged", &MMEventCallback::onSLMExposureChanged, "name"_a,
+      .def("onSLMExposureChanged", &MMEventCallback::onSLMExposureChanged, "name"_a,
            "newExposure"_a, "Called when the SLM exposure changes")
-      NB_DEF_GIL("onExposureChanged", &MMEventCallback::onExposureChanged, "name"_a, "newExposure"_a,
+      .def("onExposureChanged", &MMEventCallback::onExposureChanged, "name"_a, "newExposure"_a,
            "Called when the exposure changes")
-      NB_DEF_GIL("onStagePositionChanged", &MMEventCallback::onStagePositionChanged, "name"_a,
+      .def("onStagePositionChanged", &MMEventCallback::onStagePositionChanged, "name"_a,
            "pos"_a, "Called when the stage position changes")
-      NB_DEF_GIL("onXYStagePositionChanged", &MMEventCallback::onXYStagePositionChanged, "name"_a,
+      .def("onXYStagePositionChanged", &MMEventCallback::onXYStagePositionChanged, "name"_a,
            "xpos"_a, "ypos"_a, "Called when the XY stage position changes")
       ;
   // clang-format on
@@ -751,7 +751,7 @@ NB_MODULE(_pymmcore_nano, m) {
   nb::class_<CMMCore>(m, "CMMCore")
       .def(nb::init<>())
 
-      NB_DEF_GIL(
+      .def(
           "loadSystemConfiguration",
           [](CMMCore& self,
              nb::object fileName) {  // accept any object that can be cast to a string (e.g. Path)
@@ -776,13 +776,13 @@ NB_MODULE(_pymmcore_nano, m) {
       NB_DEF_GIL("getAPIVersionInfo", &CMMCore::getAPIVersionInfo)
       NB_DEF_GIL("getSystemState", &CMMCore::getSystemState)
       NB_DEF_GIL("setSystemState", &CMMCore::setSystemState, "conf"_a)
-      NB_DEF_GIL("getConfigState", &CMMCore::getConfigState, "group"_a, "config"_a)
+      .def("getConfigState", &CMMCore::getConfigState, "group"_a, "config"_a)
       NB_DEF_GIL("getConfigGroupState", nb::overload_cast<const char*>(&CMMCore::getConfigGroupState),
            "group"_a)
       NB_DEF_GIL("saveSystemState", &CMMCore::saveSystemState, "fileName"_a)
       NB_DEF_GIL("loadSystemState", &CMMCore::loadSystemState, "fileName"_a)
       NB_DEF_GIL("registerCallback", &CMMCore::registerCallback, "cb"_a)
-      NB_DEF_GIL(
+      .def(
           "setPrimaryLogFile",
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
@@ -792,16 +792,16 @@ NB_MODULE(_pymmcore_nano, m) {
           },
           "filename"_a, "truncate"_a = false)
 
-      NB_DEF_GIL("getPrimaryLogFile", &CMMCore::getPrimaryLogFile)
-      NB_DEF_GIL("logMessage", nb::overload_cast<const char*>(&CMMCore::logMessage), "msg"_a)
-      NB_DEF_GIL("logMessage", nb::overload_cast<const char*, bool>(&CMMCore::logMessage), "msg"_a,
+      .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile)
+      .def("logMessage", nb::overload_cast<const char*>(&CMMCore::logMessage), "msg"_a)
+      .def("logMessage", nb::overload_cast<const char*, bool>(&CMMCore::logMessage), "msg"_a,
            "debugOnly"_a)
 
-      NB_DEF_GIL("enableDebugLog", &CMMCore::enableDebugLog, "enable"_a)
-      NB_DEF_GIL("debugLogEnabled", &CMMCore::debugLogEnabled)
-      NB_DEF_GIL("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a)
-      NB_DEF_GIL("stderrLogEnabled", &CMMCore::stderrLogEnabled)
-      NB_DEF_GIL(
+      .def("enableDebugLog", &CMMCore::enableDebugLog, "enable"_a)
+      .def("debugLogEnabled", &CMMCore::debugLogEnabled)
+      .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a)
+      .def("stderrLogEnabled", &CMMCore::stderrLogEnabled)
+      .def(
           "startSecondaryLogFile",
           [](CMMCore& self,
              nb::object filename,  // accept any object that can be cast to a string (e.g. Path)
@@ -811,7 +811,7 @@ NB_MODULE(_pymmcore_nano, m) {
                                                             enableDebug, truncate, synchronous);
           },
           "filename"_a, "enableDebug"_a, "truncate"_a = true, "synchronous"_a = false)
-      NB_DEF_GIL("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
+      .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a)
 
       NB_DEF_GIL("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths)
       NB_DEF_GIL("setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a)
@@ -819,7 +819,7 @@ NB_MODULE(_pymmcore_nano, m) {
       NB_DEF_GIL("getAvailableDevices", &CMMCore::getAvailableDevices, "library"_a)
       NB_DEF_GIL("getAvailableDeviceDescriptions", &CMMCore::getAvailableDeviceDescriptions, "library"_a)
       NB_DEF_GIL("getAvailableDeviceTypes", &CMMCore::getAvailableDeviceTypes, "library"_a)
-      NB_DEF_GIL("getLoadedDevices", &CMMCore::getLoadedDevices)
+      .def("getLoadedDevices", &CMMCore::getLoadedDevices)
       NB_DEF_GIL("getLoadedDevicesOfType", &CMMCore::getLoadedDevicesOfType, "devType"_a)
       NB_DEF_GIL("getDeviceType", &CMMCore::getDeviceType, "label"_a)
       NB_DEF_GIL("getDeviceLibrary", &CMMCore::getDeviceLibrary, "label"_a)
