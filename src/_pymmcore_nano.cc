@@ -56,28 +56,7 @@ np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, uns
     default: throw std::invalid_argument("Unsupported element size");
     }
 
-    // NOTE: I am definitely *not* sure that I've done this owner correctly.
-    // we need to assign an owner to the array whose continued existence
-    // keeps the underlying memory region alive:
-    //
-    // https://nanobind.readthedocs.io/en/latest/ndarray.html#returning-arrays-from-c-to-python
-    // https://nanobind.readthedocs.io/en/latest/ndarray.html#data-ownership
-
-    // 1. This method comes directly from the docs above
-    // but leads to a double free error
-
-    // nb::capsule owner(pBuf, [](void *p) noexcept { delete[] (float *)p; });
-    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
-
-    // 2. This method ties the lifetime of the buffer to the lifetime of the CMMCore
-    // object but gives a bunch of "nanobind: leaked 6 instances!" warnings at
-    // exit. those *could* be hidden with `nb::set_leak_warnings(false);` ... but
-    // not sure if that's a good idea.
-
-    // nb::object owner = nb::cast(core, nb::rv_policy::reference);
-    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
-
-    // 3. This would fully copy the data.  It's the safest, but also the slowest.
+    // This approach fully copies the data.  It's the safest, but also the slowest.
 
     // Calculate total number of elements
     size_t total_size =
@@ -93,11 +72,31 @@ np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, uns
                       [](void *ptr) noexcept { delete[] static_cast<uint8_t *>(ptr); });
     return np_array(raw_ptr, new_shape, owner, strides, new_dtype);
 
-    // 4. This method gives neither leak warnings nor double free errors.
-    // If the core object deletes the buffer prematurely, the numpy array will
-    // point to invalid memory, potentially leading to crashes or undefined
-    // behavior... so users should  call `img.copy()` if they want to ensure the
-    // data is copied.
+    // // Below are some other methods and experiments for other ownership models
+    // //
+    // https://nanobind.readthedocs.io/en/latest/ndarray.html#returning-arrays-from-c-to-python
+    // // https://nanobind.readthedocs.io/en/latest/ndarray.html#data-ownership
+
+    // // 1. This method comes directly from the docs above
+    // // but leads to a double free error
+
+    // nb::capsule owner(pBuf, [](void *p) noexcept { delete[] (float *)p; });
+    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
+
+    // // 2. This method ties the lifetime of the buffer to the lifetime of the CMMCore
+    // // object but gives a bunch of "nanobind: leaked 6 instances!" warnings at
+    // // exit. those *could* be hidden with `nb::set_leak_warnings(false);` ... but
+    // // not sure if that's a good idea.
+
+    // nb::object owner = nb::cast(core, nb::rv_policy::reference);
+    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
+
+    // // 3. This method gives neither leak warnings nor double free errors.
+    // // If the core object deletes the buffer prematurely, the numpy array will
+    // // point to invalid memory, potentially leading to crashes or undefined
+    // // behavior... so users should  call `img.copy()` if they want to ensure the
+    // // data is copied.
+
     // nb::capsule owner(pBuf, [](void *p) noexcept {});
     // return np_array(pBuf, new_shape, owner, strides, new_dtype);
 }
@@ -125,7 +124,19 @@ np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned 
     case 4: new_dtype = nb::dtype<uint32_t>(); break;
     default: throw std::invalid_argument("Unsupported element size");
     }
-    nb::capsule owner(pBuf, [](void *p) noexcept {});
+
+    // Calculate total number of elements
+    size_t total_size =
+        std::accumulate(new_shape.begin(), new_shape.end(), (size_t)1, std::multiplies<>());
+
+    // Allocate a new buffer and copy the data
+    auto buffer = std::make_unique<uint8_t[]>(total_size * byteDepth);
+    std::memcpy(buffer.get(), pBuf, total_size * byteDepth);
+
+    // Release ownership from the unique_ptr and create a capsule that manages it.
+    uint8_t *raw_ptr = buffer.release();
+    nb::capsule owner(raw_ptr,
+                      [](void *ptr) noexcept { delete[] static_cast<uint8_t *>(ptr); });
 
     // Create the ndarray
     return np_array(offset_buf, new_shape, owner, strides, new_dtype);
