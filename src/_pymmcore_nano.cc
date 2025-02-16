@@ -36,6 +36,20 @@ const std::string PYMMCORE_NANO_VERSION = "1";
 using np_array = nb::ndarray<nb::numpy, nb::ro>;
 using StrVec = std::vector<std::string>;
 
+// Helper function to allocate a new buffer, copy the data,
+// and return an np_array that views the data starting at (raw_ptr + offset)
+np_array make_np_array_from_copy(const void *src, size_t nbytes,
+                                 std::initializer_list<size_t> shape,
+                                 std::initializer_list<int64_t> strides,
+                                 nb::dlpack::dtype dtype, size_t offset = 0) {
+    auto buffer = std::make_unique<uint8_t[]>(nbytes);
+    std::memcpy(buffer.get(), src, nbytes);
+    uint8_t *raw_ptr = buffer.release();
+    nb::capsule owner(raw_ptr,
+                      [](void *ptr) noexcept { delete[] static_cast<uint8_t *>(ptr); });
+    return np_array(raw_ptr + offset, shape, owner, strides, dtype);
+}
+
 /**
  * @brief Creates a read-only NumPy array for pBuf for a given width, height,
  * etc. These parameters are are gleaned either from image metadata or core
@@ -44,61 +58,21 @@ using StrVec = std::vector<std::string>;
  */
 np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
                                   unsigned byteDepth) {
-    std::initializer_list<size_t> new_shape = {height, width};
+    std::initializer_list<size_t> shape = {height, width};
     std::initializer_list<int64_t> strides = {width, 1};
 
-    // Determine the dtype based on the element size
-    nb::dlpack::dtype new_dtype;
+    // Determine the dtype based on the element size.
+    nb::dlpack::dtype dtype;
     switch (byteDepth) {
-    case 1: new_dtype = nb::dtype<uint8_t>(); break;
-    case 2: new_dtype = nb::dtype<uint16_t>(); break;
-    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    case 1: dtype = nb::dtype<uint8_t>(); break;
+    case 2: dtype = nb::dtype<uint16_t>(); break;
+    case 4: dtype = nb::dtype<uint32_t>(); break;
     default: throw std::invalid_argument("Unsupported element size");
     }
 
-    // This approach fully copies the data.  It's the safest, but also the slowest.
-
-    // Calculate total number of elements
-    size_t total_size =
-        std::accumulate(new_shape.begin(), new_shape.end(), (size_t)1, std::multiplies<>());
-
-    // Allocate a new buffer and copy the data
-    auto buffer = std::make_unique<uint8_t[]>(total_size * byteDepth);
-    std::memcpy(buffer.get(), pBuf, total_size * byteDepth);
-
-    // Release ownership from the unique_ptr and create a capsule that manages it.
-    uint8_t *raw_ptr = buffer.release();
-    nb::capsule owner(raw_ptr,
-                      [](void *ptr) noexcept { delete[] static_cast<uint8_t *>(ptr); });
-    return np_array(raw_ptr, new_shape, owner, strides, new_dtype);
-
-    // // Below are some other methods and experiments for other ownership models
-    // //
-    // https://nanobind.readthedocs.io/en/latest/ndarray.html#returning-arrays-from-c-to-python
-    // // https://nanobind.readthedocs.io/en/latest/ndarray.html#data-ownership
-
-    // // 1. This method comes directly from the docs above
-    // // but leads to a double free error
-
-    // nb::capsule owner(pBuf, [](void *p) noexcept { delete[] (float *)p; });
-    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
-
-    // // 2. This method ties the lifetime of the buffer to the lifetime of the CMMCore
-    // // object but gives a bunch of "nanobind: leaked 6 instances!" warnings at
-    // // exit. those *could* be hidden with `nb::set_leak_warnings(false);` ... but
-    // // not sure if that's a good idea.
-
-    // nb::object owner = nb::cast(core, nb::rv_policy::reference);
-    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
-
-    // // 3. This method gives neither leak warnings nor double free errors.
-    // // If the core object deletes the buffer prematurely, the numpy array will
-    // // point to invalid memory, potentially leading to crashes or undefined
-    // // behavior... so users should  call `img.copy()` if they want to ensure the
-    // // data is copied.
-
-    // nb::capsule owner(pBuf, [](void *p) noexcept {});
-    // return np_array(pBuf, new_shape, owner, strides, new_dtype);
+    // pBuf is assumed to be a contiguous grayscale image with (height*width) pixels.
+    size_t nbytes = static_cast<size_t>(height) * width * byteDepth;
+    return make_np_array_from_copy(pBuf, nbytes, shape, strides, dtype);
 }
 
 // only reason we're making two functions here is that i had a hell of a time
@@ -106,40 +80,30 @@ np_array build_grayscale_np_array(CMMCore &core, void *pBuf, unsigned width, uns
 // (only on Linux) so we create two constructors
 np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
                             unsigned byteDepth) {
-    const unsigned out_byteDepth = byteDepth / 4; // break up the 4 components
+    // The source is in BGRA order with 4 components per pixel.
+    // We will create a view that skips the alpha channel and inverts the order.
+    const unsigned out_byteDepth = byteDepth / 4;
 
-    std::initializer_list<size_t> new_shape = {height, width, 3};
-    // Note the negative stride for the last dimension, data comes in as BGRA
-    // we want to invert that to be ARGB
+    std::initializer_list<size_t> shape = {height, width, 3};
+    // Use your pre-determined strides (negative last stride to reverse channels)
     std::initializer_list<int64_t> strides = {width * byteDepth, byteDepth, -1};
-    // offset the buffer pointer (based on the byteDepth) to skip the alpha
-    // channel so we end up with just RGB
-    const uint8_t *offset_buf = static_cast<const uint8_t *>(pBuf) + out_byteDepth * 2;
 
-    // Determine the dtype based on the element size
-    nb::dlpack::dtype new_dtype;
-    switch (out_byteDepth) { // all RGB formats have 4 components in a single "pixel"
-    case 1: new_dtype = nb::dtype<uint8_t>(); break;
-    case 2: new_dtype = nb::dtype<uint16_t>(); break;
-    case 4: new_dtype = nb::dtype<uint32_t>(); break;
+    // Determine the dtype based on per-channel size.
+    nb::dlpack::dtype dtype;
+    switch (out_byteDepth) {
+    case 1: dtype = nb::dtype<uint8_t>(); break;
+    case 2: dtype = nb::dtype<uint16_t>(); break;
+    case 4: dtype = nb::dtype<uint32_t>(); break;
     default: throw std::invalid_argument("Unsupported element size");
     }
 
-    // Calculate total number of elements
-    size_t total_size =
-        std::accumulate(new_shape.begin(), new_shape.end(), (size_t)1, std::multiplies<>());
-
-    // Allocate a new buffer and copy the data
-    auto buffer = std::make_unique<uint8_t[]>(total_size * byteDepth);
-    std::memcpy(buffer.get(), pBuf, total_size * byteDepth);
-
-    // Release ownership from the unique_ptr and create a capsule that manages it.
-    uint8_t *raw_ptr = buffer.release();
-    nb::capsule owner(raw_ptr,
-                      [](void *ptr) noexcept { delete[] static_cast<uint8_t *>(ptr); });
-
-    // Create the ndarray
-    return np_array(offset_buf, new_shape, owner, strides, new_dtype);
+    // The original pBuf contains BGRA pixels; each pixel takes byteDepth bytes.
+    // Therefore, copy height*width*byteDepth bytes.
+    size_t nbytes = static_cast<size_t>(height) * width * byteDepth;
+    // Compute an offset into each pixel so that the view starts at the R channel.
+    // For BGRA, offset = out_byteDepth * 2 yields [R, G, B] when using a -1 stride.
+    size_t offset = out_byteDepth * 2;
+    return make_np_array_from_copy(pBuf, nbytes, shape, strides, dtype, offset);
 }
 
 /** @brief Create a read-only NumPy array using core methods
