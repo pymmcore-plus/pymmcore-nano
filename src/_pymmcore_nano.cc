@@ -42,9 +42,13 @@ np_array make_np_array_from_copy(const void *src, size_t nbytes,
                                  std::initializer_list<size_t> shape,
                                  std::initializer_list<int64_t> strides,
                                  nb::dlpack::dtype dtype, size_t offset = 0) {
+    uint8_t *raw_ptr;
     auto buffer = std::make_unique<uint8_t[]>(nbytes);
     std::memcpy(buffer.get(), src, nbytes);
-    uint8_t *raw_ptr = buffer.release();
+    raw_ptr = buffer.release();
+
+    // acquire the GIL before creating Python objects.
+    nb::gil_scoped_acquire gil;
     nb::capsule owner(raw_ptr,
                       [](void *ptr) noexcept { delete[] static_cast<uint8_t *>(ptr); });
     return np_array(raw_ptr + offset, shape, owner, strides, dtype);
@@ -1070,11 +1074,12 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("snapImage", &CMMCore::snapImage RGIL)
         .def(
             "getImage",
-            [](CMMCore &self) -> np_array { return create_image_array(self, self.getImage()); } )
+            [](CMMCore &self) -> np_array {
+                return create_image_array(self, self.getImage()); } RGIL)
         .def("getImage",
              [](CMMCore &self, unsigned channel) -> np_array {
                 return create_image_array(self, self.getImage(channel));
-             } )
+             } RGIL)
         .def("getImageWidth", &CMMCore::getImageWidth RGIL)
         .def("getImageHeight", &CMMCore::getImageHeight RGIL)
         .def("getBytesPerPixel", &CMMCore::getBytesPerPixel RGIL)
@@ -1122,11 +1127,11 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("getLastImage",
              [](CMMCore &self) -> np_array {
                 return create_image_array(self, self.getLastImage());
-             })
+             } RGIL)
         .def("popNextImage",
              [](CMMCore &self) -> np_array {
                 return create_image_array(self, self.popNextImage());
-             })
+             } RGIL)
         // this is a new overload that returns both the image and the metadata
         // not present in the original C++ API
         .def(
@@ -1136,7 +1141,7 @@ NB_MODULE(_pymmcore_nano, m) {
                 auto img = self.getLastImageMD(md);
                 return {create_metadata_array(self, img, md), md};
             },
-            "Get the last image in the circular buffer, return as tuple of image and metadata")
+            "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
         .def(
             "getLastImageMD",
             [](CMMCore &self, Metadata &md) -> np_array {
@@ -1144,7 +1149,7 @@ NB_MODULE(_pymmcore_nano, m) {
                 return create_metadata_array(self, img, md);
             },
             "md"_a,
-            "Get the last image in the circular buffer, store metadata in the provided object")
+            "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
         .def(
             "getLastImageMD",
             [](CMMCore &self,
@@ -1157,7 +1162,7 @@ NB_MODULE(_pymmcore_nano, m) {
             "channel"_a,
             "slice"_a,
             "Get the last image in the circular buffer for a specific channel and slice, return"
-            "as tuple of image and metadata")
+            "as tuple of image and metadata" RGIL)
         .def(
             "getLastImageMD",
             [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
@@ -1168,7 +1173,7 @@ NB_MODULE(_pymmcore_nano, m) {
             "slice"_a,
             "md"_a,
             "Get the last image in the circular buffer for a specific channel and slice, store "
-            "metadata in the provided object")
+            "metadata in the provided object" RGIL)
 
         .def(
             "popNextImageMD",
@@ -1177,7 +1182,7 @@ NB_MODULE(_pymmcore_nano, m) {
                 auto img = self.popNextImageMD(md);
                 return {create_metadata_array(self, img, md), md};
             },
-            "Get the last image in the circular buffer, return as tuple of image and metadata")
+            "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
         .def(
             "popNextImageMD",
             [](CMMCore &self, Metadata &md) -> np_array {
@@ -1185,7 +1190,7 @@ NB_MODULE(_pymmcore_nano, m) {
                 return create_metadata_array(self, img, md);
             },
             "md"_a,
-            "Get the last image in the circular buffer, store metadata in the provided object")
+            "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
         .def(
             "popNextImageMD",
             [](CMMCore &self,
@@ -1198,7 +1203,7 @@ NB_MODULE(_pymmcore_nano, m) {
             "channel"_a,
             "slice"_a,
             "Get the last image in the circular buffer for a specific channel and slice, return"
-            "as tuple of image and metadata")
+            "as tuple of image and metadata" RGIL)
         .def(
             "popNextImageMD",
             [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
@@ -1209,7 +1214,7 @@ NB_MODULE(_pymmcore_nano, m) {
             "slice"_a,
             "md"_a,
             "Get the last image in the circular buffer for a specific channel and slice, store "
-            "metadata in the provided object")
+            "metadata in the provided object" RGIL)
 
         .def(
             "getNBeforeLastImageMD",
@@ -1221,7 +1226,7 @@ NB_MODULE(_pymmcore_nano, m) {
             "n"_a,
             "Get the nth image before the last image in the circular buffer and return it as a "
             "tuple "
-            "of image and metadata")
+            "of image and metadata" RGIL)
         .def(
             "getNBeforeLastImageMD",
             [](CMMCore &self, unsigned long n, Metadata &md) -> np_array {
@@ -1232,7 +1237,7 @@ NB_MODULE(_pymmcore_nano, m) {
             "md"_a,
             "Get the nth image before the last image in the circular buffer and store the "
             "metadata "
-            "in the provided object")
+            "in the provided object" RGIL)
 
         // Circular Buffer Methods
         .def("getRemainingImageCount", &CMMCore::getRemainingImageCount RGIL)
