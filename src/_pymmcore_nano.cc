@@ -5,7 +5,6 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/trampoline.h>
-#include <numeric> // std::accumulate
 
 #include "MMCore.h"
 #include "MMEventCallback.h"
