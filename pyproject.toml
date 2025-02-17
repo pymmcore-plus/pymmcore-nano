@@ -49,6 +49,12 @@ dev = [
     "ruff",
     "rust-just",
 ]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocstrings-python>=1.16.0",
+    "mkdocs-material>=9.6.4",
+    "mkdocs-minify-plugin>=0.8.0",
+]
 
 # https://docs.pytest.org/
 [tool.pytest.ini_options]

@@ -12,16 +12,17 @@ class ActionType(enum.IntEnum):
     StartSequence = 5
     StopSequence = 6
 
-AfterLoadSequence: int = 4
-AfterSet: int = 2
-AnyType: int = 1
-Attention: int = 0
-AutoFocusDevice: int = 9
-BeforeGet: int = 1
-
 class CMMCore:
+    """
+    The main MMCore object.
+
+    Manages multiple device adapters. Provides a device-independent interface for hardware control.
+    Additionally, provides some facilities (such as configuration groups) for application
+    programming.
+    """
     def __init__(self) -> None: ...
-    def loadSystemConfiguration(self, fileName: object) -> None: ...
+    def loadSystemConfiguration(self, fileName: object) -> None:
+        """Loads a system configuration from a file."""
     def saveSystemConfiguration(self, fileName: str) -> None: ...
     @staticmethod
     def enableFeature(name: str, enable: bool) -> None: ...
@@ -45,7 +46,12 @@ class CMMCore:
     def getConfigGroupState(self, group: str) -> Configuration: ...
     def saveSystemState(self, fileName: str) -> None: ...
     def loadSystemState(self, fileName: str) -> None: ...
-    def registerCallback(self, cb: MMEventCallback) -> None: ...
+    def registerCallback(self, cb: MMEventCallback) -> None:
+        """
+        Register a callback (listener class).
+
+        MMCore will send notifications on internal events using this interface
+        """
     def setPrimaryLogFile(self, filename: object, truncate: bool = False) -> None: ...
     def getPrimaryLogFile(self) -> str: ...
     @overload
@@ -525,11 +531,12 @@ class CMMCore:
 class CMMError(RuntimeError):
     pass
 
-CameraDevice: int = 2
-CanCommunicate: int = 1
-CanNotCommunicate: int = 0
-
 class Configuration:
+    """
+    Encapsulation of  configuration information.
+
+    A configuration is a collection of device property settings.
+    """
     def __init__(self) -> None: ...
     def addSetting(self, setting: PropertySetting) -> None: ...
     def deleteSetting(self, device: str, property: str) -> None: ...
@@ -543,7 +550,6 @@ class Configuration:
     def size(self) -> int: ...
     def getVerbose(self) -> str: ...
 
-CoreDevice: int = 10
 DEVICE_BUFFER_OVERFLOW: int = 22
 DEVICE_CAMERA_BUSY_ACQUIRING: int = 30
 DEVICE_CAN_NOT_SET_PROPERTY: int = 32
@@ -624,31 +630,20 @@ class DeviceType(enum.IntEnum):
     HubDevice = 15
     GalvoDevice = 16
 
-Done: int = 1
-Float: int = 2
-
 class FocusDirection(enum.IntEnum):
     FocusDirectionUnknown = 0
     FocusDirectionTowardSample = 1
     FocusDirectionAwayFromSample = 2
 
-FocusDirectionAwayFromSample: int = 2
-FocusDirectionTowardSample: int = 1
-FocusDirectionUnknown: int = 0
-GalvoDevice: int = 16
-GenericDevice: int = 8
-HIDPort: int = 3
-HubDevice: int = 15
-ImageProcessorDevice: int = 11
-InitializationFailed: int = 2
-InitializedSuccessfully: int = 1
-Integer: int = 3
-InvalidPort: int = 0
-IsSequenceable: int = 3
 MMCore_version: str = "11.3.0"
 MMCore_version_info: tuple = (11, 3, 0)
 
 class MMEventCallback:
+    """
+    Interface for receiving events from MMCore.
+
+    Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore.registerCallback].
+    """
     def __init__(self) -> None: ...
     def onPropertiesChanged(self) -> None:
         """Called when properties are changed"""
@@ -674,7 +669,6 @@ class MMEventCallback:
 MM_CODE_ERR: int = 1
 MM_CODE_OK: int = 0
 MODULE_INTERFACE_VERSION: int = 10
-MagnifierDevice: int = 13
 
 class Metadata:
     @overload
@@ -789,8 +783,6 @@ class MetadataTag:
     def Restore(self, stream: str) -> bool:
         """Restores from a serialized string"""
 
-Misconfigured: int = -1
-NoAction: int = 0
 PYMMCORE_NANO_VERSION: str = "1"
 
 class PortType(enum.IntEnum):
@@ -832,23 +824,6 @@ class PropertyType(enum.IntEnum):
     Float = 2
     Integer = 3
 
-SLMDevice: int = 14
-SerialDevice: int = 7
-SerialPort: int = 1
-ShutterDevice: int = 3
-SignalIODevice: int = 12
-StageDevice: int = 5
-StartSequence: int = 5
-StateDevice: int = 4
-StatusChanged: int = 2
-StopSequence: int = 6
-String: int = 1
-USBPort: int = 2
-Undef: int = 0
-Unimplemented: int = -2
-Uninitialized: int = 0
-UnknownType: int = 0
-XYStageDevice: int = 6
 g_CFGCommand_ConfigGroup: str = "ConfigGroup"
 g_CFGCommand_ConfigPixelSize: str = "ConfigPixelSize"
 g_CFGCommand_Configuration: str = "Config"
