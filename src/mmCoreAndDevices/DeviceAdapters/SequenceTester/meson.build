@@ -11,16 +11,28 @@ project(
     ],
 )
 
+msgpack_cxx_dep = dependency('msgpack-cxx')
+boost_dep = dependency('boost', modules: ['thread', 'system'], include_type: 'system')
+
 # MMDevice must be copied into subprojects/ for this experimental build to work
 # (unless MMCore is itself being used as a subproject).
 mmdevice_proj = subproject('MMDevice')
 mmdevice_dep = mmdevice_proj.get_variable('mmdevice')
 
+seqtester_sources = files(
+    'InterDevice.cpp',
+    'LoggedSetting.cpp',
+    'SequenceTester.cpp',
+    'SettingLogger.cpp',
+    'TextImage.cpp',
+    'TriggerInput.cpp',
+)
+
 # Define the target (shared library)
 library(
     'mmgr_dal_SequenceTester',
-    ['SequenceTester.cpp'],
-    dependencies: [mmdevice_dep],
+    sources: seqtester_sources,
+    dependencies: [mmdevice_dep, msgpack_cxx_dep, boost_dep],
     cpp_args: [
         '-Wno-unused-but-set-variable',
         '-Wno-reorder',

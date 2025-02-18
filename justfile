@@ -1,6 +1,7 @@
 env_dir := if os_family() == "windows" { "./.venv/Scripts" } else { "./.venv/bin" }
 python := env_dir + if os_family() == "windows" { "/python.exe" } else { "/python3" }
 builddir := `ls -d build/cp3* 2>/dev/null | head -n 1`
+set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
 
 # install deps and editable package for development
 install:
@@ -26,6 +27,9 @@ clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
 	rm -rf *.gcov
+	# remove all folders call MMDevice that are INSIDE of a subproject folder
+	find -L . -type d -path '*/subprojects/MMDevice' -exec rm -rf {} +
+	find -L . -type d -path '*/subprojects/packagecache' -exec rm -rf {} +
 
 	# clean all the nested builddirs
 	find src -name builddir -type d -exec rm -rf {} +
@@ -60,7 +64,7 @@ pull-mmcore:
 build-devices:
 	just build-adapter DemoCamera
 	just build-adapter Utilities
-	# just build-adapter SequenceTester
+	just build-adapter SequenceTester
 
 build-mmdevice:
 	meson setup src/mmCoreAndDevices/MMDevice/builddir src/mmCoreAndDevices/MMDevice

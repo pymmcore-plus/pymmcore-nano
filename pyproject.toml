@@ -33,20 +33,24 @@ classifiers = [
 dependencies = ["numpy>=1.25"]
 
 [dependency-groups]
+build = [
+    "meson-python",
+    "nanobind",
+    "ninja",
+    "ruff",
+    "typing_extensions",
+]
 dev = [
+    {include-group = "build"},
     "clang-format>=19.1.7",
     "gcovr",
     "ipython",
-    "meson-python",
     "mypy",
-    "nanobind",
-    "ninja",
     "pdbpp; sys_platform != 'win32'",
     "pre-commit",
     "pytest-cov",
     "pytest",
     "rich",
-    "ruff",
     "rust-just",
 ]
 

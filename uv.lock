@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -888,6 +889,13 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+build = [
+    { name = "meson-python" },
+    { name = "nanobind" },
+    { name = "ninja" },
+    { name = "ruff" },
+    { name = "typing-extensions" },
+]
 dev = [
     { name = "clang-format" },
     { name = "gcovr" },
@@ -904,12 +912,20 @@ dev = [
     { name = "rich" },
     { name = "ruff" },
     { name = "rust-just" },
+    { name = "typing-extensions" },
 ]
 
 [package.metadata]
 requires-dist = [{ name = "numpy", specifier = ">=1.25" }]
 
 [package.metadata.requires-dev]
+build = [
+    { name = "meson-python" },
+    { name = "nanobind" },
+    { name = "ninja" },
+    { name = "ruff" },
+    { name = "typing-extensions" },
+]
 dev = [
     { name = "clang-format", specifier = ">=19.1.7" },
     { name = "gcovr" },
@@ -925,6 +941,7 @@ dev = [
     { name = "rich" },
     { name = "ruff" },
     { name = "rust-just" },
+    { name = "typing-extensions" },
 ]
 
 [[package]]
