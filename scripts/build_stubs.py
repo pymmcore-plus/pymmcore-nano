@@ -12,6 +12,67 @@ import sys
 from types import ModuleType
 from nanobind.stubgen import StubGen
 
+get_device_overloads = r"""
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.CameraDevice]
+    ) -> CameraDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.XYStageDevice]
+    ) -> XYStageDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.StageDevice]
+    ) -> StageDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.StateDevice]
+    ) -> StateDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.ShutterDevice]
+    ) -> ShutterDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.SerialDevice]
+    ) -> SerialDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.GenericDevice]
+    ) -> GenericDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.AutoFocusDevice]
+    ) -> AutoFocusDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.ImageProcessorDevice]
+    ) -> ImageProcessorDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.SignalIODevice]
+    ) -> SignalIODevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.MagnifierDevice]
+    ) -> MagnifierDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.SLMDevice]
+    ) -> SLMDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.HubDevice]
+    ) -> HubDevice: ...
+    @overload
+    def getDeviceObject(
+        self, device_label: str, device_type: Literal[DeviceType.GalvoDevice]
+    ) -> GalvoDevice: ...
+    @overload
+    def getDeviceObject(
+"""
+
 
 def load_module_from_filepath(name: str, filepath: str) -> ModuleType:
     # Create a module spec
@@ -38,17 +99,30 @@ def build_stub(module_path: Path, output_path: str):
     stub_txt = re.sub("double", "float", stub_txt)
 
     # fix nanobind CapsuleType until we do better with numpy arrays
-    stub_txt = "from typing import Any\n" + stub_txt
+    stub_txt = "from typing import Any, Literal\n" + stub_txt
     stub_txt = re.sub("types.CapsuleType", "Any", stub_txt)
 
     # remove extra newlines and let ruff-format add them back
     stub_txt = re.sub("\n\n", "\n", stub_txt)
 
+    # insert getDeviceObject overloads
+    stub_txt = re.sub(r"    def getDeviceObject\(", get_device_overloads, stub_txt)
+
     dest.write_text(stub_txt)
     ruff = Path(sys.executable).parent / "ruff"
     _ruff = str(ruff) if ruff.exists() else "ruff"
     subprocess.run([_ruff, "format", output_path], check=True)
-    subprocess.run([_ruff, "check", "--fix-only", output_path])
+    subprocess.run(
+        [
+            _ruff,
+            "check",
+            "--fix-only",
+            "--unsafe-fixes",
+            # "--select=ALL",
+            "--ignore=D",
+            output_path,
+        ]
+    )
 
 
 if __name__ == "__main__":

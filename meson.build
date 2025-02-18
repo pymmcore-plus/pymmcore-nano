@@ -95,7 +95,7 @@ endif
 
 ext_module = py.extension_module(
     '_pymmcore_nano',
-    sources: ['src/_pymmcore_nano.cc'] + mmcore_sources,
+    sources: ['src/_pymmcore_nano.cc', 'src/DeviceHandle.cpp'] + mmcore_sources,
     dependencies: [nanobind_dep],
     include_directories: include_dirs,
     install: true,
