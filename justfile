@@ -4,13 +4,14 @@ builddir := `ls -d build/cp3* 2>/dev/null | head -n 1`
 set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
 
 # install deps and editable package for development
-install coverage="false":
+install devices="true", coverage="false":
 	rm -rf build dist builddir
 	uv sync --no-install-project
 	uv pip install -e . \
 		--no-build-isolation \
 		--no-deps \
 		--force-reinstall \
+		-C=setup-args="-Dbuild_device_adapters={{devices}}" \
 		-C=setup-args="-Db_coverage={{coverage}}" \
 		-C=setup-args="-Dbuildtype=debugoptimized" \
 		-C=editable-verbose=true -v

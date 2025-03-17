@@ -49,7 +49,7 @@ jobs:
 
       - name: install and test with C++ coverage
         run: |
-          just install true
+          just install true true
           uv run pytest --color=yes -v --cov --cov-report=xml
           uv run gcovr --filter=src/ --xml coverage_cpp.xml
 
