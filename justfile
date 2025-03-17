@@ -4,7 +4,7 @@ builddir := `ls -d build/cp3* 2>/dev/null | head -n 1`
 set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
 
 # install deps and editable package for development
-install devices="true", coverage="false":
+install devices="true" coverage="false":
 	rm -rf build dist builddir
 	uv sync --no-install-project
 	uv pip install -e . \
