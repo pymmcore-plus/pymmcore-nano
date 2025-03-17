@@ -19,9 +19,7 @@ python_include_path = run_command(
 subdir('src/mmCoreAndDevices/MMDevice')
 subdir('src/mmCoreAndDevices/MMCore')
 if get_option('build_device_adapters')
-    subdir('src/mmCoreAndDevices/DeviceAdapters/DemoCamera')
-    subdir('src/mmCoreAndDevices/DeviceAdapters/Utilities')
-    subdir('src/mmCoreAndDevices/DeviceAdapters/SequenceTester')
+    subdir('src/mmCoreAndDevices/DeviceAdapters')
 endif
 
 mmdevice_dep = dependency('mmdevice_dep')

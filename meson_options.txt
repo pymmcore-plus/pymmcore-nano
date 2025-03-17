@@ -13,6 +13,6 @@ option(
 option('client_interface', type: 'boolean', value: false,
     description: 'Build for use by MMCore, as opposed to by a device adapter',
 )
-option('build_device_adapters', type: 'boolean', value: false,
+option('build_device_adapters', type: 'boolean', value: true,
   description: 'Build device adapters in addition to the core library',
 )
