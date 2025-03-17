@@ -6,11 +6,9 @@ builddir := if os_family() == "windows" {
 } else {
   `ls -d build/cp3* 2>/dev/null | head -n 1`
 }
-rmdir := if os_family() != "windows" {"rm -rf"} else {"Remove-Item -Recurse -Force"}
 
 # install deps and editable package for development
 install devices="true" coverage="false":
-	{{rmdir}} {{ builddir }}
 	uv sync --no-install-project
 	uv pip install -e . \
 		--no-build-isolation \
