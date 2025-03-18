@@ -43,7 +43,7 @@ jobs:
           # install with devices=true coverage=true
           just install true true
           uv run pytest --color=yes -v --cov --cov-report=xml
-          uv run gcovr --filter=src/mmCoreAndDevices/MMCore/MMCore.cpp --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
+          uv run gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
 
       - uses: codecov/codecov-action@v5
         with:
