@@ -19,7 +19,7 @@ if host_machine.system() == 'windows'
   )
 else
   boost_thread_sources = files(
-    'libs/thread/src/pthread/thread.cpp',,
+    'libs/thread/src/pthread/thread.cpp',
     'libs/thread/src/pthread/once.cpp',
     'libs/thread/src/future.cpp'
   )
