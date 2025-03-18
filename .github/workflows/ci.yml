@@ -36,6 +36,10 @@ jobs:
         if: matrix.platform == 'windows-latest'
         with:
           toolset: "14.29"
+      
+      - name: install boost
+        if: matrix.platform == 'windows-latest'
+        run: choco install boost-msvc-14.2
 
       - name: install
         # install with devices=true coverage=true
