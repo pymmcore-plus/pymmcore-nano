@@ -1,15 +1,10 @@
 env_dir := if os_family() == "windows" { "./.venv/Scripts" } else { "./.venv/bin" }
 python := env_dir + if os_family() == "windows" { "/python.exe" } else { "/python3" }
 set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
-builddir := if os_family() == "windows" {
-  `Get-ChildItem -Path build -Filter "cp3*" | Select-Object -First 1 -ExpandProperty FullName`
-} else {
-  `ls -d build/cp3* 2>/dev/null | head -n 1`
-}
+builddir := "builddir"
 
 # install deps and editable package for development
-install devices="true" coverage="false":
-	uv sync --no-install-project
+install devices="true" coverage="false" verbose="true":
 	uv pip install -e . \
 		--no-build-isolation \
 		--no-deps \
@@ -17,7 +12,8 @@ install devices="true" coverage="false":
 		-C=setup-args="-Dbuild_device_adapters={{devices}}" \
 		-C=setup-args="-Db_coverage={{coverage}}" \
 		-C=setup-args="-Dbuildtype=debugoptimized" \
-		-C=editable-verbose=true -v
+		-C=build-dir={{builddir}} \
+		-C=editable-verbose={{verbose}} -v
 
 # quick build after having already setup the build directory
 build:
@@ -25,7 +21,7 @@ build:
 
 # clean up all build artifacts
 clean:
-	rm -rf build dist builddir
+	rm -rf build dist {{ builddir }}
 	rm -rf .coverage coverage coverage.info coverage.xml coverage_cpp.xml
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
@@ -63,31 +59,6 @@ check:
 
 pull-mmcore:
 	git subtree pull --prefix=src/mmCoreAndDevices https://github.com/micro-manager/mmCoreAndDevices main --squash
-
-build-devices:
-	just build-adapter DemoCamera
-	just build-adapter Utilities
-	just build-adapter SequenceTester
-
-build-mmdevice:
-	meson setup src/mmCoreAndDevices/MMDevice/builddir src/mmCoreAndDevices/MMDevice
-	meson compile -C src/mmCoreAndDevices/MMDevice/builddir
-
-build-adapter dir:
-	just build-mmdevice
-	mkdir -p src/mmCoreAndDevices/DeviceAdapters/{{dir}}/subprojects
-	rm -f src/mmCoreAndDevices/DeviceAdapters/{{dir}}/subprojects/MMDevice
-	ln -s ../../../MMDevice src/mmCoreAndDevices/DeviceAdapters/{{dir}}/subprojects/MMDevice
-
-	meson setup src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir src/mmCoreAndDevices/DeviceAdapters/{{dir}}
-	meson compile -C src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir
-
-	# # copy to tests dir...
-	# # this is made annoying because the extension is platform dependent and needs to be just right for
-	# # micromanager to pick it up
-	# file=$(find src/mmCoreAndDevices/DeviceAdapters/{{dir}}/builddir -type f -name 'libmmgr_dal_*' ! -name '*.p*') && \
-	# filename=$(basename "$file" | sed 's/\.[^.]*$//') && \
-	# cp "$file" "tests/adapters/$filename"
 
 # MUST run just version and commit changes before.
 release:

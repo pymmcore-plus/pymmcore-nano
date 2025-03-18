@@ -1,4 +1,4 @@
-boost_dep = dependency('boost')
+boost_dep = dependency('boost', include_type: 'system')
 mmdevice_dep = dependency('mmdevice_dep')
 
 util_sources = files(

@@ -1,6 +1,6 @@
 mmdevice_dep = dependency('mmdevice_dep')
 msgpack_dep = dependency('msgpack-cxx', fallback: ['msgpack-cxx', 'msgpack_cxx_dep'])
-boost_dep = dependency('boost', modules: ['thread', 'system'], include_type: 'system')
+boost_dep = dependency('boost', modules: ['thread', 'system'], fallback: ['boost', 'boost_dep'], include_type: 'system')
 
 library(
     'mmgr_dal_SequenceTester',
