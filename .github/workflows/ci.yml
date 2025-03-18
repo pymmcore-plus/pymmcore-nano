@@ -17,7 +17,6 @@ jobs:
     name: ${{ matrix.platform }} (${{ matrix.python-version }})
     runs-on: ${{ matrix.platform }}
     env:
-      UV_NO_SYNC: 1
       UV_FROZEN: 1
       UV_PYTHON: ${{ matrix.python-version }}
     strategy:
