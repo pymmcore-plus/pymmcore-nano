@@ -12,7 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   test:
     name: ${{ matrix.platform }} (${{ matrix.python-version }})
     runs-on: ${{ matrix.platform }}
@@ -38,12 +37,15 @@ jobs:
         with:
           toolset: "14.29"
 
-      - name: install and test with C++ coverage
-        run: |
-          # install with devices=true coverage=true
-          just install true true
-          uv run pytest --color=yes -v --cov --cov-report=xml
-          uv run gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
+      - name: install
+        # install with devices=true coverage=true
+        run: just install true true
+
+      - name: test
+        run: uv run pytest --color=yes -v --cov --cov-report=xml
+
+      - name: cpp-coverage
+        run: uv run gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
 
       - uses: codecov/codecov-action@v5
         with:
