@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 from typing import Iterable
 import pytest
 import pymmcore_nano as pmn
+import shutil
 
 BUILDDIR = Path(__file__).parent.parent / "builddir"
 BUILT_ADAPTERS = BUILDDIR / "src" / "mmcoreAndDevices" / "DeviceAdapters"
@@ -20,7 +21,7 @@ def adapter_paths() -> Iterable[list[str]]:
         with TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             for lib in libs:
-                lib.rename(tmp_path / lib.stem)
+                shutil.copy2(lib, tmp_path / lib.stem)
             yield [str(tmpdir)]
     else:
         adapters = Path(__file__).parent / "adapters" / sys.platform
