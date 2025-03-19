@@ -1,4 +1,3 @@
-from operator import is_
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
