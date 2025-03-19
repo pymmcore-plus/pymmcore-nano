@@ -6,16 +6,43 @@
 [![CI](https://github.com/pymmcore-plus/pymmcore-nano/actions/workflows/ci.yml/badge.svg)](https://github.com/pymmcore-plus/pymmcore-nano/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/pymmcore-plus/pymmcore-nano/branch/main/graph/badge.svg)](https://codecov.io/gh/pymmcore-plus/pymmcore-nano)
 
-Experimental python bindings for CMMCore using nanobind.
+Experimental python bindings for [CMMCore](https://github.com/micro-manager/mmCoreAndDevices)
+(the device abstraction layer for micro-manager) using [nanobind](https://nanobind.readthedocs.io/en/latest/).
 
-## Clone repo
+This package can be used as a (mostly) drop-in replacement for [`pymmcore`](https://pypi.org/project/pymmcore/).
+There are a few slight differences in behavior.  You are encouraged to try it where you might use 
+pymmcore; and [let us know](https://github.com/pymmcore-plus/pymmcore-nano/issues) if you run into any issues!
+
+## Installation
+
+```sh
+pip install pymmcore-nano
+```
+
+Versioning is the same as for pymmcore.  
+
+```
+MMCoreMajor.MMCoreMinor.MMCorePatch.DeviceInterface.pymmcore-nano-build
+```
+
+For example, the version `11.3.0.71.2` refers to:
+
+- MMCore version 11.3.0
+- Device interface 71
+- pymmcore-nano build number of 2 (this is a zero indexed version that resets each time
+the MMCore or Device Interface versions increment)
+
+
+## For Developers
+
+### Clone repo
 
 ```sh
 git clone https://github.com/pymmcore-plus/pymmcore-nano.git
 git submodule update --init
 ```
 
-## Setup dev environment (editable install)
+### Setup dev environment (editable install)
 
 Make sure you have uv installed: <https://docs.astral.sh/uv/getting-started/installation/>
 
@@ -35,35 +62,23 @@ uv sync --no-install-project
 just install
 ```
 
+This repo contains a few device adapters that are useful for testing,
+in src/mmCoreAndDevices/DeviceAdapters.  These adapters are built as a part of the
+installation.  On windows, you will also need boost installed (e.g.
+`choco install boost-msvc-14.3`, or similar version according to your version of visual studio)
+
 ### Test
 
 Regardless of whether the environment is active, you can run:
 
 ```sh
 just test
-# or
-just test-cov
 ```
 
-or, if the environment is active:
+or, if the environment is active and you have already run `just install`
 
 ```sh
 pytest
-```
-
-### Building Device Adapters
-
-This repo contains a few device adapters that are useful for testing,
-in src/mmCoreAndDevices/DeviceAdapters.  To build these, you can run:
-
-```sh
-just build-devices
-```
-
-Or, to build a specific device within the DeviceAdapters subdirectory, you can run:
-
-```sh
-just build-adapter DemoCamera
 ```
 
 ### Releasing
