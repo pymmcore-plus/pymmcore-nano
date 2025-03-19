@@ -108,6 +108,8 @@ class SLMInstance;
 class ShutterInstance;
 class StageInstance;
 class XYStageInstance;
+class PressurePumpInstance;
+class VolumetricPumpInstance;
 
 class CMMCore;
 
@@ -341,9 +343,21 @@ public:
    std::vector<double> getPixelSizeAffine() noexcept(false);
    std::vector<double> getPixelSizeAffine(bool cached) noexcept(false);
    std::vector<double> getPixelSizeAffineByID(const char* resolutionID) noexcept(false);
+   double getPixelSizedxdz() noexcept(false);
+   double getPixelSizedxdz(bool cached) noexcept(false);
+   double getPixelSizedxdz(const char* resolutionID) noexcept(false);
+   double getPixelSizedydz() noexcept(false);
+   double getPixelSizedydz(bool cached) noexcept(false);
+   double getPixelSizedydz(const char* resolutionID) noexcept(false);
+   double getPixelSizeOptimalZUm() noexcept(false);
+   double getPixelSizeOptimalZUm(bool cached) noexcept(false);
+   double getPixelSizeOptimalZUm(const char* resolutionID) noexcept(false);
    double getMagnificationFactor() const;
    void setPixelSizeUm(const char* resolutionID, double pixSize)  noexcept(false);
    void setPixelSizeAffine(const char* resolutionID, std::vector<double> affine)  noexcept(false);
+   void setPixelSizedxdz(const char* resolutionID, double dXdZ)  noexcept(false);
+   void setPixelSizedydz(const char* resolutionID, double dYdZ)  noexcept(false);
+   void setPixelSizeOptimalZUm(const char* resolutionID, double optimalZ)  noexcept(false);
    void definePixelSizeConfig(const char* resolutionID,
          const char* deviceLabel, const char* propName,
          const char* value) noexcept(false);
@@ -608,6 +622,39 @@ public:
    void runGalvoPolygons(const char* galvoLabel) noexcept(false);
    void runGalvoSequence(const char* galvoLabel) noexcept(false);
    std::string getGalvoChannel(const char* galvoLabel) noexcept(false);
+   ///@}
+
+   /** \name PressurePump control
+   *
+   * Control of pressure pumps
+   */
+   ///@{
+   void pressurePumpStop(const char* pumpLabel) noexcept(false);
+   void pressurePumpCalibrate(const char* pumpLabel) noexcept(false);
+   bool pressurePumpRequiresCalibration(const char* pumpLabel) noexcept(false);
+   void setPumpPressureKPa(const char* pumplabel, double pressure) noexcept(false);
+   double getPumpPressureKPa(const char* pumplabel) noexcept(false);
+   ///@}
+
+   /** \name VolumetricPump control
+   *
+   * Control of volumetric pumps
+   */
+   ///@{
+   void volumetricPumpStop(const char* pumpLabel) noexcept(false);
+   void volumetricPumpHome(const char* pumpLabel) noexcept(false);
+   bool volumetricPumpRequiresHoming(const char* pumpLabel) noexcept(false);
+   void invertPumpDirection(const char* pumpLabel, bool invert) noexcept(false);
+   bool isPumpDirectionInverted(const char* pumpLabel) noexcept(false);
+   void setPumpVolume(const char* pumpLabel, double volume) noexcept(false);
+   double getPumpVolume(const char* pumpLabel) noexcept(false);
+   void setPumpMaxVolume(const char* pumpLabel, double volume) noexcept(false);
+   double getPumpMaxVolume(const char* pumpLabel) noexcept(false);
+   void setPumpFlowrate(const char* pumpLabel, double volume) noexcept(false);
+   double getPumpFlowrate(const char* pumpLabel) noexcept(false);
+   void pumpStart(const char* pumpLabel) noexcept(false);
+   void pumpDispenseDurationSeconds(const char* pumpLabel, double seconds) noexcept(false);
+   void pumpDispenseVolumeUl(const char* pumpLabel, double microLiter) noexcept(false);
    ///@}
 
    /** \name Device discovery. */

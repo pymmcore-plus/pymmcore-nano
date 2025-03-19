@@ -1,4 +1,3 @@
-boost_dep = dependency('boost', include_type: 'system')
 mmdevice_dep = dependency('mmdevice_dep')
 
 util_sources = files(
@@ -24,5 +23,5 @@ util_sources = files(
 library(
     'mmgr_dal_Utilities',
     sources: util_sources,
-    dependencies: [mmdevice_dep, boost_dep],
+    dependencies: [mmdevice_dep],
 )

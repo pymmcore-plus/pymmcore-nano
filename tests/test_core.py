@@ -74,7 +74,7 @@ def test_device_loading(core: pmn.CMMCore) -> None:
     assert core.getDeviceType(LABEL) == pmn.DeviceType.CameraDevice
     assert core.getDeviceLibrary(LABEL) == LIBRARY
 
-    with pytest.raises(pmn.CMMError, match="Failed to load device"):
+    with pytest.raises(pmn.CMMError, match="already in use"):
         core.loadDevice(LABEL, LIBRARY, DEVICE_NAME)
 
     init_state = core.getDeviceInitializationState(LABEL)
