@@ -142,5 +142,6 @@ if __name__ == "__main__":
         output = Path(sys.argv[2])
     else:
         source_dir = Path(__file__).parent.parent / "src"
-        output = source_dir / "_pymmcore_nano.pyi"
+        output = source_dir / "pymmcore_nano" / "_pymmcore_nano.pyi"
+
     build_stub(module_path, str(output))

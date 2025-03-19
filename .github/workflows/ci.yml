@@ -15,6 +15,9 @@ jobs:
   test:
     name: ${{ matrix.platform }} (${{ matrix.python-version }})
     runs-on: ${{ matrix.platform }}
+    env:
+      UV_FROZEN: 1
+      UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -25,35 +28,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          toolset: "14.29"
-
-      - name: Install a specific version of uv
-        uses: astral-sh/setup-uv@v5
+      - uses: extractions/setup-just@v2
+      - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.platform == 'windows-latest'
+        with:
+          toolset: "14.29"
+      
+      - name: install boost
+        if: matrix.platform == 'windows-latest'
+        run: choco install boost-msvc-14.2
 
-        # this all got harder when trying to incorporate the C++ coverage
-        # c-coverage is very hard to do without editable mode, but that
-        # requires activating the virtual environment, which is a bit
-        # difficult on Windows.
-      - name: install and test with C++ coverage
-        if: runner.os == 'Linux'
-        run: |
-          uv sync --frozen --no-install-project
-          . .venv/bin/activate
-          uv pip install -e . --no-build-isolation --force-reinstall \
-            -C=setup-args="-Db_coverage=true" \
-            -C=editable-verbose=true
-          pytest --color=yes -v --cov --cov-report=xml
-          gcovr --filter=src/ --xml coverage_cpp.xml
+      - name: install
+        # install with devices=true coverage=true
+        run: just install true true
 
-      - name: install and test
-        if: runner.os != 'Linux'
+      - name: test
         run: uv run --no-editable pytest --color=yes -v --cov --cov-report=xml
+
+      - name: cpp-coverage
+        run: uv run --no-editable gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
 
       - uses: codecov/codecov-action@v5
         with:

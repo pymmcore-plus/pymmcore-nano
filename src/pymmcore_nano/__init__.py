@@ -8,7 +8,7 @@ import importlib.util
 _pymmcore_spec = importlib.util.find_spec("pymmcore")
 
 
-class PymmcoreRedirect:
+class _PymmcoreRedirect:
     """Redirects imports of `pymmcore` to `pymmcore_nano`."""
 
     def find_spec(self, fullname, path, target=None):
@@ -23,4 +23,4 @@ class PymmcoreRedirect:
 
 def patch_pymmcore():
     """Add a meta path hook to redirect imports of `pymmcore` to `pymmcore_nano`."""
-    sys.meta_path.insert(0, PymmcoreRedirect())
+    sys.meta_path.insert(0, _PymmcoreRedirect())

@@ -33,21 +33,31 @@ classifiers = [
 dependencies = ["numpy>=1.25"]
 
 [dependency-groups]
+build = [
+    "meson-python",
+    "nanobind",
+    "ninja",
+    "ruff",
+    "typing_extensions",
+]
 dev = [
+    {include-group = "build"},
     "clang-format>=19.1.7",
     "gcovr",
     "ipython",
-    "meson-python",
     "mypy",
-    "nanobind",
-    "ninja",
     "pdbpp; sys_platform != 'win32'",
     "pre-commit",
     "pytest-cov",
     "pytest",
     "rich",
-    "ruff",
     "rust-just",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocstrings-python>=1.16.0",
+    "mkdocs-material>=9.6.4",
+    "mkdocs-minify-plugin>=0.8.0",
 ]
 
 # https://docs.pytest.org/

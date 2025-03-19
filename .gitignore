@@ -8,6 +8,7 @@ builddir
 !**/subprojects/meson.build
 !**/subprojects/*.wrap
 !**/subprojects/.gitignore
+!**/subprojects/packagefiles/
 
 .vscode
 __pycache__

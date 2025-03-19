@@ -24,8 +24,16 @@ class AutoFocusDevice(Device):
 BeforeGet: int = 1
 
 class CMMCore:
+    """
+    The main MMCore object.
+
+    Manages multiple device adapters. Provides a device-independent interface for hardware control.
+    Additionally, provides some facilities (such as configuration groups) for application
+    programming.
+    """
     def __init__(self) -> None: ...
-    def loadSystemConfiguration(self, fileName: object) -> None: ...
+    def loadSystemConfiguration(self, fileName: object) -> None:
+        """Loads a system configuration from a file."""
     def saveSystemConfiguration(self, fileName: str) -> None: ...
     @staticmethod
     def enableFeature(name: str, enable: bool) -> None: ...
@@ -49,7 +57,12 @@ class CMMCore:
     def getConfigGroupState(self, group: str) -> Configuration: ...
     def saveSystemState(self, fileName: str) -> None: ...
     def loadSystemState(self, fileName: str) -> None: ...
-    def registerCallback(self, cb: MMEventCallback) -> None: ...
+    def registerCallback(self, cb: MMEventCallback) -> None:
+        """
+        Register a callback (listener class).
+
+        MMCore will send notifications on internal events using this interface
+        """
     def setPrimaryLogFile(self, filename: object, truncate: bool = False) -> None: ...
     def getPrimaryLogFile(self) -> str: ...
     @overload
@@ -607,6 +620,11 @@ CanCommunicate: int = 1
 CanNotCommunicate: int = 0
 
 class Configuration:
+    """
+    Encapsulation of  configuration information.
+
+    A configuration is a collection of device property settings.
+    """
     def __init__(self) -> None: ...
     def addSetting(self, setting: PropertySetting) -> None: ...
     def deleteSetting(self, device: str, property: str) -> None: ...
@@ -772,6 +790,11 @@ MMCore_version: str = "11.3.0"
 MMCore_version_info: tuple = (11, 3, 0)
 
 class MMEventCallback:
+    """
+    Interface for receiving events from MMCore.
+
+    Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore.registerCallback].
+    """
     def __init__(self) -> None: ...
     def onPropertiesChanged(self) -> None:
         """Called when properties are changed"""
