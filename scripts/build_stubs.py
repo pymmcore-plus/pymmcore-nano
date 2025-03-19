@@ -118,7 +118,6 @@ def build_stub(module_path: Path, output_path: str):
             "check",
             "--fix-only",
             "--unsafe-fixes",
-            # "--select=ALL",
             "--ignore=D",
             output_path,
         ]
