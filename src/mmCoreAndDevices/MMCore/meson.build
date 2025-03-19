@@ -21,6 +21,8 @@ mmcore_sources = files(
     'Devices/StageInstance.cpp',
     'Devices/StateInstance.cpp',
     'Devices/XYStageInstance.cpp',
+    'Devices/PressurePumpInstance.cpp',
+    'Devices/VolumetricPumpInstance.cpp',
     'Error.cpp',
     'FrameBuffer.cpp',
     'LibraryInfo/LibraryPathsUnix.cpp',

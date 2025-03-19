@@ -3,10 +3,10 @@ import enum
 from typing import Annotated, overload
 from numpy.typing import ArrayLike
 
-DEVICE_INTERFACE_VERSION: int = 71
+DEVICE_INTERFACE_VERSION: int = 73
 MODULE_INTERFACE_VERSION: int = 10
-MMCore_version: str = "11.3.0"
-MMCore_version_info: tuple = (11, 3, 0)
+MMCore_version: str = "11.5.0"
+MMCore_version_info: tuple = (11, 5, 0)
 PYMMCORE_NANO_VERSION: str = "1"
 MM_CODE_OK: int = 0
 MM_CODE_ERR: int = 1
