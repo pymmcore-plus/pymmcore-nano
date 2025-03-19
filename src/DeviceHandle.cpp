@@ -257,9 +257,13 @@ void CameraDeviceHandle::stopSequenceAcquisition() {
     core_->stopSequenceAcquisition(label_.c_str());
 }
 
-bool CameraDeviceHandle::isSequenceRunning() { return core_->isSequenceRunning(label_.c_str()); }
+bool CameraDeviceHandle::isSequenceRunning() {
+    return core_->isSequenceRunning(label_.c_str());
+}
 
-bool CameraDeviceHandle::isSequenceable() { return core_->isExposureSequenceable(label_.c_str()); }
+bool CameraDeviceHandle::isSequenceable() {
+    return core_->isExposureSequenceable(label_.c_str());
+}
 
 void CameraDeviceHandle::startSequence() { core_->startExposureSequence(label_.c_str()); }
 
