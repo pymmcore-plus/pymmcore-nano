@@ -10,6 +10,9 @@ version : '11.3.0.71.1',
 py = import('python').find_installation(pure: false)
 nanobind_dep = dependency('nanobind', static: true)
 
+# patch nanobind stubgen until https://github.com/wjakob/nanobind/pull/938
+_ = run_command(py.full_path(), 'scripts/patch_nanobind.py').stdout().strip()
+
 # Run a command to get the Python include path
 python_include_path = run_command(
     py.full_path(), ['-c', 'import sysconfig; print(sysconfig.get_paths()["include"])']
@@ -48,7 +51,7 @@ endif
 
 ext_module = py.extension_module(
     '_pymmcore_nano',
-    sources: ['src/_pymmcore_nano.cc'] + mmcore_sources,
+    sources: ['src/_pymmcore_nano.cc', 'src/DeviceHandle.cpp'] + mmcore_sources,
     dependencies: [nanobind_dep, mmcore_dep, mmdevice_dep],
     install: true,
     subdir: 'pymmcore_nano',

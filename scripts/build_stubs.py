@@ -48,21 +48,24 @@ def build_stub(module_path: Path, output_path: str):
     ruff = Path(sys.executable).parent / "ruff"
     _ruff = str(ruff) if ruff.exists() else "ruff"
     subprocess.run([_ruff, "format", output_path], check=True)
-    subprocess.run([_ruff, "check", "--fix-only", output_path])
+    subprocess.run(
+        [
+            _ruff,
+            "check",
+            "--fix-only",
+            "--unsafe-fixes",
+            "--ignore=D",
+            output_path,
+        ]
+    )
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         module_path = Path(sys.argv[1])
     else:
-        build_dir = Path(__file__).parent.parent / "build"
-        try:
-            pydir = next(build_dir.glob("cp*"))
-        except StopIteration:
-            raise RuntimeError(
-                "Project must be built before you can build stubs.\nRun `just install`."
-            )
-        module_path = next(x for x in pydir.glob("_pymmcore_nano.*") if x.is_file())
+        build_dir = Path(__file__).parent.parent / "builddir"
+        module_path = next(x for x in build_dir.glob("_pymmcore_nano.*") if x.is_file())
 
     if len(sys.argv) > 2:
         output = Path(sys.argv[2])
