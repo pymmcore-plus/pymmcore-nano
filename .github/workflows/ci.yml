@@ -46,10 +46,10 @@ jobs:
         run: just install true true
 
       - name: test
-        run: uv run --no-editable pytest --color=yes -v --cov --cov-report=xml
+        run: uv run --no-sync pytest --color=yes -v --cov --cov-report=xml
 
       - name: cpp-coverage
-        run: uv run --no-editable gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
+        run: uv run --no-sync gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
 
       - uses: codecov/codecov-action@v5
         with:
