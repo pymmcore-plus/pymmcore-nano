@@ -2,8 +2,6 @@ import atexit
 import os
 from pathlib import Path
 import sys
-from tempfile import TemporaryDirectory
-import tempfile
 from typing import Iterable
 import pytest
 import pymmcore_nano as pmn
