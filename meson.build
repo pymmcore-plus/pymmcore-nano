@@ -10,6 +10,9 @@ version : '11.3.0.71.1',
 py = import('python').find_installation(pure: false)
 nanobind_dep = dependency('nanobind', static: true)
 
+# patch nanobind stubgen until https://github.com/wjakob/nanobind/pull/938
+_ = run_command(py.full_path(), 'scripts/patch_nanobind.py').stdout().strip()
+
 # Run a command to get the Python include path
 python_include_path = run_command(
     py.full_path(), ['-c', 'import sysconfig; print(sysconfig.get_paths()["include"])']

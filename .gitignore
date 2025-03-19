@@ -15,4 +15,3 @@ __pycache__
 .coverage
 coverage/
 coverage*
-site
