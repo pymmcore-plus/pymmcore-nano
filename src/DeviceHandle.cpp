@@ -155,7 +155,7 @@ void StageDeviceHandle::home() { core_->home(label_.c_str()); }
 void StageDeviceHandle::setOrigin() { core_->setOrigin(label_.c_str()); }
 
 bool StageDeviceHandle::isContinuousFocusDrive() {
-    core_->isContinuousFocusDrive(label_.c_str());
+    return core_->isContinuousFocusDrive(label_.c_str());
 }
 void StageDeviceHandle::setAdapterOrigin(double newZUm) {
     core_->setAdapterOrigin(label_.c_str(), newZUm);
@@ -257,16 +257,16 @@ void CameraDeviceHandle::stopSequenceAcquisition() {
     core_->stopSequenceAcquisition(label_.c_str());
 }
 
-bool CameraDeviceHandle::isSequenceRunning() { core_->isSequenceRunning(label_.c_str()); }
+bool CameraDeviceHandle::isSequenceRunning() { return core_->isSequenceRunning(label_.c_str()); }
 
-bool CameraDeviceHandle::isSequenceable() { core_->isExposureSequenceable(label_.c_str()); }
+bool CameraDeviceHandle::isSequenceable() { return core_->isExposureSequenceable(label_.c_str()); }
 
 void CameraDeviceHandle::startSequence() { core_->startExposureSequence(label_.c_str()); }
 
 void CameraDeviceHandle::stopSequence() { core_->stopExposureSequence(label_.c_str()); }
 
 long CameraDeviceHandle::getSequenceMaxLength() {
-    core_->getExposureSequenceMaxLength(label_.c_str());
+    return core_->getExposureSequenceMaxLength(label_.c_str());
 }
 
 void CameraDeviceHandle::loadSequence(std::vector<double> exposureSequence_ms) {
