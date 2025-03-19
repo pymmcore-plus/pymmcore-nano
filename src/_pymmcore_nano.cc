@@ -546,7 +546,12 @@ NB_MODULE(_pymmcore_nano, m) {
 
     //////////////////// Supporting classes ////////////////////
 
-    nb::class_<Configuration>(m, "Configuration")
+    nb::class_<Configuration>(m, "Configuration", R"doc(
+Encapsulation of  configuration information.
+
+
+A configuration is a collection of device property settings.
+)doc")
         .def(nb::init<>())
         .def("addSetting", &Configuration::addSetting, "setting"_a)
         .def("deleteSetting", &Configuration::deleteSetting, "device"_a, "property"_a)
@@ -698,7 +703,12 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("Restore", nb::overload_cast<const char *>(&MetadataArrayTag::Restore), "stream"_a,
              "Restores from a serialized string");
 
-    nb::class_<MMEventCallback, PyMMEventCallback>(m, "MMEventCallback")
+    nb::class_<MMEventCallback, PyMMEventCallback>(m, "MMEventCallback", R"doc(
+Interface for receiving events from MMCore.
+
+
+Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore.registerCallback].
+)doc")
         .def(nb::init<>())
 
         // Virtual methods
@@ -761,16 +771,22 @@ NB_MODULE(_pymmcore_nano, m) {
 
     //////////////////// MMCore ////////////////////
 
-    nb::class_<CMMCore>(m, "CMMCore")
-        .def(nb::init<>())
+    nb::class_<CMMCore>(m, "CMMCore", R"doc(
+The main MMCore object.
 
+
+Manages multiple device adapters. Provides a device-independent interface for hardware control.
+Additionally, provides some facilities (such as configuration groups) for application
+programming.
+)doc")
+        .def(nb::init<>())
         .def(
             "loadSystemConfiguration",
             // accept any object that can be cast to a string (e.g. Path)
             [](CMMCore &self, nb::object fileName) {
                 self.loadSystemConfiguration(nb::str(fileName).c_str());
             },
-            "fileName"_a)
+            "fileName"_a, "Loads a system configuration from a file.")
         .def("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a RGIL)
         .def_static("enableFeature", &CMMCore::enableFeature, "name"_a, "enable"_a RGIL)
         .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a RGIL)
@@ -794,7 +810,11 @@ NB_MODULE(_pymmcore_nano, m) {
              "group"_a RGIL)
         .def("saveSystemState", &CMMCore::saveSystemState, "fileName"_a RGIL)
         .def("loadSystemState", &CMMCore::loadSystemState, "fileName"_a RGIL)
-        .def("registerCallback", &CMMCore::registerCallback, "cb"_a RGIL)
+        .def("registerCallback", &CMMCore::registerCallback, R"doc(Register a callback (listener class).
+
+
+MMCore will send notifications on internal events using this interface
+          )doc", "cb"_a RGIL)
         .def(
             "setPrimaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)

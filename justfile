@@ -5,7 +5,7 @@ builddir := "builddir"
 
 # install deps and editable package for development
 install devices="true" coverage="false" verbose="true":
-	uv sync
+	uv sync --no-install-project
 	uv pip install -e . \
 		--no-build-isolation \
 		--no-deps \
@@ -66,3 +66,6 @@ release:
 	git branch --show-current | grep -q main || (echo "Not on main branch" && exit 1)
 	git tag -a v$({{ python }} scripts/extract_version.py) -m "Release v$({{ python }} scripts/extract_version.py)"
 	git push upstream --follow-tags
+
+docs-serve:
+	uv run --group docs --no-editable --force-reinstall -C=setup-args="-Dmatch_swig=false" mkdocs serve

@@ -1,0 +1,95 @@
+site_name: "pymmcore-nano"
+site_url: https://pymmcore-plus.github.io/pymmcore-nano/
+site_description: "Alternative python bindings for MMCore, Micro-Manager's device control layer"
+repo_name: "pymmcore-plus/pymmcore-nano"
+repo_url: https://github.com/pymmcore-plus/pymmcore-nano
+watch: [mkdocs.yml, README.md, src/pymmcore_nano]
+strict: true
+
+nav:
+  - Home: index.md
+  - API: api.md
+
+theme:
+  name: material
+  icon:
+    logo: fontawesome/solid/microscope
+    repo: fontawesome/brands/github
+  palette:
+    scheme: default
+    primary: black
+    accent: blue
+  features:
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - navigation.indexes
+    - navigation.footer
+    - navigation.sections
+    - toc.follow
+
+extra_css:
+  - css/material.css
+  - css/custom.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      pygments_lang_class: true
+      line_spans: __span
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - toc:
+      permalink: "#"
+
+plugins:
+  - autorefs:
+      resolve_closest: true
+  - search
+  - minify:
+      minify_html: true
+      minify_css: true
+      cache_safe: true
+  - mkdocstrings:
+      handlers:
+        python:
+          inventories:
+            - https://docs.python.org/3/objects.inv
+            - https://numpy.org/doc/stable/objects.inv
+          options:
+            allow_inspection: false
+            find_stubs_package: true
+            docstring_section_style: list
+            # docstring_style: "numpy"
+            filters: ["!^_"]
+            inherited_members: true
+            merge_init_into_class: true
+            parameter_headings: true
+            separate_signature: true
+            # show_bases: false
+            show_root_heading: true
+            # show_root_full_path: false
+            show_signature_annotations: true
+            show_source: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+            summary: true
+            unwrap_annotated: true
+
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/pymmcore-plus/pymmcore-nano
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/pymmcore-nano/
