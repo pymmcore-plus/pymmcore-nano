@@ -129,14 +129,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         module_path = Path(sys.argv[1])
     else:
-        build_dir = Path(__file__).parent.parent / "build"
-        try:
-            pydir = next(build_dir.glob("cp*"))
-        except StopIteration:
-            raise RuntimeError(
-                "Project must be built before you can build stubs.\nRun `just install`."
-            )
-        module_path = next(x for x in pydir.glob("_pymmcore_nano.*") if x.is_file())
+        build_dir = Path(__file__).parent.parent / "builddir"
+        module_path = next(x for x in build_dir.glob("_pymmcore_nano.*") if x.is_file())
 
     if len(sys.argv) > 2:
         output = Path(sys.argv[2])

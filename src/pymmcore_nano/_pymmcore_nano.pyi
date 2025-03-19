@@ -4,6 +4,163 @@ import enum
 from typing import Annotated, overload
 from numpy.typing import ArrayLike
 
+DEVICE_INTERFACE_VERSION: int = 71
+MODULE_INTERFACE_VERSION: int = 10
+MMCore_version: str = "11.3.0"
+MMCore_version_info: tuple = (11, 3, 0)
+PYMMCORE_NANO_VERSION: str = "1"
+MM_CODE_OK: int = 0
+MM_CODE_ERR: int = 1
+DEVICE_OK: int = 0
+DEVICE_ERR: int = 1
+DEVICE_INVALID_PROPERTY: int = 2
+DEVICE_INVALID_PROPERTY_VALUE: int = 3
+DEVICE_DUPLICATE_PROPERTY: int = 4
+DEVICE_INVALID_PROPERTY_TYPE: int = 5
+DEVICE_NATIVE_MODULE_FAILED: int = 6
+DEVICE_UNSUPPORTED_DATA_FORMAT: int = 7
+DEVICE_INTERNAL_INCONSISTENCY: int = 8
+DEVICE_NOT_SUPPORTED: int = 9
+DEVICE_UNKNOWN_LABEL: int = 10
+DEVICE_UNSUPPORTED_COMMAND: int = 11
+DEVICE_UNKNOWN_POSITION: int = 12
+DEVICE_NO_CALLBACK_REGISTERED: int = 13
+DEVICE_SERIAL_COMMAND_FAILED: int = 14
+DEVICE_SERIAL_BUFFER_OVERRUN: int = 15
+DEVICE_SERIAL_INVALID_RESPONSE: int = 16
+DEVICE_SERIAL_TIMEOUT: int = 17
+DEVICE_SELF_REFERENCE: int = 18
+DEVICE_NO_PROPERTY_DATA: int = 19
+DEVICE_DUPLICATE_LABEL: int = 20
+DEVICE_INVALID_INPUT_PARAM: int = 21
+DEVICE_BUFFER_OVERFLOW: int = 22
+DEVICE_NONEXISTENT_CHANNEL: int = 23
+DEVICE_INVALID_PROPERTY_LIMITS: int = 24
+DEVICE_INVALID_PROPERTY_LIMTS: int = 24
+DEVICE_SNAP_IMAGE_FAILED: int = 25
+DEVICE_IMAGE_PARAMS_FAILED: int = 26
+DEVICE_CORE_FOCUS_STAGE_UNDEF: int = 27
+DEVICE_CORE_EXPOSURE_FAILED: int = 28
+DEVICE_CORE_CONFIG_FAILED: int = 29
+DEVICE_CAMERA_BUSY_ACQUIRING: int = 30
+DEVICE_INCOMPATIBLE_IMAGE: int = 31
+DEVICE_CAN_NOT_SET_PROPERTY: int = 32
+DEVICE_CORE_CHANNEL_PRESETS_FAILED: int = 33
+DEVICE_LOCALLY_DEFINED_ERROR: int = 34
+DEVICE_NOT_CONNECTED: int = 35
+DEVICE_COMM_HUB_MISSING: int = 36
+DEVICE_DUPLICATE_LIBRARY: int = 37
+DEVICE_PROPERTY_NOT_SEQUENCEABLE: int = 38
+DEVICE_SEQUENCE_TOO_LARGE: int = 39
+DEVICE_OUT_OF_MEMORY: int = 40
+DEVICE_NOT_YET_IMPLEMENTED: int = 41
+g_Keyword_Name: str = "Name"
+g_Keyword_Description: str = "Description"
+g_Keyword_CameraName: str = "CameraName"
+g_Keyword_CameraID: str = "CameraID"
+g_Keyword_CameraChannelName: str = "CameraChannelName"
+g_Keyword_CameraChannelIndex: str = "CameraChannelIndex"
+g_Keyword_Binning: str = "Binning"
+g_Keyword_Exposure: str = "Exposure"
+g_Keyword_ActualExposure: str = "ActualExposure"
+g_Keyword_ActualInterval_ms: str = "ActualInterval-ms"
+g_Keyword_Interval_ms: str = "Interval-ms"
+g_Keyword_Elapsed_Time_ms: str = "ElapsedTime-ms"
+g_Keyword_PixelType: str = "PixelType"
+g_Keyword_ReadoutTime: str = "ReadoutTime"
+g_Keyword_ReadoutMode: str = "ReadoutMode"
+g_Keyword_Gain: str = "Gain"
+g_Keyword_EMGain: str = "EMGain"
+g_Keyword_Offset: str = "Offset"
+g_Keyword_CCDTemperature: str = "CCDTemperature"
+g_Keyword_CCDTemperatureSetPoint: str = "CCDTemperatureSetPoint"
+g_Keyword_State: str = "State"
+g_Keyword_Label: str = "Label"
+g_Keyword_Position: str = "Position"
+g_Keyword_Type: str = "Type"
+g_Keyword_Delay: str = "Delay_ms"
+g_Keyword_BaudRate: str = "BaudRate"
+g_Keyword_DataBits: str = "DataBits"
+g_Keyword_StopBits: str = "StopBits"
+g_Keyword_Parity: str = "Parity"
+g_Keyword_Handshaking: str = "Handshaking"
+g_Keyword_DelayBetweenCharsMs: str = "DelayBetweenCharsMs"
+g_Keyword_Port: str = "Port"
+g_Keyword_AnswerTimeout: str = "AnswerTimeout"
+g_Keyword_Speed: str = "Speed"
+g_Keyword_CoreDevice: str = "Core"
+g_Keyword_CoreInitialize: str = "Initialize"
+g_Keyword_CoreCamera: str = "Camera"
+g_Keyword_CoreShutter: str = "Shutter"
+g_Keyword_CoreXYStage: str = "XYStage"
+g_Keyword_CoreFocus: str = "Focus"
+g_Keyword_CoreAutoFocus: str = "AutoFocus"
+g_Keyword_CoreAutoShutter: str = "AutoShutter"
+g_Keyword_CoreChannelGroup: str = "ChannelGroup"
+g_Keyword_CoreImageProcessor: str = "ImageProcessor"
+g_Keyword_CoreSLM: str = "SLM"
+g_Keyword_CoreGalvo: str = "Galvo"
+g_Keyword_CoreTimeoutMs: str = "TimeoutMs"
+g_Keyword_Channel: str = "Channel"
+g_Keyword_Version: str = "Version"
+g_Keyword_ColorMode: str = "ColorMode"
+g_Keyword_Transpose_SwapXY: str = "TransposeXY"
+g_Keyword_Transpose_MirrorX: str = "TransposeMirrorX"
+g_Keyword_Transpose_MirrorY: str = "TransposeMirrorY"
+g_Keyword_Transpose_Correction: str = "TransposeCorrection"
+g_Keyword_Closed_Position: str = "ClosedPosition"
+g_Keyword_HubID: str = "HubID"
+g_Keyword_Metadata_CameraLabel: str = "Camera"
+g_Keyword_Meatdata_Exposure: str = "Exposure-ms"
+g_Keyword_Metadata_Score: str = "Score"
+g_Keyword_Metadata_ImageNumber: str = "ImageNumber"
+g_Keyword_Metadata_ROI_X: str = "ROI-X-start"
+g_Keyword_Metadata_ROI_Y: str = "ROI-Y-start"
+g_Keyword_Metadata_TimeInCore: str = "TimeReceivedByCore"
+g_FieldDelimiters: str = ","
+g_CFGCommand_Device: str = "Device"
+g_CFGCommand_Label: str = "Label"
+g_CFGCommand_Property: str = "Property"
+g_CFGCommand_Configuration: str = "Config"
+g_CFGCommand_ConfigGroup: str = "ConfigGroup"
+g_CFGCommand_Equipment: str = "Equipment"
+g_CFGCommand_Delay: str = "Delay"
+g_CFGCommand_ImageSynchro: str = "ImageSynchro"
+g_CFGCommand_ConfigPixelSize: str = "ConfigPixelSize"
+g_CFGCommand_PixelSize_um: str = "PixelSize_um"
+g_CFGCommand_PixelSizeAffine: str = "PixelSizeAffine"
+g_CFGCommand_ParentID: str = "Parent"
+g_CFGCommand_FocusDirection: str = "FocusDirection"
+g_CFGGroup_System: str = "System"
+g_CFGGroup_System_Startup: str = "Startup"
+g_CFGGroup_System_Shutdown: str = "Shutdown"
+g_CFGGroup_PixelSizeUm: str = "PixelSize_um"
+
+class DeviceType(enum.IntEnum):
+    UnknownType = 0
+    AnyType = 1
+    CameraDevice = 2
+    ShutterDevice = 3
+    StateDevice = 4
+    StageDevice = 5
+    XYStageDevice = 6
+    SerialDevice = 7
+    GenericDevice = 8
+    AutoFocusDevice = 9
+    CoreDevice = 10
+    ImageProcessorDevice = 11
+    SignalIODevice = 12
+    MagnifierDevice = 13
+    SLMDevice = 14
+    HubDevice = 15
+    GalvoDevice = 16
+
+class PropertyType(enum.IntEnum):
+    Undef = 0
+    String = 1
+    Float = 2
+    Integer = 3
+
 class ActionType(enum.IntEnum):
     NoAction = 0
     BeforeGet = 1
@@ -13,15 +170,445 @@ class ActionType(enum.IntEnum):
     StartSequence = 5
     StopSequence = 6
 
-AfterLoadSequence: int = 4
-AfterSet: int = 2
+class PortType(enum.IntEnum):
+    InvalidPort = 0
+    SerialPort = 1
+    USBPort = 2
+    HIDPort = 3
+
+class FocusDirection(enum.IntEnum):
+    FocusDirectionUnknown = 0
+    FocusDirectionTowardSample = 1
+    FocusDirectionAwayFromSample = 2
+
+class DeviceNotification(enum.IntEnum):
+    Attention = 0
+    Done = 1
+    StatusChanged = 2
+
+class DeviceDetectionStatus(enum.IntEnum):
+    Unimplemented = -2
+    Misconfigured = -1
+    CanNotCommunicate = 0
+    CanCommunicate = 1
+
+class DeviceInitializationState(enum.IntEnum):
+    Uninitialized = 0
+    InitializedSuccessfully = 1
+    InitializationFailed = 2
+
+UnknownType: int = 0
 AnyType: int = 1
-Attention: int = 0
+
+class CameraDevice(Device):
+    def getExposure(self) -> float: ...
+    def setExposure(self, exposure: float) -> None: ...
+    @property
+    def exposure(self) -> float: ...
+    @exposure.setter
+    def exposure(self, arg: float, /) -> None: ...
+    def isSequenceRunning(self) -> bool: ...
+    def isSequenceable(self) -> bool: ...
+    def startSequence(self) -> None: ...
+    def stopSequence(self) -> None: ...
+    def getSequenceMaxLength(self) -> int: ...
+    def loadSequence(self, exposureSequence_ms: Sequence[float]) -> None: ...
+
+class ShutterDevice(Device):
+    def setOpen(self, open: bool) -> None: ...
+    def isOpen(self) -> bool: ...
+
+class StateDevice(Device):
+    def setState(self, state: int) -> None: ...
+    def getState(self) -> int: ...
+    def getNumberOfStates(self) -> int: ...
+    def setStateLabel(self, stateLabel: str) -> None: ...
+    def getStateLabel(self) -> str: ...
+    def defineStateLabel(self, state: int, stateLabel: str) -> None: ...
+    def getStateLabels(self) -> list[str]: ...
+    def getStateFromLabel(self, stateLabel: str) -> int: ...
+
+class StageDevice(Device):
+    def setPosition(self, pos: float) -> None: ...
+    def getPosition(self) -> float: ...
+    def setRelativePosition(self, distance: float) -> None: ...
+    def stop(self) -> None: ...
+    def home(self) -> None: ...
+    def setOrigin(self) -> None: ...
+    def setAdapterOrigin(self, newZUm: float) -> None: ...
+    def isContinuousFocusDrive(self) -> bool: ...
+    def isSequenceable(self) -> bool: ...
+    def startSequence(self) -> None: ...
+    def stopSequence(self) -> None: ...
+    def getSequenceMaxLength(self) -> int: ...
+    def loadSequence(self, positions: Sequence[float]) -> None: ...
+
+class XYStageDevice(Device):
+    def setPosition(self, x: float, y: float) -> None: ...
+    def getPosition(self) -> tuple[float, float]: ...
+    def setRelativePosition(self, dx: float, dy: float) -> None: ...
+    def getXPosition(self) -> float: ...
+    def getYPosition(self) -> float: ...
+    def stop(self) -> None: ...
+    def home(self) -> None: ...
+    def setOriginXY(self) -> None: ...
+    def setOriginX(self) -> None: ...
+    def setOriginY(self) -> None: ...
+    def setAdapterOriginXY(self, newXUm: float, newYUm: float) -> None: ...
+    def isSequenceable(self) -> bool: ...
+    def startSequence(self) -> None: ...
+    def stopSequence(self) -> None: ...
+    def getSequenceMaxLength(self) -> int: ...
+    def loadSequence(
+        self, xSequence: Sequence[float], ySequence: Sequence[float]
+    ) -> None: ...
+
+class SerialDevice(Device):
+    def setProperties(
+        self,
+        answerTimeout: str,
+        baudRate: str,
+        delayBetweenCharsMs: str,
+        handshaking: str,
+        parity: str,
+        stopBits: str,
+    ) -> None: ...
+    def setCommand(self, command: str, term: str) -> None: ...
+    def getAnswer(self, term: str) -> str: ...
+    def write(self, data: Sequence[str]) -> None: ...
+    def read(self) -> list[str]: ...
+
+class GenericDevice(Device):
+    pass
 
 class AutoFocusDevice(Device):
     pass
 
+CoreDevice: int = 10
+
+class ImageProcessorDevice(Device):
+    pass
+
+class SignalIODevice(Device):
+    pass
+
+class MagnifierDevice(Device):
+    pass
+
+class SLMDevice(Device):
+    def setImage(self, pixels: Annotated[ArrayLike, dict(dtype="uint8")]) -> None: ...
+    @overload
+    def setPixelsTo(self, intensity: int) -> None: ...
+    @overload
+    def setPixelsTo(self, red: int, green: int, blue: int) -> None: ...
+    def displayImage(self) -> None: ...
+    def setExposure(self, exposure_ms: float) -> None: ...
+    def getExposure(self) -> float: ...
+    def getWidth(self) -> int: ...
+    def getHeight(self) -> int: ...
+    def getNumberOfComponents(self) -> int: ...
+    def getBytesPerPixel(self) -> int: ...
+    def getSequenceMaxLength(self) -> int: ...
+    def startSequence(self) -> None: ...
+    def stopSequence(self) -> None: ...
+    def loadSequence(
+        self, imageSequence: Sequence[Annotated[ArrayLike, dict(dtype="uint8")]]
+    ) -> None: ...
+
+class HubDevice(Device):
+    def getInstalledDevices(self) -> list[str]: ...
+    def getInstalledDeviceDescription(self, arg: str, /) -> str: ...
+    def getLoadedPeripheralDevices(self) -> list[str]: ...
+
+class GalvoDevice(Device):
+    def pointAndFire(self, x: float, y: float, pulseTime_us: float) -> None: ...
+    def setSpotInterval(self, pulseTime_us: float) -> None: ...
+    def setPosition(self, x: float, y: float) -> None: ...
+    def getPosition(self, arg0: float, arg1: float, /) -> None: ...
+    def setIlluminationState(self, on: bool) -> None: ...
+    def getXRange(self) -> float: ...
+    def getXMinimum(self) -> float: ...
+    def getYRange(self) -> float: ...
+    def getYMinimum(self) -> float: ...
+    def addPolygonVertex(self, polygonIndex: int, x: float, y: float) -> None: ...
+    def deletePolygons(self) -> None: ...
+    def loadPolygons(self) -> None: ...
+    def setPolygonRepetitions(self, repetitions: int) -> None: ...
+    def runPolygons(self) -> None: ...
+    def runSequence(self) -> None: ...
+    def getChannel(self) -> str: ...
+
+Undef: int = 0
+String: int = 1
+Float: int = 2
+Integer: int = 3
+NoAction: int = 0
 BeforeGet: int = 1
+AfterSet: int = 2
+IsSequenceable: int = 3
+AfterLoadSequence: int = 4
+StartSequence: int = 5
+StopSequence: int = 6
+InvalidPort: int = 0
+SerialPort: int = 1
+USBPort: int = 2
+HIDPort: int = 3
+FocusDirectionUnknown: int = 0
+FocusDirectionTowardSample: int = 1
+FocusDirectionAwayFromSample: int = 2
+Attention: int = 0
+Done: int = 1
+StatusChanged: int = 2
+Unimplemented: int = -2
+Misconfigured: int = -1
+CanNotCommunicate: int = 0
+CanCommunicate: int = 1
+Uninitialized: int = 0
+InitializedSuccessfully: int = 1
+InitializationFailed: int = 2
+
+class Configuration:
+    """
+    Encapsulation of  configuration information.
+
+    A configuration is a collection of device property settings.
+    """
+    def __init__(self) -> None: ...
+    def addSetting(self, setting: PropertySetting) -> None: ...
+    def deleteSetting(self, device: str, property: str) -> None: ...
+    def isPropertyIncluded(self, device: str, property: str) -> bool: ...
+    def isConfigurationIncluded(self, cfg: Configuration) -> bool: ...
+    def isSettingIncluded(self, setting: PropertySetting) -> bool: ...
+    @overload
+    def getSetting(self, index: int) -> PropertySetting: ...
+    @overload
+    def getSetting(self, device: str, property: str) -> PropertySetting: ...
+    def size(self) -> int: ...
+    def getVerbose(self) -> str: ...
+
+class PropertySetting:
+    @overload
+    def __init__(
+        self, deviceLabel: str, prop: str, value: str, readOnly: bool = False
+    ) -> None:
+        """Constructor specifying the entire contents"""
+    @overload
+    def __init__(self) -> None:
+        """Default constructor"""
+    def getDeviceLabel(self) -> str:
+        """Returns the device label"""
+    def getPropertyName(self) -> str:
+        """Returns the property name"""
+    def getReadOnly(self) -> bool:
+        """Returns the read-only status"""
+    def getPropertyValue(self) -> str:
+        """Returns the property value"""
+    def getKey(self) -> str:
+        """Returns the unique key"""
+    def getVerbose(self) -> str:
+        """Returns a verbose description"""
+    def isEqualTo(self, other: PropertySetting) -> bool:
+        """Checks if this property setting is equal to another"""
+    @staticmethod
+    def generateKey(device: str, prop: str) -> str:
+        """Generates a unique key based on device and property"""
+
+class Metadata:
+    @overload
+    def __init__(self) -> None:
+        """Empty constructor"""
+    @overload
+    def __init__(self, arg: Metadata) -> None:
+        """Copy constructor"""
+    def Clear(self) -> None:
+        """Clears all tags"""
+    def GetKeys(self) -> list[str]:
+        """Returns all tag keys"""
+    def HasTag(self, key: str) -> bool:
+        """Checks if a tag exists for the given key"""
+    def GetSingleTag(self, key: str) -> MetadataSingleTag:
+        """Gets a single tag by key"""
+    def GetArrayTag(self, key: str) -> MetadataArrayTag:
+        """Gets an array tag by key"""
+    def SetTag(self, tag: MetadataTag) -> None:
+        """Sets a tag"""
+    def RemoveTag(self, key: str) -> None:
+        """Removes a tag by key"""
+    def Merge(self, newTags: Metadata) -> None:
+        """Merges new tags into the metadata"""
+    def Serialize(self) -> str:
+        """Serializes the metadata"""
+    def Restore(self, stream: str) -> bool:
+        """Restores metadata from a serialized string"""
+    def Dump(self) -> str:
+        """Dumps metadata in human-readable format"""
+    def PutTag(self, key: str, deviceLabel: str, value: str) -> None:
+        """Adds a MetadataSingleTag"""
+    def PutImageTag(self, key: str, value: str) -> None:
+        """Adds an image tag"""
+    def __getitem__(self, arg: str, /) -> str: ...
+    def __setitem__(self, arg0: str, arg1: str, /) -> None: ...
+    def __delitem__(self, arg: str, /) -> None: ...
+
+class MetadataTag:
+    def GetDevice(self) -> str:
+        """Returns the device label"""
+    def GetName(self) -> str:
+        """Returns the name of the tag"""
+    def GetQualifiedName(self) -> str:
+        """Returns the qualified name"""
+    def IsReadOnly(self) -> bool:
+        """Checks if the tag is read-only"""
+    def SetDevice(self, device: str) -> None:
+        """Sets the device label"""
+    def SetName(self, name: str) -> None:
+        """Sets the name of the tag"""
+    def SetReadOnly(self, readOnly: bool) -> None:
+        """Sets the read-only status"""
+    def ToSingleTag(self) -> MetadataSingleTag:
+        """Converts to MetadataSingleTag if applicable"""
+    def ToArrayTag(self) -> MetadataArrayTag:
+        """Converts to MetadataArrayTag if applicable"""
+    def Clone(self) -> MetadataTag:
+        """Creates a clone of the MetadataTag"""
+    def Serialize(self) -> str:
+        """Serializes the MetadataTag to a string"""
+    def Restore(self, stream: str) -> bool:
+        """Restores from a serialized string"""
+
+class MetadataSingleTag(MetadataTag):
+    @overload
+    def __init__(self) -> None:
+        """Default constructor"""
+    @overload
+    def __init__(self, name: str, device: str, readOnly: bool) -> None:
+        """Parameterized constructor"""
+    def GetValue(self) -> str:
+        """Returns the value"""
+    def SetValue(self, val: str) -> None:
+        """Sets the value"""
+    def ToSingleTag(self) -> MetadataSingleTag:
+        """Returns this object as MetadataSingleTag"""
+    def Clone(self) -> MetadataTag:
+        """Clones this tag"""
+    def Serialize(self) -> str:
+        """Serializes this tag to a string"""
+    def Restore(self, stream: str) -> bool:
+        """Restores from a serialized string"""
+
+class MetadataArrayTag(MetadataTag):
+    @overload
+    def __init__(self) -> None:
+        """Default constructor"""
+    @overload
+    def __init__(self, name: str, device: str, readOnly: bool) -> None:
+        """Parameterized constructor"""
+    def ToArrayTag(self) -> MetadataArrayTag:
+        """Returns this object as MetadataArrayTag"""
+    def AddValue(self, val: str) -> None:
+        """Adds a value to the array"""
+    def SetValue(self, val: str, idx: int) -> None:
+        """Sets a value at a specific index"""
+    def GetValue(self, idx: int) -> str:
+        """Gets a value at a specific index"""
+    def GetSize(self) -> int:
+        """Returns the size of the array"""
+    def Clone(self) -> MetadataTag:
+        """Clones this tag"""
+    def Serialize(self) -> str:
+        """Serializes this tag to a string"""
+    def Restore(self, stream: str) -> bool:
+        """Restores from a serialized string"""
+
+class MMEventCallback:
+    """
+    Interface for receiving events from MMCore.
+
+    Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore.registerCallback].
+    """
+    def __init__(self) -> None: ...
+    def onPropertiesChanged(self) -> None:
+        """Called when properties are changed"""
+    def onPropertyChanged(self, name: str, propName: str, propValue: str) -> None:
+        """Called when a specific property is changed"""
+    def onChannelGroupChanged(self, newChannelGroupName: str) -> None:
+        """Called when the channel group changes"""
+    def onConfigGroupChanged(self, groupName: str, newConfigName: str) -> None:
+        """Called when a configuration group changes"""
+    def onSystemConfigurationLoaded(self) -> None:
+        """Called when the system configuration is loaded"""
+    def onPixelSizeChanged(self, newPixelSizeUm: float) -> None:
+        """Called when the pixel size changes"""
+    def onPixelSizeAffineChanged(
+        self, v0: float, v1: float, v2: float, v3: float, v4: float, v5: float
+    ) -> None:
+        """Called when the pixel size affine transformation changes"""
+    def onSLMExposureChanged(self, name: str, newExposure: float) -> None: ...
+    def onExposureChanged(self, name: str, newExposure: float) -> None: ...
+    def onStagePositionChanged(self, name: str, pos: float) -> None: ...
+    def onXYStagePositionChanged(self, name: str, xpos: float, ypos: float) -> None: ...
+
+class CMMError(RuntimeError):
+    pass
+
+class MetadataKeyError(KeyError):
+    pass
+
+class MetadataIndexError(IndexError):
+    pass
+
+class Property:
+    @property
+    def name(self) -> str: ...
+    @property
+    def type(self) -> PropertyType: ...
+    @property
+    def is_read_only(self) -> bool: ...
+    @property
+    def is_pre_init(self) -> bool: ...
+    @property
+    def is_sequenceable(self) -> bool: ...
+    @property
+    def sequence_max_length(self) -> int: ...
+    @property
+    def has_limits(self) -> bool: ...
+    @property
+    def allowed_values(self) -> list[str]: ...
+    @property
+    def lower_limit(self) -> float: ...
+    @property
+    def upper_limit(self) -> float: ...
+    @property
+    def limits(self) -> tuple[float, float]: ...
+    @property
+    def value(self) -> str: ...
+    @value.setter
+    def value(self, arg: str, /) -> None: ...
+    @property
+    def device_label(self) -> str: ...
+    def startSequence(self) -> None: ...
+    def stopSequence(self) -> None: ...
+    def loadSequence(self, eventSequence: Sequence[str]) -> None: ...
+    def __repr__(self) -> str: ...
+
+class Device:
+    @property
+    def label(self) -> str: ...
+    @property
+    def properties(self) -> list[Property]: ...
+    def getPropertyNames(self) -> list[str]: ...
+    def getPropertyObject(self, propertyName: str) -> Property: ...
+    def hasProperty(self, propertyName: str) -> bool: ...
+    def isBusy(self) -> bool: ...
+    def wait(self) -> None: ...
+    def getDelayMs(self) -> float: ...
+    def setDelayMs(self, delayMs: float) -> None: ...
+    def usesDelay(self) -> bool: ...
+    def getType(self) -> DeviceType: ...
+    def getLibrary(self) -> str: ...
+    def getName(self) -> str: ...
+    def getDescription(self) -> str: ...
+    def __repr__(self) -> str: ...
 
 class CMMCore:
     """
@@ -598,600 +1185,3 @@ class CMMCore:
         self, hubLabel: str, peripheralLabel: str
     ) -> str: ...
     def getLoadedPeripheralDevices(self, hubLabel: str) -> list[str]: ...
-
-class CMMError(RuntimeError):
-    pass
-
-class CameraDevice(Device):
-    def getExposure(self) -> float: ...
-    def setExposure(self, exposure: float) -> None: ...
-    @property
-    def exposure(self) -> float: ...
-    @exposure.setter
-    def exposure(self, arg: float, /) -> None: ...
-    def isSequenceRunning(self) -> bool: ...
-    def isSequenceable(self) -> bool: ...
-    def startSequence(self) -> None: ...
-    def stopSequence(self) -> None: ...
-    def getSequenceMaxLength(self) -> int: ...
-    def loadSequence(self, exposureSequence_ms: Sequence[float]) -> None: ...
-
-CanCommunicate: int = 1
-CanNotCommunicate: int = 0
-
-class Configuration:
-    """
-    Encapsulation of  configuration information.
-
-    A configuration is a collection of device property settings.
-    """
-    def __init__(self) -> None: ...
-    def addSetting(self, setting: PropertySetting) -> None: ...
-    def deleteSetting(self, device: str, property: str) -> None: ...
-    def isPropertyIncluded(self, device: str, property: str) -> bool: ...
-    def isConfigurationIncluded(self, cfg: Configuration) -> bool: ...
-    def isSettingIncluded(self, setting: PropertySetting) -> bool: ...
-    @overload
-    def getSetting(self, index: int) -> PropertySetting: ...
-    @overload
-    def getSetting(self, device: str, property: str) -> PropertySetting: ...
-    def size(self) -> int: ...
-    def getVerbose(self) -> str: ...
-
-CoreDevice: int = 10
-DEVICE_BUFFER_OVERFLOW: int = 22
-DEVICE_CAMERA_BUSY_ACQUIRING: int = 30
-DEVICE_CAN_NOT_SET_PROPERTY: int = 32
-DEVICE_COMM_HUB_MISSING: int = 36
-DEVICE_CORE_CHANNEL_PRESETS_FAILED: int = 33
-DEVICE_CORE_CONFIG_FAILED: int = 29
-DEVICE_CORE_EXPOSURE_FAILED: int = 28
-DEVICE_CORE_FOCUS_STAGE_UNDEF: int = 27
-DEVICE_DUPLICATE_LABEL: int = 20
-DEVICE_DUPLICATE_LIBRARY: int = 37
-DEVICE_DUPLICATE_PROPERTY: int = 4
-DEVICE_ERR: int = 1
-DEVICE_IMAGE_PARAMS_FAILED: int = 26
-DEVICE_INCOMPATIBLE_IMAGE: int = 31
-DEVICE_INTERFACE_VERSION: int = 71
-DEVICE_INTERNAL_INCONSISTENCY: int = 8
-DEVICE_INVALID_INPUT_PARAM: int = 21
-DEVICE_INVALID_PROPERTY: int = 2
-DEVICE_INVALID_PROPERTY_LIMITS: int = 24
-DEVICE_INVALID_PROPERTY_LIMTS: int = 24
-DEVICE_INVALID_PROPERTY_TYPE: int = 5
-DEVICE_INVALID_PROPERTY_VALUE: int = 3
-DEVICE_LOCALLY_DEFINED_ERROR: int = 34
-DEVICE_NATIVE_MODULE_FAILED: int = 6
-DEVICE_NONEXISTENT_CHANNEL: int = 23
-DEVICE_NOT_CONNECTED: int = 35
-DEVICE_NOT_SUPPORTED: int = 9
-DEVICE_NOT_YET_IMPLEMENTED: int = 41
-DEVICE_NO_CALLBACK_REGISTERED: int = 13
-DEVICE_NO_PROPERTY_DATA: int = 19
-DEVICE_OK: int = 0
-DEVICE_OUT_OF_MEMORY: int = 40
-DEVICE_PROPERTY_NOT_SEQUENCEABLE: int = 38
-DEVICE_SELF_REFERENCE: int = 18
-DEVICE_SEQUENCE_TOO_LARGE: int = 39
-DEVICE_SERIAL_BUFFER_OVERRUN: int = 15
-DEVICE_SERIAL_COMMAND_FAILED: int = 14
-DEVICE_SERIAL_INVALID_RESPONSE: int = 16
-DEVICE_SERIAL_TIMEOUT: int = 17
-DEVICE_SNAP_IMAGE_FAILED: int = 25
-DEVICE_UNKNOWN_LABEL: int = 10
-DEVICE_UNKNOWN_POSITION: int = 12
-DEVICE_UNSUPPORTED_COMMAND: int = 11
-DEVICE_UNSUPPORTED_DATA_FORMAT: int = 7
-
-class Device:
-    @property
-    def label(self) -> str: ...
-    @property
-    def properties(self) -> list[Property]: ...
-    def getPropertyNames(self) -> list[str]: ...
-    def getPropertyObject(self, propertyName: str) -> Property: ...
-    def hasProperty(self, propertyName: str) -> bool: ...
-    def isBusy(self) -> bool: ...
-    def wait(self) -> None: ...
-    def getDelayMs(self) -> float: ...
-    def setDelayMs(self, delayMs: float) -> None: ...
-    def usesDelay(self) -> bool: ...
-    def getType(self) -> DeviceType: ...
-    def getLibrary(self) -> str: ...
-    def getName(self) -> str: ...
-    def getDescription(self) -> str: ...
-    def __repr__(self) -> str: ...
-
-class DeviceDetectionStatus(enum.IntEnum):
-    Unimplemented = -2
-    Misconfigured = -1
-    CanNotCommunicate = 0
-    CanCommunicate = 1
-
-class DeviceInitializationState(enum.IntEnum):
-    Uninitialized = 0
-    InitializedSuccessfully = 1
-    InitializationFailed = 2
-
-class DeviceNotification(enum.IntEnum):
-    Attention = 0
-    Done = 1
-    StatusChanged = 2
-
-class DeviceType(enum.IntEnum):
-    UnknownType = 0
-    AnyType = 1
-    CameraDevice = 2
-    ShutterDevice = 3
-    StateDevice = 4
-    StageDevice = 5
-    XYStageDevice = 6
-    SerialDevice = 7
-    GenericDevice = 8
-    AutoFocusDevice = 9
-    CoreDevice = 10
-    ImageProcessorDevice = 11
-    SignalIODevice = 12
-    MagnifierDevice = 13
-    SLMDevice = 14
-    HubDevice = 15
-    GalvoDevice = 16
-
-Done: int = 1
-Float: int = 2
-
-class FocusDirection(enum.IntEnum):
-    FocusDirectionUnknown = 0
-    FocusDirectionTowardSample = 1
-    FocusDirectionAwayFromSample = 2
-
-FocusDirectionAwayFromSample: int = 2
-FocusDirectionTowardSample: int = 1
-FocusDirectionUnknown: int = 0
-
-class GalvoDevice(Device):
-    def pointAndFire(self, x: float, y: float, pulseTime_us: float) -> None: ...
-    def setSpotInterval(self, pulseTime_us: float) -> None: ...
-    def setPosition(self, x: float, y: float) -> None: ...
-    def getPosition(self, arg0: float, arg1: float, /) -> None: ...
-    def setIlluminationState(self, on: bool) -> None: ...
-    def getXRange(self) -> float: ...
-    def getXMinimum(self) -> float: ...
-    def getYRange(self) -> float: ...
-    def getYMinimum(self) -> float: ...
-    def addPolygonVertex(self, polygonIndex: int, x: float, y: float) -> None: ...
-    def deletePolygons(self) -> None: ...
-    def loadPolygons(self) -> None: ...
-    def setPolygonRepetitions(self, repetitions: int) -> None: ...
-    def runPolygons(self) -> None: ...
-    def runSequence(self) -> None: ...
-    def getChannel(self) -> str: ...
-
-class GenericDevice(Device):
-    pass
-
-HIDPort: int = 3
-
-class HubDevice(Device):
-    def getInstalledDevices(self) -> list[str]: ...
-    def getInstalledDeviceDescription(self, arg: str, /) -> str: ...
-    def getLoadedPeripheralDevices(self) -> list[str]: ...
-
-class ImageProcessorDevice(Device):
-    pass
-
-InitializationFailed: int = 2
-InitializedSuccessfully: int = 1
-Integer: int = 3
-InvalidPort: int = 0
-IsSequenceable: int = 3
-MMCore_version: str = "11.3.0"
-MMCore_version_info: tuple = (11, 3, 0)
-
-class MMEventCallback:
-    """
-    Interface for receiving events from MMCore.
-
-    Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore.registerCallback].
-    """
-    def __init__(self) -> None: ...
-    def onPropertiesChanged(self) -> None:
-        """Called when properties are changed"""
-    def onPropertyChanged(self, name: str, propName: str, propValue: str) -> None:
-        """Called when a specific property is changed"""
-    def onChannelGroupChanged(self, newChannelGroupName: str) -> None:
-        """Called when the channel group changes"""
-    def onConfigGroupChanged(self, groupName: str, newConfigName: str) -> None:
-        """Called when a configuration group changes"""
-    def onSystemConfigurationLoaded(self) -> None:
-        """Called when the system configuration is loaded"""
-    def onPixelSizeChanged(self, newPixelSizeUm: float) -> None:
-        """Called when the pixel size changes"""
-    def onPixelSizeAffineChanged(
-        self, v0: float, v1: float, v2: float, v3: float, v4: float, v5: float
-    ) -> None:
-        """Called when the pixel size affine transformation changes"""
-    def onSLMExposureChanged(self, name: str, newExposure: float) -> None: ...
-    def onExposureChanged(self, name: str, newExposure: float) -> None: ...
-    def onStagePositionChanged(self, name: str, pos: float) -> None: ...
-    def onXYStagePositionChanged(self, name: str, xpos: float, ypos: float) -> None: ...
-
-MM_CODE_ERR: int = 1
-MM_CODE_OK: int = 0
-MODULE_INTERFACE_VERSION: int = 10
-
-class MagnifierDevice(Device):
-    pass
-
-class Metadata:
-    @overload
-    def __init__(self) -> None:
-        """Empty constructor"""
-    @overload
-    def __init__(self, arg: Metadata) -> None:
-        """Copy constructor"""
-    def Clear(self) -> None:
-        """Clears all tags"""
-    def GetKeys(self) -> list[str]:
-        """Returns all tag keys"""
-    def HasTag(self, key: str) -> bool:
-        """Checks if a tag exists for the given key"""
-    def GetSingleTag(self, key: str) -> MetadataSingleTag:
-        """Gets a single tag by key"""
-    def GetArrayTag(self, key: str) -> MetadataArrayTag:
-        """Gets an array tag by key"""
-    def SetTag(self, tag: MetadataTag) -> None:
-        """Sets a tag"""
-    def RemoveTag(self, key: str) -> None:
-        """Removes a tag by key"""
-    def Merge(self, newTags: Metadata) -> None:
-        """Merges new tags into the metadata"""
-    def Serialize(self) -> str:
-        """Serializes the metadata"""
-    def Restore(self, stream: str) -> bool:
-        """Restores metadata from a serialized string"""
-    def Dump(self) -> str:
-        """Dumps metadata in human-readable format"""
-    def PutTag(self, key: str, deviceLabel: str, value: str) -> None:
-        """Adds a MetadataSingleTag"""
-    def PutImageTag(self, key: str, value: str) -> None:
-        """Adds an image tag"""
-    def __getitem__(self, arg: str, /) -> str: ...
-    def __setitem__(self, arg0: str, arg1: str, /) -> None: ...
-    def __delitem__(self, arg: str, /) -> None: ...
-
-class MetadataArrayTag(MetadataTag):
-    @overload
-    def __init__(self) -> None:
-        """Default constructor"""
-    @overload
-    def __init__(self, name: str, device: str, readOnly: bool) -> None:
-        """Parameterized constructor"""
-    def ToArrayTag(self) -> MetadataArrayTag:
-        """Returns this object as MetadataArrayTag"""
-    def AddValue(self, val: str) -> None:
-        """Adds a value to the array"""
-    def SetValue(self, val: str, idx: int) -> None:
-        """Sets a value at a specific index"""
-    def GetValue(self, idx: int) -> str:
-        """Gets a value at a specific index"""
-    def GetSize(self) -> int:
-        """Returns the size of the array"""
-    def Clone(self) -> MetadataTag:
-        """Clones this tag"""
-    def Serialize(self) -> str:
-        """Serializes this tag to a string"""
-    def Restore(self, stream: str) -> bool:
-        """Restores from a serialized string"""
-
-class MetadataIndexError(IndexError):
-    pass
-
-class MetadataKeyError(KeyError):
-    pass
-
-class MetadataSingleTag(MetadataTag):
-    @overload
-    def __init__(self) -> None:
-        """Default constructor"""
-    @overload
-    def __init__(self, name: str, device: str, readOnly: bool) -> None:
-        """Parameterized constructor"""
-    def GetValue(self) -> str:
-        """Returns the value"""
-    def SetValue(self, val: str) -> None:
-        """Sets the value"""
-    def ToSingleTag(self) -> MetadataSingleTag:
-        """Returns this object as MetadataSingleTag"""
-    def Clone(self) -> MetadataTag:
-        """Clones this tag"""
-    def Serialize(self) -> str:
-        """Serializes this tag to a string"""
-    def Restore(self, stream: str) -> bool:
-        """Restores from a serialized string"""
-
-class MetadataTag:
-    def GetDevice(self) -> str:
-        """Returns the device label"""
-    def GetName(self) -> str:
-        """Returns the name of the tag"""
-    def GetQualifiedName(self) -> str:
-        """Returns the qualified name"""
-    def IsReadOnly(self) -> bool:
-        """Checks if the tag is read-only"""
-    def SetDevice(self, device: str) -> None:
-        """Sets the device label"""
-    def SetName(self, name: str) -> None:
-        """Sets the name of the tag"""
-    def SetReadOnly(self, readOnly: bool) -> None:
-        """Sets the read-only status"""
-    def ToSingleTag(self) -> MetadataSingleTag:
-        """Converts to MetadataSingleTag if applicable"""
-    def ToArrayTag(self) -> MetadataArrayTag:
-        """Converts to MetadataArrayTag if applicable"""
-    def Clone(self) -> MetadataTag:
-        """Creates a clone of the MetadataTag"""
-    def Serialize(self) -> str:
-        """Serializes the MetadataTag to a string"""
-    def Restore(self, stream: str) -> bool:
-        """Restores from a serialized string"""
-
-Misconfigured: int = -1
-NoAction: int = 0
-PYMMCORE_NANO_VERSION: str = "1"
-
-class PortType(enum.IntEnum):
-    InvalidPort = 0
-    SerialPort = 1
-    USBPort = 2
-    HIDPort = 3
-
-class Property:
-    @property
-    def name(self) -> str: ...
-    @property
-    def type(self) -> PropertyType: ...
-    @property
-    def is_read_only(self) -> bool: ...
-    @property
-    def is_pre_init(self) -> bool: ...
-    @property
-    def is_sequenceable(self) -> bool: ...
-    @property
-    def sequence_max_length(self) -> int: ...
-    @property
-    def has_limits(self) -> bool: ...
-    @property
-    def allowed_values(self) -> list[str]: ...
-    @property
-    def lower_limit(self) -> float: ...
-    @property
-    def upper_limit(self) -> float: ...
-    @property
-    def limits(self) -> tuple[float, float]: ...
-    @property
-    def value(self) -> str: ...
-    @value.setter
-    def value(self, arg: str, /) -> None: ...
-    @property
-    def device_label(self) -> str: ...
-    def startSequence(self) -> None: ...
-    def stopSequence(self) -> None: ...
-    def loadSequence(self, eventSequence: Sequence[str]) -> None: ...
-    def __repr__(self) -> str: ...
-
-class PropertySetting:
-    @overload
-    def __init__(
-        self, deviceLabel: str, prop: str, value: str, readOnly: bool = False
-    ) -> None:
-        """Constructor specifying the entire contents"""
-    @overload
-    def __init__(self) -> None:
-        """Default constructor"""
-    def getDeviceLabel(self) -> str:
-        """Returns the device label"""
-    def getPropertyName(self) -> str:
-        """Returns the property name"""
-    def getReadOnly(self) -> bool:
-        """Returns the read-only status"""
-    def getPropertyValue(self) -> str:
-        """Returns the property value"""
-    def getKey(self) -> str:
-        """Returns the unique key"""
-    def getVerbose(self) -> str:
-        """Returns a verbose description"""
-    def isEqualTo(self, other: PropertySetting) -> bool:
-        """Checks if this property setting is equal to another"""
-    @staticmethod
-    def generateKey(device: str, prop: str) -> str:
-        """Generates a unique key based on device and property"""
-
-class PropertyType(enum.IntEnum):
-    Undef = 0
-    String = 1
-    Float = 2
-    Integer = 3
-
-class SLMDevice(Device):
-    def setImage(self, pixels: Annotated[ArrayLike, dict(dtype="uint8")]) -> None: ...
-    @overload
-    def setPixelsTo(self, intensity: int) -> None: ...
-    @overload
-    def setPixelsTo(self, red: int, green: int, blue: int) -> None: ...
-    def displayImage(self) -> None: ...
-    def setExposure(self, exposure_ms: float) -> None: ...
-    def getExposure(self) -> float: ...
-    def getWidth(self) -> int: ...
-    def getHeight(self) -> int: ...
-    def getNumberOfComponents(self) -> int: ...
-    def getBytesPerPixel(self) -> int: ...
-    def getSequenceMaxLength(self) -> int: ...
-    def startSequence(self) -> None: ...
-    def stopSequence(self) -> None: ...
-    def loadSequence(
-        self, imageSequence: Sequence[Annotated[ArrayLike, dict(dtype="uint8")]]
-    ) -> None: ...
-
-class SerialDevice(Device):
-    def setProperties(
-        self,
-        answerTimeout: str,
-        baudRate: str,
-        delayBetweenCharsMs: str,
-        handshaking: str,
-        parity: str,
-        stopBits: str,
-    ) -> None: ...
-    def setCommand(self, command: str, term: str) -> None: ...
-    def getAnswer(self, term: str) -> str: ...
-    def write(self, data: Sequence[str]) -> None: ...
-    def read(self) -> list[str]: ...
-
-SerialPort: int = 1
-
-class ShutterDevice(Device):
-    def setOpen(self, open: bool) -> None: ...
-    def isOpen(self) -> bool: ...
-
-class SignalIODevice(Device):
-    pass
-
-class StageDevice(Device):
-    def setPosition(self, pos: float) -> None: ...
-    def getPosition(self) -> float: ...
-    def setRelativePosition(self, distance: float) -> None: ...
-    def stop(self) -> None: ...
-    def home(self) -> None: ...
-    def setOrigin(self) -> None: ...
-    def setAdapterOrigin(self, newZUm: float) -> None: ...
-    def isContinuousFocusDrive(self) -> bool: ...
-    def isSequenceable(self) -> bool: ...
-    def startSequence(self) -> None: ...
-    def stopSequence(self) -> None: ...
-    def getSequenceMaxLength(self) -> int: ...
-    def loadSequence(self, positions: Sequence[float]) -> None: ...
-
-StartSequence: int = 5
-
-class StateDevice(Device):
-    def setState(self, state: int) -> None: ...
-    def getState(self) -> int: ...
-    def getNumberOfStates(self) -> int: ...
-    def setStateLabel(self, stateLabel: str) -> None: ...
-    def getStateLabel(self) -> str: ...
-    def defineStateLabel(self, state: int, stateLabel: str) -> None: ...
-    def getStateLabels(self) -> list[str]: ...
-    def getStateFromLabel(self, stateLabel: str) -> int: ...
-
-StatusChanged: int = 2
-StopSequence: int = 6
-String: int = 1
-USBPort: int = 2
-Undef: int = 0
-Unimplemented: int = -2
-Uninitialized: int = 0
-UnknownType: int = 0
-
-class XYStageDevice(Device):
-    def setPosition(self, x: float, y: float) -> None: ...
-    def getPosition(self) -> tuple[float, float]: ...
-    def setRelativePosition(self, dx: float, dy: float) -> None: ...
-    def getXPosition(self) -> float: ...
-    def getYPosition(self) -> float: ...
-    def stop(self) -> None: ...
-    def home(self) -> None: ...
-    def setOriginXY(self) -> None: ...
-    def setOriginX(self) -> None: ...
-    def setOriginY(self) -> None: ...
-    def setAdapterOriginXY(self, newXUm: float, newYUm: float) -> None: ...
-    def isSequenceable(self) -> bool: ...
-    def startSequence(self) -> None: ...
-    def stopSequence(self) -> None: ...
-    def getSequenceMaxLength(self) -> int: ...
-    def loadSequence(
-        self, xSequence: Sequence[float], ySequence: Sequence[float]
-    ) -> None: ...
-
-g_CFGCommand_ConfigGroup: str = "ConfigGroup"
-g_CFGCommand_ConfigPixelSize: str = "ConfigPixelSize"
-g_CFGCommand_Configuration: str = "Config"
-g_CFGCommand_Delay: str = "Delay"
-g_CFGCommand_Device: str = "Device"
-g_CFGCommand_Equipment: str = "Equipment"
-g_CFGCommand_FocusDirection: str = "FocusDirection"
-g_CFGCommand_ImageSynchro: str = "ImageSynchro"
-g_CFGCommand_Label: str = "Label"
-g_CFGCommand_ParentID: str = "Parent"
-g_CFGCommand_PixelSizeAffine: str = "PixelSizeAffine"
-g_CFGCommand_PixelSize_um: str = "PixelSize_um"
-g_CFGCommand_Property: str = "Property"
-g_CFGGroup_PixelSizeUm: str = "PixelSize_um"
-g_CFGGroup_System: str = "System"
-g_CFGGroup_System_Shutdown: str = "Shutdown"
-g_CFGGroup_System_Startup: str = "Startup"
-g_FieldDelimiters: str = ","
-g_Keyword_ActualExposure: str = "ActualExposure"
-g_Keyword_ActualInterval_ms: str = "ActualInterval-ms"
-g_Keyword_AnswerTimeout: str = "AnswerTimeout"
-g_Keyword_BaudRate: str = "BaudRate"
-g_Keyword_Binning: str = "Binning"
-g_Keyword_CCDTemperature: str = "CCDTemperature"
-g_Keyword_CCDTemperatureSetPoint: str = "CCDTemperatureSetPoint"
-g_Keyword_CameraChannelIndex: str = "CameraChannelIndex"
-g_Keyword_CameraChannelName: str = "CameraChannelName"
-g_Keyword_CameraID: str = "CameraID"
-g_Keyword_CameraName: str = "CameraName"
-g_Keyword_Channel: str = "Channel"
-g_Keyword_Closed_Position: str = "ClosedPosition"
-g_Keyword_ColorMode: str = "ColorMode"
-g_Keyword_CoreAutoFocus: str = "AutoFocus"
-g_Keyword_CoreAutoShutter: str = "AutoShutter"
-g_Keyword_CoreCamera: str = "Camera"
-g_Keyword_CoreChannelGroup: str = "ChannelGroup"
-g_Keyword_CoreDevice: str = "Core"
-g_Keyword_CoreFocus: str = "Focus"
-g_Keyword_CoreGalvo: str = "Galvo"
-g_Keyword_CoreImageProcessor: str = "ImageProcessor"
-g_Keyword_CoreInitialize: str = "Initialize"
-g_Keyword_CoreSLM: str = "SLM"
-g_Keyword_CoreShutter: str = "Shutter"
-g_Keyword_CoreTimeoutMs: str = "TimeoutMs"
-g_Keyword_CoreXYStage: str = "XYStage"
-g_Keyword_DataBits: str = "DataBits"
-g_Keyword_Delay: str = "Delay_ms"
-g_Keyword_DelayBetweenCharsMs: str = "DelayBetweenCharsMs"
-g_Keyword_Description: str = "Description"
-g_Keyword_EMGain: str = "EMGain"
-g_Keyword_Elapsed_Time_ms: str = "ElapsedTime-ms"
-g_Keyword_Exposure: str = "Exposure"
-g_Keyword_Gain: str = "Gain"
-g_Keyword_Handshaking: str = "Handshaking"
-g_Keyword_HubID: str = "HubID"
-g_Keyword_Interval_ms: str = "Interval-ms"
-g_Keyword_Label: str = "Label"
-g_Keyword_Meatdata_Exposure: str = "Exposure-ms"
-g_Keyword_Metadata_CameraLabel: str = "Camera"
-g_Keyword_Metadata_ImageNumber: str = "ImageNumber"
-g_Keyword_Metadata_ROI_X: str = "ROI-X-start"
-g_Keyword_Metadata_ROI_Y: str = "ROI-Y-start"
-g_Keyword_Metadata_Score: str = "Score"
-g_Keyword_Metadata_TimeInCore: str = "TimeReceivedByCore"
-g_Keyword_Name: str = "Name"
-g_Keyword_Offset: str = "Offset"
-g_Keyword_Parity: str = "Parity"
-g_Keyword_PixelType: str = "PixelType"
-g_Keyword_Port: str = "Port"
-g_Keyword_Position: str = "Position"
-g_Keyword_ReadoutMode: str = "ReadoutMode"
-g_Keyword_ReadoutTime: str = "ReadoutTime"
-g_Keyword_Speed: str = "Speed"
-g_Keyword_State: str = "State"
-g_Keyword_StopBits: str = "StopBits"
-g_Keyword_Transpose_Correction: str = "TransposeCorrection"
-g_Keyword_Transpose_MirrorX: str = "TransposeMirrorX"
-g_Keyword_Transpose_MirrorY: str = "TransposeMirrorY"
-g_Keyword_Transpose_SwapXY: str = "TransposeXY"
-g_Keyword_Type: str = "Type"
-g_Keyword_Version: str = "Version"
