@@ -21,6 +21,8 @@ def adapter_paths() -> Iterable[list[str]]:
         with TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             for lib in libs:
+                # removing extension (using stem) is important,
+                # it affects the name of the device library in micromanager.
                 shutil.copy2(lib, tmp_path / lib.stem)
             yield [str(tmpdir)]
     else:
