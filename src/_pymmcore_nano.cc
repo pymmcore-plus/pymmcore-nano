@@ -1019,9 +1019,24 @@ MMCore will send notifications on internal events using this interface
              nb::overload_cast<bool>(&CMMCore::getPixelSizeAffine),
              "cached"_a RGIL)
         .def("getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID, "resolutionID"_a RGIL)
+
+        .def("getPixelSizedxdz", nb::overload_cast<>(&CMMCore::getPixelSizedxdz) RGIL)
+        .def("getPixelSizedxdz", nb::overload_cast<bool>(&CMMCore::getPixelSizedxdz), "cached"_a RGIL)
+        .def("getPixelSizedxdz", nb::overload_cast<const char*>(&CMMCore::getPixelSizedxdz), "resolutionID"_a RGIL)
+        .def("getPixelSizedydz", nb::overload_cast<>(&CMMCore::getPixelSizedydz) RGIL)
+        .def("getPixelSizedydz", nb::overload_cast<bool>(&CMMCore::getPixelSizedydz), "cached"_a RGIL)
+        .def("getPixelSizedydz", nb::overload_cast<const char*>(&CMMCore::getPixelSizedydz), "resolutionID"_a RGIL)
+        .def("getPixelSizeOptimalZUm", nb::overload_cast<>(&CMMCore::getPixelSizeOptimalZUm) RGIL)
+        .def("getPixelSizeOptimalZUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeOptimalZUm), "cached"_a RGIL)
+        .def("getPixelSizeOptimalZUm", nb::overload_cast<const char*>(&CMMCore::getPixelSizeOptimalZUm), "resolutionID"_a RGIL)
+        .def("setPixelSizedxdz", &CMMCore::setPixelSizedxdz, "resolutionID"_a, "dXdZ"_a RGIL)
+        .def("setPixelSizedydz", &CMMCore::setPixelSizedydz, "resolutionID"_a, "dYdZ"_a RGIL)
+        .def("setPixelSizeOptimalZUm", &CMMCore::setPixelSizeOptimalZUm, "resolutionID"_a, "optimalZ"_a RGIL)
+
         .def("getMagnificationFactor", &CMMCore::getMagnificationFactor RGIL)
         .def("setPixelSizeUm", &CMMCore::setPixelSizeUm, "resolutionID"_a, "pixSize"_a RGIL)
         .def("setPixelSizeAffine", &CMMCore::setPixelSizeAffine, "resolutionID"_a, "affine"_a RGIL)
+
         .def("definePixelSizeConfig",
              nb::overload_cast<const char *, const char *, const char *, const char *>(
                  &CMMCore::definePixelSizeConfig),
@@ -1557,6 +1572,29 @@ MMCore will send notifications on internal events using this interface
         .def("runGalvoPolygons", &CMMCore::runGalvoPolygons, "galvoLabel"_a RGIL)
         .def("runGalvoSequence", &CMMCore::runGalvoSequence, "galvoLabel"_a RGIL)
         .def("getGalvoChannel", &CMMCore::getGalvoChannel, "galvoLabel"_a RGIL)
+        
+        // PressurePump Control
+        .def("pressurePumpStop", &CMMCore::pressurePumpStop, "pumpLabel"_a RGIL)
+        .def("pressurePumpCalibrate", &CMMCore::pressurePumpCalibrate, "pumpLabel"_a RGIL)
+        .def("pressurePumpRequiresCalibration", &CMMCore::pressurePumpRequiresCalibration, "pumpLabel"_a RGIL)
+        .def("setPumpPressureKPa", &CMMCore::setPumpPressureKPa, "pumpLabel"_a, "pressure"_a RGIL)
+        .def("getPumpPressureKPa", &CMMCore::getPumpPressureKPa, "pumpLabel"_a RGIL)
+        
+        // VolumetricPump control
+        .def("volumetricPumpStop", &CMMCore::volumetricPumpStop, "pumpLabel"_a RGIL)
+        .def("volumetricPumpHome", &CMMCore::volumetricPumpHome, "pumpLabel"_a RGIL)
+        .def("volumetricPumpRequiresHoming", &CMMCore::volumetricPumpRequiresHoming, "pumpLabel"_a RGIL)
+        .def("invertPumpDirection", &CMMCore::invertPumpDirection, "pumpLabel"_a, "invert"_a RGIL)
+        .def("isPumpDirectionInverted", &CMMCore::isPumpDirectionInverted, "pumpLabel"_a RGIL)
+        .def("setPumpVolume", &CMMCore::setPumpVolume, "pumpLabel"_a, "volume"_a RGIL)
+        .def("getPumpVolume", &CMMCore::getPumpVolume, "pumpLabel"_a RGIL)
+        .def("setPumpMaxVolume", &CMMCore::setPumpMaxVolume, "pumpLabel"_a, "volume"_a RGIL)
+        .def("getPumpMaxVolume", &CMMCore::getPumpMaxVolume, "pumpLabel"_a RGIL)
+        .def("setPumpFlowrate", &CMMCore::setPumpFlowrate, "pumpLabel"_a, "volume"_a RGIL)
+        .def("getPumpFlowrate", &CMMCore::getPumpFlowrate, "pumpLabel"_a RGIL)
+        .def("pumpStart", &CMMCore::pumpStart, "pumpLabel"_a RGIL)
+        .def("pumpDispenseDurationSeconds", &CMMCore::pumpDispenseDurationSeconds, "pumpLabel"_a, "seconds"_a RGIL)
+        .def("pumpDispenseVolumeUl", &CMMCore::pumpDispenseVolumeUl, "pumpLabel"_a, "microLiter"_a RGIL)
 
         // Device Discovery
         .def("supportsDeviceDetection", &CMMCore::supportsDeviceDetection, "deviceLabel"_a RGIL)
