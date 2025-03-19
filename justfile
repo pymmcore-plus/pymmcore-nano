@@ -5,7 +5,7 @@ builddir := "builddir"
 
 # install deps and editable package for development
 install devices="true" coverage="false" verbose="true":
-	uv sync
+	uv sync --no-install-project
 	uv pip install -e . \
 		--no-build-isolation \
 		--no-deps \
