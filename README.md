@@ -64,8 +64,11 @@ just install
 
 This repo contains a few device adapters that are useful for testing,
 in src/mmCoreAndDevices/DeviceAdapters.  These adapters are built as a part of the
-installation.  On windows, you will also need boost installed (e.g.
-`choco install boost-msvc-14.3`, or similar version according to your version of visual studio)
+installation.  
+
+On windows, in order to build the SequenceTester device (optional) you will also
+need boost installed (e.g. `choco install boost-msvc-14.3`, or similar version
+according to your version of visual studio)
 
 ### Test
 
