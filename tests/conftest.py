@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -23,7 +24,8 @@ def adapter_paths() -> Iterable[list[str]]:
             for lib in libs:
                 # removing extension (using stem) is important,
                 # it affects the name of the device library in micromanager.
-                shutil.copy2(lib, tmp_path / lib.stem)
+                lib_name = lib.name if os.name == "nt" else lib.stem
+                shutil.copy2(lib, tmp_path / lib_name)
             yield [str(tmpdir)]
     else:
         adapters = Path(__file__).parent / "adapters" / sys.platform
