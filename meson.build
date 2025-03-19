@@ -50,7 +50,6 @@ ext_module = py.extension_module(
     '_pymmcore_nano',
     sources: ['src/_pymmcore_nano.cc', 'src/DeviceHandle.cpp'] + mmcore_sources,
     dependencies: [nanobind_dep, mmcore_dep, mmdevice_dep],
-    include_directories: include_dirs,
     install: true,
     subdir: 'pymmcore_nano',
     cpp_args: cpp_args + ['-DNB_DOMAIN=pmn'],
