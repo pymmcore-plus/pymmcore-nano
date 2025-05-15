@@ -792,7 +792,7 @@ programming.
         .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a RGIL)
         .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a RGIL)
         .def("unloadDevice", &CMMCore::unloadDevice, "label"_a RGIL)
-        .def("unloadAllDevices", &CMMCore::unloadAllDevices RGIL)
+        .def("unloadAllDevices", &CMMCore::unloadAllDevices)
         .def("initializeAllDevices", &CMMCore::initializeAllDevices RGIL)
         .def("initializeDevice", &CMMCore::initializeDevice, "label"_a RGIL)
         .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a RGIL)
