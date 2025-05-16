@@ -112,7 +112,7 @@
  * (Keep the 3 numbers on one line to make it easier to look at diffs when
  * merging/rebasing.)
  */
-const int MMCore_versionMajor = 11, MMCore_versionMinor = 5, MMCore_versionPatch = 0;
+const int MMCore_versionMajor = 11, MMCore_versionMinor = 5, MMCore_versionPatch = 1;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -780,14 +780,14 @@ void CMMCore::unloadDevice(const char* label///< the name of the device to unloa
 
 /**
  * Unloads all devices from the core and resets all configuration data.
+ *
+ * This function is not thread safe.
  */
 void CMMCore::unloadAllDevices() noexcept(false)
 {
    try {
       configGroups_->Clear();
-
-      //selected channel group is no longer valid
-      //channelGroup_ = "":
+      updateAllowedChannelGroups();
 
       // clear pixel size configurations
       if (!pixelSizeGroup_->IsEmpty())
@@ -805,9 +805,23 @@ void CMMCore::unloadAllDevices() noexcept(false)
       LOG_INFO(coreLogger_) << "Did unload all devices";
 
 	   properties_->Refresh();
+
+      // The system config has "changed" (to "(none)").
+      // But don't notify if we will proceed to load a new config.
+      if (externalCallback_ && !isLoadingSystemConfiguration_)
+      {
+         externalCallback_->onSystemConfigurationLoaded();
+      }
    }
    catch (CMMError& err) {
       logError("MMCore::unloadAllDevices", err.getMsg().c_str());
+
+      // The config has "changed" even in this case.
+      if (externalCallback_ && !isLoadingSystemConfiguration_)
+      {
+         externalCallback_->onSystemConfigurationLoaded();
+      }
+
       throw;
    }
 }
@@ -4928,9 +4942,6 @@ void CMMCore::deleteConfigGroup(const char* groupName) noexcept(false)
       throw CMMError(ToQuotedString(groupName) + ": " + getCoreErrorText(MMERR_NoConfigGroup),
             MMERR_NoConfigGroup);
 
-   if (0 == channelGroup_.compare(groupName))
-      setChannelGroup("");
-
    updateAllowedChannelGroups();
 
    LOG_DEBUG(coreLogger_) << "Deleted config group " << groupName;
@@ -4969,7 +4980,14 @@ void CMMCore::defineConfig(const char* groupName, const char* configName) noexce
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(configName);
 
+   bool groupExisted = configGroups_->isDefined(groupName);
+
    configGroups_->Define(groupName, configName);
+
+   if (!groupExisted)
+   {
+      updateAllowedChannelGroups();
+   }
 
    LOG_DEBUG(coreLogger_) << "Config group " << groupName <<
       ": added preset " << configName;
@@ -4996,7 +5014,14 @@ void CMMCore::defineConfig(const char* groupName, const char* configName, const 
    CheckPropertyName(propName);
    CheckPropertyValue(value);
 
+   bool groupExisted = configGroups_->isDefined(groupName);
+
    configGroups_->Define(groupName, configName, deviceLabel, propName, value);
+
+   if (!groupExisted)
+   {
+      updateAllowedChannelGroups();
+   }
 
    LOG_DEBUG(coreLogger_) << "Config group " << groupName <<
       ": preset " << configName << ": added setting " <<
@@ -7090,7 +7115,6 @@ void CMMCore::loadSystemState(const char* fileName) noexcept(false)
          }
       }
    }
-   updateAllowedChannelGroups();
 }
 
 
@@ -7318,15 +7342,20 @@ void CMMCore::saveSystemConfiguration(const char* fileName) noexcept(false)
  * The remaining fields in the line will be used for corresponding command parameters.
  * The number of parameters depends on the actual command used.
  *
+ * This function is not thread-safe.
  */
 void CMMCore::loadSystemConfiguration(const char* fileName) noexcept(false)
 {
    try
    {
+      isLoadingSystemConfiguration_ = true;
       loadSystemConfigurationImpl(fileName);
+      isLoadingSystemConfiguration_ = false;
    }
    catch (const CMMError&)
    {
+      isLoadingSystemConfiguration_ = false;
+
       // Unload all devices so as not to leave loaded but uninitialized devices
       // (which are prone to cause a crash when accessed) hanging around.
       LOG_INFO(coreLogger_) <<
@@ -7334,8 +7363,7 @@ void CMMCore::loadSystemConfiguration(const char* fileName) noexcept(false)
 
       try
       {
-         // XXX Ideally, we would try to unload all devices, skipping over any
-         // errors from Shutdown().
+         // Also emits onSystemConfigurationLoaded to indicate config changed:
          unloadAllDevices();
       }
       catch (const CMMError& err)
@@ -7348,6 +7376,11 @@ void CMMCore::loadSystemConfiguration(const char* fileName) noexcept(false)
       LOG_INFO(coreLogger_) <<
          "Now rethrowing original error from system configuration loading";
       throw;
+   }
+
+   if (externalCallback_)
+   {
+      externalCallback_->onSystemConfigurationLoaded();
    }
 }
 
@@ -7584,8 +7617,6 @@ void CMMCore::loadSystemConfigurationImpl(const char* fileName) noexcept(false)
          }
          catch (CMMError& err)
          {
-            if (externalCallback_)
-               externalCallback_->onSystemConfigurationLoaded();
             std::ostringstream errorText;
             errorText << "Line " << lineCount << ": " << line << '\n';
             errorText << err.getFullMsg() << "\n\n";
@@ -7593,8 +7624,6 @@ void CMMCore::loadSystemConfigurationImpl(const char* fileName) noexcept(false)
          }
       }
    }
-
-   updateAllowedChannelGroups();
 
    // file parsing finished, try to set startup configuration
    if (isConfigDefined(MM::g_CFGGroup_System, MM::g_CFGGroup_System_Startup))
@@ -7609,11 +7638,6 @@ void CMMCore::loadSystemConfigurationImpl(const char* fileName) noexcept(false)
 
    waitForSystem();
    updateSystemStateCache();
-
-   if (externalCallback_)
-   {
-      externalCallback_->onSystemConfigurationLoaded();
-   }
 }
 
 

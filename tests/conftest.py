@@ -1,4 +1,5 @@
 import atexit
+from collections.abc import Iterator
 import os
 from pathlib import Path
 import sys
@@ -34,11 +35,12 @@ def adapter_paths() -> Iterable[list[str]]:
 
 
 @pytest.fixture
-def core(adapter_paths: list[str]) -> pmn.CMMCore:
+def core(adapter_paths: list[str]) -> Iterator[pmn.CMMCore]:
     """Return a CMMCore instance with the demo configuration loaded."""
     mmc = pmn.CMMCore()
     mmc.setDeviceAdapterSearchPaths(adapter_paths)
-    return mmc
+    yield mmc
+    mmc.registerCallback(None)
 
 
 @pytest.fixture
