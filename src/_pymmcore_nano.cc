@@ -814,7 +814,7 @@ programming.
 
 
 MMCore will send notifications on internal events using this interface
-          )doc", "cb"_a RGIL)
+          )doc", nb::arg("cb").none() RGIL)
         .def(
             "setPrimaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)
