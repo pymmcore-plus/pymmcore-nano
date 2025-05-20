@@ -163,10 +163,17 @@ CMMCore::CMMCore() :
 
 /**
  * Destructor.
- * Cleans-up and unloads all devices.
+ *
+ * Cleans up and unloads all devices. However, it is strongly recommended
+ * to explicitly call reset() before destroying the CMMCore object, because
+ * errors cannot be handled in the destructor.
+ *
+ * It is also strongly recommended to unregister any event callback
+ * (registerCallback(nullptr)) before destroying the CMMCore object.
  */
 CMMCore::~CMMCore()
 {
+   registerCallback(nullptr);
    try
    {
       // TODO We should attempt to continue cleanup beyond the first device
@@ -7643,7 +7650,15 @@ void CMMCore::loadSystemConfigurationImpl(const char* fileName) noexcept(false)
 
 /**
  * Register a callback (listener class).
- * MMCore will send notifications on internal events using this interface
+ *
+ * MMCore will send notifications on internal events using this interface.
+ *
+ * Pass nullptr to unregister.
+ *
+ * The caller is responsible for ensuring that the object pointed to by \p cb
+ * remains valid until it is unregistered.
+ *
+ * This function is not thread safe.
  */
 void CMMCore::registerCallback(MMEventCallback* cb)
 {

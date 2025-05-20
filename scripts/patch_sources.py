@@ -75,6 +75,33 @@ def patch_version():
     MMCore_h.write_text("".join(lines), encoding="utf-8")
 
 
+def patch_cleanup():
+    # add registerCallback(nullptr); inside CMMCore::~CMMCore() in MMCore.cpp
+    # to avoid a crash when the destructor is called
+
+    MMCore_cpp = MMCORE / "MMCore.cpp"
+    content = MMCore_cpp.read_text(encoding="utf-8")
+    if "registerCallback(nullptr);" in content:
+        return
+
+    # now replace
+    # CMMCore::~CMMCore()
+    # {
+    #    try
+    # ---- with ----
+    # CMMCore::~CMMCore()
+    # {
+    #    registerCallback(nullptr);
+    #    try
+
+    content = re.sub(
+        r"(CMMCore::~CMMCore\(\)\s*\{\s*)",
+        r"\1registerCallback(nullptr);\n   ",
+        content,
+    )
+    MMCore_cpp.write_text(content, encoding="utf-8")
+
+
 def main():
     for file in itertools.chain(MMCORE.rglob("*"), MMDEVICE.rglob("*")):
         if file.suffix in {".cpp", ".h"}:
@@ -82,6 +109,7 @@ def main():
 
     patch_img_metadata_error()
     patch_version()
+    patch_cleanup()
 
 
 if __name__ == "__main__":
