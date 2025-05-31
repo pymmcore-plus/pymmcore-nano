@@ -14,7 +14,7 @@ namespace nb = nanobind;
 
 using namespace nb::literals;
 
-const std::string PYMMCORE_NANO_VERSION = "1";
+const std::string PYMMCORE_NANO_VERSION = "2";
 
 ///////////////// GIL_MACROS ///////////////////
 
