@@ -390,12 +390,14 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_Keyword_Closed_Position") = MM::g_Keyword_Closed_Position;
     m.attr("g_Keyword_HubID") = MM::g_Keyword_HubID;
     m.attr("g_Keyword_Metadata_CameraLabel") = MM::g_Keyword_Metadata_CameraLabel;
-    m.attr("g_Keyword_Meatdata_Exposure") = MM::g_Keyword_Meatdata_Exposure;
-    m.attr("g_Keyword_Metadata_Score") = MM::g_Keyword_Metadata_Score;
+    m.attr("g_Keyword_Metadata_Exposure") = MM::g_Keyword_Metadata_Exposure;
+    m.attr("g_Keyword_Metadata_Height") = MM::g_Keyword_Metadata_Height;
     m.attr("g_Keyword_Metadata_ImageNumber") = MM::g_Keyword_Metadata_ImageNumber;
     m.attr("g_Keyword_Metadata_ROI_X") = MM::g_Keyword_Metadata_ROI_X;
     m.attr("g_Keyword_Metadata_ROI_Y") = MM::g_Keyword_Metadata_ROI_Y;
+    m.attr("g_Keyword_Metadata_Score") = MM::g_Keyword_Metadata_Score;
     m.attr("g_Keyword_Metadata_TimeInCore") = MM::g_Keyword_Metadata_TimeInCore;
+    m.attr("g_Keyword_Metadata_Width") = MM::g_Keyword_Metadata_Width;
     m.attr("g_FieldDelimiters") = MM::g_FieldDelimiters;
     m.attr("g_CFGCommand_Device") = MM::g_CFGCommand_Device;
     m.attr("g_CFGCommand_Label") = MM::g_CFGCommand_Label;
