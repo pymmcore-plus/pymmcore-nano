@@ -33,8 +33,10 @@
 
 #ifdef SWIG
 #define MMDEVICE_LEGACY_THROW(ex) throw (ex)
+#define MMDEVICE_NOEXCEPT throw ()
 #else
 #define MMDEVICE_LEGACY_THROW(ex)
+#define MMDEVICE_NOEXCEPT noexcept
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -42,7 +44,7 @@
 // -------------
 // Micro-Manager metadata error class, used to create exception objects
 // 
-class MetadataError
+class MetadataError : public std::exception
 {
 public:
    MetadataError(const char* msg) :
@@ -50,12 +52,12 @@ public:
 
    virtual ~MetadataError() {}
 
-   virtual const char* what() const throw() { return message_.c_str(); }
-
    virtual std::string getMsg()
    {
       return message_;
    }
+
+   virtual const char* what() const MMDEVICE_NOEXCEPT { return message_.c_str(); }
 
 private:
    std::string message_;
@@ -66,6 +68,8 @@ class MetadataKeyError : public MetadataError
 public:
    MetadataKeyError() :
       MetadataError("Undefined metadata key") {}
+   MetadataKeyError(const char* key) :
+      MetadataError(("Undefined metadata key: " + std::string(key)).c_str()) {}
    ~MetadataKeyError() {}
 };
 
@@ -493,7 +497,7 @@ private:
       if (it != tags_.end())
          return it->second;
       else
-         throw MetadataKeyError();
+         throw MetadataKeyError(key);
    }
 
    std::map<std::string, MetadataTag*> tags_;

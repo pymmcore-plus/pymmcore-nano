@@ -1,10 +1,11 @@
 """Pull in the latest versions of the source files from mmCoreAndDevices."""
 
-from itertools import chain
-from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
+from itertools import chain
+from pathlib import Path
 
 REPO_URL = "https://github.com/micro-manager/mmCoreAndDevices.git"
 TARGET = Path(__file__).resolve().parent.parent / "src" / "mmCoreAndDevices"
@@ -30,7 +31,7 @@ def sync_directories(src: Path, dest: Path) -> None:
             p.unlink()
 
 
-def main() -> None:
+def main(branch: str = "main") -> None:
     existing_meson_files = Path(TARGET).rglob("meson.build")
     existing_meson_wraps = Path(TARGET).rglob("*.wrap")
 
@@ -74,4 +75,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        branch_name = sys.argv[1]
+    else:
+        branch_name = "main"
+
+    main(branch_name)

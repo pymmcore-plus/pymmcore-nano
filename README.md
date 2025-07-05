@@ -105,24 +105,13 @@ directly from this repository (e.g., to fix bugs or add features that are
 pending in the upstream repo).
 
 To bring in new changes from the upstream `mmCoreAndDevices` repository, you can
-run two scripts:
+run:
 
 ```python
 python scripts/update_sources.py
-python scripts/patch_sources.py
 ```
 
-The first script (`update_sources.py`) will update the `src/mmCoreAndDevices`
-directory with the latest changes from the `mmCoreAndDevices` repository,
-*overwriting* any changes in the local repo.
-
-The second script (`patch_sources.py`) replays all of the changes that we
-want to make to the sources in order to build the project. This includes changes
-to the `CMakeLists.txt` files.  This essentially means that all changes to the
-source MUST be `patch_sources.py`, which serves as a nice record of changes that
-should be upstreamed.
-
-After running these scripts, you can test the build and python code as usual.
+After updating, you can test the build and python code as usual.
 
 ```sh
 just build
