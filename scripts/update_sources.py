@@ -42,7 +42,17 @@ def main(branch: str = "main") -> None:
         # copy existing meson files to the temp directory
         try:
             print(f"Cloning {REPO_URL} into {temp_dir}...")
-            cmd = ["git", "clone", "--depth", "1", REPO_URL, temp_dir]
+            cmd = [
+                "git",
+                "clone",
+                "--branch",
+                branch,
+                "--depth",
+                "1",
+                REPO_URL,
+                temp_dir,
+                "--single-branch",
+            ]
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error during git operation: {e}")
