@@ -14,9 +14,10 @@ FOLDERS_TO_SYNC = [
     "MMDevice",
     "DeviceAdapters/DemoCamera",
     "DeviceAdapters/SequenceTester",
+    "DeviceAdapters/NotificationTester",
     "DeviceAdapters/Utilities",
 ]
-REMOVE_GLOBS = ["*.am", "*.vcxproj*"]
+REMOVE_GLOBS = ["*.am", "*.vcxproj*"]  # files to remove after sync
 
 
 def sync_directories(src: Path, dest: Path) -> None:
@@ -63,7 +64,7 @@ def main(branch: str = "main") -> None:
         meson_tmp.mkdir(exist_ok=True)  # store the original meson files here
         to_restore: list[tuple[Path, Path]] = []
         for i, file in enumerate(chain(existing_meson_files, existing_meson_wraps)):
-            stored = shutil.copy2(file, meson_tmp / f"{file.name}_{i}")
+            stored = Path(shutil.copy2(file, meson_tmp / f"{file.name}_{i}"))
             to_restore.append((file, stored))
 
         # Sync specified folders
