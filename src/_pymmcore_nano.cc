@@ -334,6 +334,7 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("DEVICE_SEQUENCE_TOO_LARGE") = DEVICE_SEQUENCE_TOO_LARGE;
     m.attr("DEVICE_OUT_OF_MEMORY") = DEVICE_OUT_OF_MEMORY;
     m.attr("DEVICE_NOT_YET_IMPLEMENTED") = DEVICE_NOT_YET_IMPLEMENTED;
+    m.attr("DEVICE_PUMP_IS_RUNNING") = DEVICE_PUMP_IS_RUNNING;
 
     m.attr("g_Keyword_Name") = MM::g_Keyword_Name;
     m.attr("g_Keyword_Description") = MM::g_Keyword_Description;
@@ -381,6 +382,8 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_Keyword_CoreImageProcessor") = MM::g_Keyword_CoreImageProcessor;
     m.attr("g_Keyword_CoreSLM") = MM::g_Keyword_CoreSLM;
     m.attr("g_Keyword_CoreGalvo") = MM::g_Keyword_CoreGalvo;
+    m.attr("g_Keyword_CorePressurePump") = MM::g_Keyword_CorePressurePump;
+    m.attr("g_Keyword_CoreVolumetricPump") = MM::g_Keyword_CoreVolumetricPump;
     m.attr("g_Keyword_CoreTimeoutMs") = MM::g_Keyword_CoreTimeoutMs;
     m.attr("g_Keyword_Channel") = MM::g_Keyword_Channel;
     m.attr("g_Keyword_Version") = MM::g_Keyword_Version;
@@ -391,6 +394,18 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_Keyword_Transpose_Correction") = MM::g_Keyword_Transpose_Correction;
     m.attr("g_Keyword_Closed_Position") = MM::g_Keyword_Closed_Position;
     m.attr("g_Keyword_HubID") = MM::g_Keyword_HubID;
+    m.attr("g_Keyword_PixelType_GRAY8") = MM::g_Keyword_PixelType_GRAY8;
+    m.attr("g_Keyword_PixelType_GRAY16") = MM::g_Keyword_PixelType_GRAY16;
+    m.attr("g_Keyword_PixelType_GRAY32") = MM::g_Keyword_PixelType_GRAY32;
+    m.attr("g_Keyword_PixelType_RGB32") = MM::g_Keyword_PixelType_RGB32;
+    m.attr("g_Keyword_PixelType_RGB64") = MM::g_Keyword_PixelType_RGB64;
+    m.attr("g_Keyword_PixelType_Unknown") = MM::g_Keyword_PixelType_Unknown;
+    m.attr("g_Keyword_Current_Volume") = MM::g_Keyword_Current_Volume;
+    m.attr("g_Keyword_Min_Volume") = MM::g_Keyword_Min_Volume;
+    m.attr("g_Keyword_Max_Volume") = MM::g_Keyword_Max_Volume;
+    m.attr("g_Keyword_Flowrate") = MM::g_Keyword_Flowrate;
+    m.attr("g_Keyword_Pressure_Imposed") = MM::g_Keyword_Pressure_Imposed;
+    m.attr("g_Keyword_Pressure_Measured") = MM::g_Keyword_Pressure_Measured;
     m.attr("g_Keyword_Metadata_CameraLabel") = MM::g_Keyword_Metadata_CameraLabel;
     m.attr("g_Keyword_Metadata_Exposure") = MM::g_Keyword_Metadata_Exposure;
     m.attr("g_Keyword_Metadata_Height") = MM::g_Keyword_Metadata_Height;
@@ -412,6 +427,9 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_CFGCommand_ConfigPixelSize") = MM::g_CFGCommand_ConfigPixelSize;
     m.attr("g_CFGCommand_PixelSize_um") = MM::g_CFGCommand_PixelSize_um;
     m.attr("g_CFGCommand_PixelSizeAffine") = MM::g_CFGCommand_PixelSizeAffine;
+    m.attr("g_CFGCommand_PixelSizedxdz") = MM::g_CFGCommand_PixelSizedxdz;
+    m.attr("g_CFGCommand_PixelSizedydz") = MM::g_CFGCommand_PixelSizedydz;
+    m.attr("g_CFGCommand_PixelSizeOptimalZUm") = MM::g_CFGCommand_PixelSizeOptimalZUm;
     m.attr("g_CFGCommand_ParentID") = MM::g_CFGCommand_ParentID;
     m.attr("g_CFGCommand_FocusDirection") = MM::g_CFGCommand_FocusDirection;
     m.attr("g_CFGGroup_System") = MM::g_CFGGroup_System;
@@ -438,7 +456,9 @@ NB_MODULE(_pymmcore_nano, m) {
         .value("MagnifierDevice", MM::DeviceType::MagnifierDevice)
         .value("SLMDevice", MM::DeviceType::SLMDevice)
         .value("HubDevice", MM::DeviceType::HubDevice)
-        .value("GalvoDevice", MM::DeviceType::GalvoDevice);
+        .value("GalvoDevice", MM::DeviceType::GalvoDevice)
+        .value("PressurePumpDevice", MM::DeviceType::PressurePumpDevice)
+        .value("VolumetricPumpDevice", MM::DeviceType::VolumetricPumpDevice);
 
     nb::enum_<MM::PropertyType>(m, "PropertyType", nb::is_arithmetic())
         .value("Undef", MM::PropertyType::Undef)
