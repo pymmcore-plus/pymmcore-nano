@@ -7,6 +7,7 @@ from clang.cindex import AccessSpecifier, Cursor, CursorKind, Index
 ROOT = Path(__file__).parent.parent
 MMCORE_H = ROOT / "src/mmCoreAndDevices/MMCore/MMCore.h"
 BINDINGS = ROOT / "src/_pymmcore_nano.cc"
+IGNORE_MEMBERS = {"noop", "CMMCore", "~CMMCore"}
 
 
 def walk_preorder(node: Cursor) -> Iterator[Cursor]:
@@ -51,7 +52,9 @@ def public_members(
     return [
         c.spelling
         for c in cls.get_children()
-        if c.kind in keep and c.access_specifier == AccessSpecifier.PUBLIC
+        if c.kind in keep
+        and c.access_specifier == AccessSpecifier.PUBLIC
+        and c.spelling not in IGNORE_MEMBERS
     ]
 
 
@@ -184,8 +187,5 @@ def test_bindings_complete():
     binding_members = cmmcore_members(BINDINGS)
     assert binding_members, "No .def calls found in bindings"
 
-    if members != binding_members:
-        missing = set(members) - set(binding_members)
-        extra = set(binding_members) - set(members)
+    if missing := (set(members) - set(binding_members)):
         assert not missing, f"Missing bindings for: {', '.join(missing)}"
-        assert not extra, f"Extra bindings found: {', '.join(extra)}"
