@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Sequence
 
 from clang.cindex import AccessSpecifier, Cursor, CursorKind, Index
 
@@ -8,6 +8,8 @@ ROOT = Path(__file__).parent.parent
 MMCORE_H = ROOT / "src/mmCoreAndDevices/MMCore/MMCore.h"
 BINDINGS = ROOT / "src/_pymmcore_nano.cc"
 IGNORE_MEMBERS = {"noop", "CMMCore", "~CMMCore"}
+NB_DEF_RE = re.compile(r'\.def(?:_static|_readwrite|_readonly)?\s*\(\s*"([^"]+)"')
+NB_CLASS_RE = re.compile(r"\bnb::class_<\s*CMMCore\s*>\s*\(")
 
 
 def walk_preorder(node: Cursor) -> Iterator[Cursor]:
@@ -18,159 +20,111 @@ def walk_preorder(node: Cursor) -> Iterator[Cursor]:
 
 
 def find_class_def(root: Cursor, name: str) -> Optional[Cursor]:
-    """Return the *definition* of the class called `name` (skip forward decls)."""
-    for cur in walk_preorder(root):
-        if (
-            cur.kind == CursorKind.CLASS_DECL
+    """Return the full class definition cursor for *name* in the AST rooted at *root*.
+
+    Walks the tree depth-first and returns the first ``CursorKind.CLASS_DECL``
+    that both matches *name* and is a definition (not a forward declaration).
+    """
+    return next(
+        (
+            cur
+            for cur in walk_preorder(root)
+            if cur.kind == CursorKind.CLASS_DECL  # pyright: ignore
             and cur.spelling == name
             and cur.is_definition()
-        ):
-            return cur
-    return None
+        ),
+        None,
+    )
 
 
 def public_members(
-    header: str, class_name: str, extra_args: list[str] | None = None
+    header: str | Path,
+    class_name: str,
+    *,
+    extra_args: Sequence[str] | None = None,
 ) -> List[str]:
-    """List public fields / methods of `class_name` defined in `header`."""
+    """Return the names of all public members of *class_name* declared in *header*.
+
+    Parameters
+    ----------
+    header
+        Path or string to the C++ header containing the class.
+    class_name
+        Name of the class whose public API should be inspected.
+    extra_args
+        Extra arguments to pass to Clang when parsing *header*.
+    """
     index = Index.create()
-    args = ["-x", "c++", "-std=c++17"] + (extra_args or [])
-    tu = index.parse(header, args=args)
+    args: list[str] = ["-x", "c++", "-std=c++17", *(extra_args or [])]
+    tu = index.parse(str(header), args=args)
 
     cls = find_class_def(tu.cursor, class_name)
     if cls is None:
-        raise RuntimeError(f"Definition of '{class_name}' not found")
+        raise RuntimeError(f"Definition of '{class_name}' not found in {header!s}")
 
-    keep = {
-        CursorKind.FIELD_DECL,
-        CursorKind.CXX_METHOD,
-        CursorKind.CONSTRUCTOR,
-        CursorKind.DESTRUCTOR,
-        CursorKind.FUNCTION_TEMPLATE,
+    allowed_kinds = {
+        CursorKind.FIELD_DECL,  # pyright: ignore
+        CursorKind.CXX_METHOD,  # pyright: ignore
+        CursorKind.CONSTRUCTOR,  # pyright: ignore
+        CursorKind.DESTRUCTOR,  # pyright: ignore
+        CursorKind.FUNCTION_TEMPLATE,  # pyright: ignore
     }
 
-    return [
-        c.spelling
-        for c in cls.get_children()
-        if c.kind in keep
-        and c.access_specifier == AccessSpecifier.PUBLIC
-        and c.spelling not in IGNORE_MEMBERS
-    ]
+    return sorted(
+        {
+            c.spelling
+            for c in cls.get_children()
+            if c.kind in allowed_kinds
+            and c.access_specifier == AccessSpecifier.PUBLIC  # pyright: ignore
+            and c.spelling not in IGNORE_MEMBERS
+        }
+    )
 
 
 def cmmcore_members(src: Path) -> List[str]:
-    """Extract .def calls using regex pattern matching"""
+    """Extract bound CMMCore member names from the nanobind source file.
 
-    with open(src, "r") as f:
-        content = f.read()
+    The function locates the ``nb::class_<CMMCore>(...)`` statement and then
+    collects the first argument of every ``.def*("name", ...)`` call that
+    appears in that statement.
+    """
+    text = src.read_text()
 
-    names: List[str] = []
+    # Find the beginning of the CMMCore binding.
+    if (start_match := NB_CLASS_RE.search(text)) is None:
+        return []
 
-    # Look for patterns like .def("method_name", ...)
-    # Make the pattern more restrictive to avoid matching spurious content
-    pattern = r'\.def(?:_static|_readwrite|_readonly)?\s*\(\s*"([^"]+)"'
-
-    # Find the start of the CMMCore class binding
-    start_match = re.search(r"nb::class_<CMMCore>\(", content)
-    if not start_match:
-        return names
-
-    start_pos = start_match.start()
-
-    # Now we need to find the end of this statement by finding the terminating semicolon
-    # The tricky part is that there are semicolons inside lambdas and other constructs
-    # We need to track nesting levels
-
-    pos = start_pos
-    paren_level = 0
-    bracket_level = 0
-    brace_level = 0
-    in_string = False
-    in_raw_string = False
-    escape_next = False
-
-    while pos < len(content):
-        char = content[pos]
-
-        if escape_next:
-            escape_next = False
-            pos += 1
-            continue
-
-        if char == "\\" and in_string:
-            escape_next = True
-            pos += 1
-            continue
-
-        # Handle raw strings R"delimiter(content)delimiter"
-        if not in_string and not in_raw_string and content[pos : pos + 2] == 'R"':
-            in_raw_string = True
-            # Find the delimiter
-            delimiter_start = pos + 2
-            paren_pos = content.find("(", delimiter_start)
-            if paren_pos != -1:
-                delimiter = content[delimiter_start:paren_pos]
-                pos = paren_pos + 1
-                continue
+    def _statement_end(code: str, pos: int) -> int:
+        """Return the index just after the terminating ';' of the statement."""
+        stack: list[str] = []
+        in_string = False
+        escaped = False
+        i = pos
+        while i < len(code):
+            ch = code[i]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
             else:
-                # Malformed raw string, treat as regular content
-                in_raw_string = False
+                if ch == '"':
+                    in_string = True
+                elif ch in "([{":
+                    stack.append(ch)
+                elif ch in "}])" and stack:
+                    stack.pop()
+                elif ch == ";" and not stack:
+                    return i + 1
+            i += 1
+        raise RuntimeError("Could not find end of CMMCore binding statement.")
 
-        if in_raw_string and char == ")":
-            # Check if this ends the raw string
-            if "delimiter" in locals():
-                delimiter_end = pos + 1 + len(delimiter)
-                if (
-                    pos + 1 + len(delimiter) < len(content)
-                    and content[pos + 1 : delimiter_end] == delimiter
-                    and delimiter_end < len(content)
-                    and content[delimiter_end] == '"'
-                ):
-                    in_raw_string = False
-                    pos = delimiter_end + 1
-                    continue
+    end_pos = _statement_end(text, start_match.start())
+    binding_block = text[start_match.start() : end_pos]
 
-        if in_raw_string:
-            pos += 1
-            continue
-
-        if char == '"' and not in_raw_string:
-            in_string = not in_string
-        elif not in_string:
-            if char == "(":
-                paren_level += 1
-            elif char == ")":
-                paren_level -= 1
-            elif char == "[":
-                bracket_level += 1
-            elif char == "]":
-                bracket_level -= 1
-            elif char == "{":
-                brace_level += 1
-            elif char == "}":
-                brace_level -= 1
-            elif (
-                char == ";"
-                and paren_level == 0
-                and bracket_level == 0
-                and brace_level == 0
-            ):
-                # Found the end of the statement!
-                end_pos = pos + 1
-                break
-
-        pos += 1
-    else:
-        return names
-
-    cmmcore_section = content[start_pos:end_pos]
-
-    # Now find all .def calls in the CMMCore section
-    cmmcore_matches = re.findall(pattern, cmmcore_section)
-
-    # Filter out empty strings and clean up the results
-    names.extend([name for name in cmmcore_matches if name.strip()])
-    return names
+    return sorted({m.group(1) for m in NB_DEF_RE.finditer(binding_block)})
 
 
 def test_bindings_complete():
