@@ -1,10 +1,11 @@
 """Pull in the latest versions of the source files from mmCoreAndDevices."""
 
-from itertools import chain
-from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
+from itertools import chain
+from pathlib import Path
 
 REPO_URL = "https://github.com/micro-manager/mmCoreAndDevices.git"
 TARGET = Path(__file__).resolve().parent.parent / "src" / "mmCoreAndDevices"
@@ -13,9 +14,10 @@ FOLDERS_TO_SYNC = [
     "MMDevice",
     "DeviceAdapters/DemoCamera",
     "DeviceAdapters/SequenceTester",
+    "DeviceAdapters/NotificationTester",
     "DeviceAdapters/Utilities",
 ]
-REMOVE_GLOBS = ["*.am", "*.vcxproj*"]
+REMOVE_GLOBS = ["*.am", "*.vcxproj*"]  # files to remove after sync
 
 
 def sync_directories(src: Path, dest: Path) -> None:
@@ -30,7 +32,7 @@ def sync_directories(src: Path, dest: Path) -> None:
             p.unlink()
 
 
-def main() -> None:
+def main(branch: str = "main") -> None:
     existing_meson_files = Path(TARGET).rglob("meson.build")
     existing_meson_wraps = Path(TARGET).rglob("*.wrap")
 
@@ -41,7 +43,17 @@ def main() -> None:
         # copy existing meson files to the temp directory
         try:
             print(f"Cloning {REPO_URL} into {temp_dir}...")
-            cmd = ["git", "clone", "--depth", "1", REPO_URL, temp_dir]
+            cmd = [
+                "git",
+                "clone",
+                "--branch",
+                branch,
+                "--depth",
+                "1",
+                REPO_URL,
+                temp_dir,
+                "--single-branch",
+            ]
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error during git operation: {e}")
@@ -52,7 +64,7 @@ def main() -> None:
         meson_tmp.mkdir(exist_ok=True)  # store the original meson files here
         to_restore: list[tuple[Path, Path]] = []
         for i, file in enumerate(chain(existing_meson_files, existing_meson_wraps)):
-            stored = shutil.copy2(file, meson_tmp / f"{file.name}_{i}")
+            stored = Path(shutil.copy2(file, meson_tmp / f"{file.name}_{i}"))
             to_restore.append((file, stored))
 
         # Sync specified folders
@@ -74,4 +86,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        branch_name = sys.argv[1]
+    else:
+        branch_name = "main"
+
+    main(branch_name)

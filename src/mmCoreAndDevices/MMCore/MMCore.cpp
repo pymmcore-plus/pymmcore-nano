@@ -68,15 +68,6 @@
 #include <thread>
 #include <vector>
 
-#ifdef _MSC_VER
-#pragma warning(disable: 4290) // 'C++ exception specification ignored'
-#endif
-
-#if defined(__GNUC__) && !defined(__clang__)
-// 'dynamic exception specifications are deprecated in C++11 [-Wdeprecated]'
-#pragma GCC diagnostic ignored "-Wdeprecated"
-#endif
-
 /*
  * Important! Read this before changing this file:
  *
@@ -99,8 +90,8 @@
  * and the device/module interface version numbers or the MMStudio application
  * version number (each version is incremented independently of each other).
  *
- * This applies to all classes exposed through the SWIG layer (i.e. the whole
- * of the public API of the Core), not just CMMCore.
+ * This applies to all classes exposed through MMCoreJ and pymmcore (i.e. the
+ * whole of the public API of the Core), not just CMMCore.
  *
  * Because currently there is no C++ DLL build of MMCore, what we care about is
  * the backward compatibility of the Java and Python bindings. So a change that
@@ -112,7 +103,7 @@
  * (Keep the 3 numbers on one line to make it easier to look at diffs when
  * merging/rebasing.)
  */
-const int MMCore_versionMajor = 11, MMCore_versionMinor = 5, MMCore_versionPatch = 1;
+const int MMCore_versionMajor = 11, MMCore_versionMinor = 9, MMCore_versionPatch = 0;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -173,7 +164,11 @@ CMMCore::CMMCore() :
  */
 CMMCore::~CMMCore()
 {
+   // Applications should not expect the callback notifications to be available
+   // when they are already allowing the Core object to be destroyed. Disable
+   // for safety.
    registerCallback(nullptr);
+
    try
    {
       // TODO We should attempt to continue cleanup beyond the first device
@@ -226,7 +221,7 @@ CMMCore::~CMMCore()
  * disable a permanently enabled feature, or attempting to enable a permanently
  * disabled feature.
  */
-void CMMCore::enableFeature(const char* name, bool enable) noexcept(false)
+void CMMCore::enableFeature(const char* name, bool enable) MMCORE_LEGACY_THROW(CMMError)
 {
     if (name == nullptr)
         throw CMMError("Null feature name", MMERR_NullPointerException);
@@ -243,7 +238,7 @@ void CMMCore::enableFeature(const char* name, bool enable) noexcept(false)
  *
  * @throws CMMError if the feature name is null or unknown.
  */
-bool CMMCore::isFeatureEnabled(const char* name) noexcept(false)
+bool CMMCore::isFeatureEnabled(const char* name) MMCORE_LEGACY_THROW(CMMError)
 {
     if (name == nullptr)
         throw CMMError("Null feature name", MMERR_NullPointerException);
@@ -256,7 +251,7 @@ bool CMMCore::isFeatureEnabled(const char* name) noexcept(false)
  * @param filename The log filename. If empty or null, the primary log file is
  * disabled.
  */
-void CMMCore::setPrimaryLogFile(const char* filename, bool truncate) noexcept(false)
+void CMMCore::setPrimaryLogFile(const char* filename, bool truncate) MMCORE_LEGACY_THROW(CMMError)
 {
    std::string filenameStr;
    if (filename)
@@ -342,7 +337,7 @@ bool CMMCore::stderrLogEnabled()
  * @returns A handle required when calling stopSecondaryLogFile().
  */
 int CMMCore::startSecondaryLogFile(const char* filename, bool enableDebug,
-      bool truncate, bool synchronous) noexcept(false)
+      bool truncate, bool synchronous) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!filename)
       throw CMMError("Filename is null");
@@ -363,7 +358,7 @@ int CMMCore::startSecondaryLogFile(const char* filename, bool enableDebug,
  *
  * @param handle The secondary log handle returned by startSecondaryLogFile().
  */
-void CMMCore::stopSecondaryLogFile(int handle) noexcept(false)
+void CMMCore::stopSecondaryLogFile(int handle) MMCORE_LEGACY_THROW(CMMError)
 {
    typedef mm::LogManager::LogFileHandle LogFileHandle;
    LogFileHandle h = static_cast<LogFileHandle>(handle);
@@ -381,11 +376,20 @@ std::string CMMCore::getVersionInfo() const
    return txt.str();
 }
 
+/** Returns the MMCore major version number. */
+int CMMCore::getMMCoreVersionMajor() { return MMCore_versionMajor; }
+
+/** Returns the MMCore minor version number. */
+int CMMCore::getMMCoreVersionMinor() { return MMCore_versionMinor; }
+
+/** Returns the MMCore patch version number. */
+int CMMCore::getMMCoreVersionPatch() { return MMCore_versionPatch; }
+
 /**
  * Get available devices from the specified device library.
  */
 std::vector<std::string>
-CMMCore::getAvailableDevices(const char* moduleName) noexcept(false)
+CMMCore::getAvailableDevices(const char* moduleName) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<LoadedDeviceAdapter> module =
       pluginManager_->GetDeviceAdapter(moduleName);
@@ -396,7 +400,7 @@ CMMCore::getAvailableDevices(const char* moduleName) noexcept(false)
  * Get descriptions for available devices from the specified library.
  */
 std::vector<std::string>
-CMMCore::getAvailableDeviceDescriptions(const char* moduleName) noexcept(false)
+CMMCore::getAvailableDeviceDescriptions(const char* moduleName) MMCORE_LEGACY_THROW(CMMError)
 {
    // XXX It is a little silly that we return the list of descriptions, rather
    // than provide access to the description of each device.
@@ -417,7 +421,7 @@ CMMCore::getAvailableDeviceDescriptions(const char* moduleName) noexcept(false)
  * Get type information for available devices from the specified library.
  */
 std::vector<long>
-CMMCore::getAvailableDeviceTypes(const char* moduleName) noexcept(false)
+CMMCore::getAvailableDeviceTypes(const char* moduleName) MMCORE_LEGACY_THROW(CMMError)
 {
    // XXX It is a little silly that we return the list of types, rather than
    // provide access to the type of each device.
@@ -444,6 +448,12 @@ std::string CMMCore::getAPIVersionInfo() const
    txt << "Device API version " << DEVICE_INTERFACE_VERSION << ", " << "Module API version " << MODULE_INTERFACE_VERSION;
    return txt.str();
 }
+
+/** Returns the MMDevice module interface version number. */
+int CMMCore::getMMDeviceModuleInterfaceVersion() { return MODULE_INTERFACE_VERSION; }
+
+/** Returns the MMDevice device interface version number. */
+int CMMCore::getMMDeviceDeviceInterfaceVersion() { return DEVICE_INTERFACE_VERSION; }
 
 /**
  * Returns the entire system state, i.e. the collection of all property values from all devices.
@@ -518,7 +528,7 @@ Configuration CMMCore::getSystemStateCache() const
  * Returns a partial state of the system, only for devices included in the
  * specified configuration.
  */
-Configuration CMMCore::getConfigState(const char* group, const char* config) noexcept(false)
+Configuration CMMCore::getConfigState(const char* group, const char* config) MMCORE_LEGACY_THROW(CMMError)
 {
    Configuration cfgData = getConfigData(group, config);
 
@@ -538,7 +548,7 @@ Configuration CMMCore::getConfigState(const char* group, const char* config) noe
  * Returns the partial state of the system, only for the devices included in the
  * specified group. It will create a union of all devices referenced in a group.
  */
-Configuration CMMCore::getConfigGroupState(const char* group) noexcept(false)
+Configuration CMMCore::getConfigGroupState(const char* group) MMCORE_LEGACY_THROW(CMMError)
 {
    return getConfigGroupState(group, false);
 }
@@ -547,7 +557,7 @@ Configuration CMMCore::getConfigGroupState(const char* group) noexcept(false)
  * Returns the partial state of the system cache, only for the devices included in the
  * specified group. It will create a union of all devices referenced in a group.
  */
-Configuration CMMCore::getConfigGroupStateFromCache(const char* group) noexcept(false)
+Configuration CMMCore::getConfigGroupStateFromCache(const char* group) MMCORE_LEGACY_THROW(CMMError)
 {
    return getConfigGroupState(group, true);
 }
@@ -556,7 +566,7 @@ Configuration CMMCore::getConfigGroupStateFromCache(const char* group) noexcept(
  * Returns the partial state of the system, only for the devices included in the
  * specified group. It will create a union of all devices referenced in a group.
  */
-Configuration CMMCore::getConfigGroupState(const char* group, bool fromCache) noexcept(false)
+Configuration CMMCore::getConfigGroupState(const char* group, bool fromCache) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(group);
 
@@ -665,7 +675,7 @@ void CMMCore::setDeviceAdapterSearchPaths(const std::vector<std::string>& paths)
  * search paths. This method does not check whether the files are valid and
  * compatible device adapters.
  */
-std::vector<std::string> CMMCore::getDeviceAdapterNames() noexcept(false)
+std::vector<std::string> CMMCore::getDeviceAdapterNames() MMCORE_LEGACY_THROW(CMMError)
 {
    return pluginManager_->GetAvailableDeviceAdapters();
 }
@@ -677,7 +687,7 @@ std::vector<std::string> CMMCore::getDeviceAdapterNames() noexcept(false)
  * @param deviceName   the name of the device. The name must correspond to one of the names recognized
  *                 by the specific plugin library.
  */
-void CMMCore::loadDevice(const char* label, const char* moduleName, const char* deviceName) noexcept(false)
+void CMMCore::loadDevice(const char* label, const char* moduleName, const char* deviceName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckDeviceLabel(label);
    if (!moduleName)
@@ -762,7 +772,7 @@ void CMMCore::assignDefaultRole(std::shared_ptr<DeviceInstance> pDevice)
  * Unloads the device from the core and adjusts all configuration data.
  */
 void CMMCore::unloadDevice(const char* label///< the name of the device to unload
-                           ) noexcept(false)
+                           ) MMCORE_LEGACY_THROW(CMMError)
 {
    // "Core" cannot be unloaded.
    if (label != nullptr && std::string(label) == MM::g_Keyword_CoreDevice)
@@ -777,6 +787,8 @@ void CMMCore::unloadDevice(const char* label///< the name of the device to unloa
       LOG_DEBUG(coreLogger_) << "Will unload device " << label;
       deviceManager_->UnloadDevice(pDevice);
       LOG_DEBUG(coreLogger_) << "Did unload device " << label;
+      
+      updateCoreProperties();
    }
    catch (CMMError& err) {
       logError("MMCore::unloadDevice", err.getMsg().c_str());
@@ -790,7 +802,7 @@ void CMMCore::unloadDevice(const char* label///< the name of the device to unloa
  *
  * This function is not thread safe.
  */
-void CMMCore::unloadAllDevices() noexcept(false)
+void CMMCore::unloadAllDevices() MMCORE_LEGACY_THROW(CMMError)
 {
    try {
       configGroups_->Clear();
@@ -836,7 +848,7 @@ void CMMCore::unloadAllDevices() noexcept(false)
 /**
  * Unloads all devices from the core, clears all configuration data.
  */
-void CMMCore::reset() noexcept(false)
+void CMMCore::reset() MMCORE_LEGACY_THROW(CMMError)
 {
    try
    {
@@ -871,7 +883,7 @@ void CMMCore::reset() noexcept(false)
  * Calls Initialize() method for each loaded device.
  * Parallel implemnetation should be faster
  */
-void CMMCore::initializeAllDevices() noexcept(false)
+void CMMCore::initializeAllDevices() MMCORE_LEGACY_THROW(CMMError)
 {
    if (this->isFeatureEnabled("ParallelDeviceInitialization"))
    {
@@ -889,7 +901,7 @@ void CMMCore::initializeAllDevices() noexcept(false)
  * This method also initialized allowed values for core properties, based
  * on the collection of loaded devices.
  */
-void CMMCore::initializeAllDevicesSerial() noexcept(false)
+void CMMCore::initializeAllDevicesSerial() MMCORE_LEGACY_THROW(CMMError)
 {
    std::vector<std::string> devices = deviceManager_->GetDeviceList();
    LOG_INFO(coreLogger_) << "Will initialize " << devices.size() << " devices (serially)";
@@ -924,7 +936,7 @@ void CMMCore::initializeAllDevicesSerial() noexcept(false)
  * This method also initializes allowed values for core properties, based
  * on the collection of loaded devices.
  */
-void CMMCore::initializeAllDevicesParallel() noexcept(false)
+void CMMCore::initializeAllDevicesParallel() MMCORE_LEGACY_THROW(CMMError)
 {
    std::vector<std::string> devices = deviceManager_->GetDeviceList();
    LOG_INFO(coreLogger_) << "Will initialize " << devices.size() << " devices (in parallel)";
@@ -975,48 +987,34 @@ void CMMCore::initializeAllDevicesParallel() noexcept(false)
 
    // second round, spin up threads to initialize non-port devices, one thread per module
    std::vector<std::future<int>> futures;
-   std::map<std::shared_ptr<LoadedDeviceAdapter>, std::vector<std::pair<std::shared_ptr<DeviceInstance>, std::string>>>::iterator it;
-   for (it = moduleMap.begin(); it != moduleMap.end(); it++)
-   {
-      auto f = std::async(std::launch::async, &CMMCore::initializeVectorOfDevices, this, it->second);
+   for (auto& moduleDevices : moduleMap) {
+      auto f = std::async(std::launch::async, &CMMCore::initializeVectorOfDevices, this, moduleDevices.second);
       futures.push_back(std::move(f));
    }
-   for (int i = 0; i < futures.size(); i++) {
-      // Note: we could do a 'f.wait_for(std::chrono::seconds(20)' to wait up to 20 seconds before giving up
-      // which would avoid hanging with devices that hang in their initialize function
-      try
-      {
-         futures[i].get();
-      }
-      catch (...)
-      {
-         std::exception_ptr pex = std::current_exception();
-         // The std::future returned by std::async is special and its destructor blocks until the future completes.
-         // This is okay if there are 0 or 1 errors total(the successful initializations run to completion and the exception is propagated).
-         // When there are 2 or more errors, however, the second exception would be thrown in the destructor of the future, 
-         // and throwing anything in a destructor is very bad(might terminate by default).
-         for (int j = i + 1; j < futures.size(); j++)
-         {
-            try
-            {
-               futures[j].get();
-            }
-            catch (std::exception exj) {
-               // ignore these exceptions;
-            }
+
+   // Make sure we wait for all futures even if one or more fails, so that we
+   // handle all exceptions. Otherwise futures return by std::async may try to
+   // throw from their destructor, which will call std::terminate().
+   std::exception_ptr pex;
+   for (auto& fut : futures) {
+      try {
+         fut.get();
+      } catch (const std::exception&) {
+         if (pex) {
+            // Ignore second and subsequent exceptions
+         } else {
+            pex = std::current_exception();
          }
-         // Rethrow the first exception
-         std::rethrow_exception(pex);
       }
+   }
+   if (pex) {
+      std::rethrow_exception(pex);
    }
 
    // assign default roles syncronously
-   for (it = moduleMap.begin(); it != moduleMap.end(); it++)
-   {
-      std::vector<std::pair<std::shared_ptr<DeviceInstance>, std::string>> pDevices = it->second;
-      for (int i = 0; i < pDevices.size(); i++)
-      {
-         assignDefaultRole(pDevices[i].first);
+   for (auto& moduleDevices : moduleMap) {
+      for (auto& deviceLabel : moduleDevices.second) {
+         assignDefaultRole(deviceLabel.first);
       }
    }
    LOG_INFO(coreLogger_) << "Finished initializing " << devices.size() << " devices";
@@ -1032,14 +1030,12 @@ void CMMCore::initializeAllDevicesParallel() noexcept(false)
  * This helper function is executed by a single thread, allowing initializeAllDevices to operate multi-threaded.
  * All devices are supposed to originate from the same device adapter
  */
-int CMMCore::initializeVectorOfDevices(std::vector<std::pair<std::shared_ptr<DeviceInstance>, std::string>> pDevices) {
-   for (int i = 0; i < pDevices.size(); i++) {
-      std::shared_ptr<DeviceInstance> pDevice = pDevices[i].first;
-
-      mm::DeviceModuleLockGuard guard(pDevice);
-      LOG_INFO(coreLogger_) << "Will initialize device " << pDevices[i].second;
-      pDevice->Initialize();
-      LOG_INFO(coreLogger_) << "Did initialize device " << pDevices[i].second;
+int CMMCore::initializeVectorOfDevices(std::vector<std::pair<std::shared_ptr<DeviceInstance>, std::string>> devicesLabels) {
+   for (auto& deviceLabel : devicesLabels) {
+      mm::DeviceModuleLockGuard guard(deviceLabel.first);
+      LOG_INFO(coreLogger_) << "Will initialize device " << deviceLabel.second;
+      deviceLabel.first->Initialize();
+      LOG_INFO(coreLogger_) << "Did initialize device " << deviceLabel.second;
    }
    return DEVICE_OK;
 }
@@ -1051,7 +1047,7 @@ int CMMCore::initializeVectorOfDevices(std::vector<std::pair<std::shared_ptr<Dev
  * will be populated with the currently loaded devices 
  * of that type
  */
-void CMMCore::updateCoreProperties() noexcept(false)
+void CMMCore::updateCoreProperties() MMCORE_LEGACY_THROW(CMMError)
 {
    updateCoreProperty(MM::g_Keyword_CoreCamera, MM::CameraDevice);
    updateCoreProperty(MM::g_Keyword_CoreShutter, MM::ShutterDevice);
@@ -1065,7 +1061,7 @@ void CMMCore::updateCoreProperties() noexcept(false)
    properties_->Refresh();
 }
 
-void CMMCore::updateCoreProperty(const char* propName, MM::DeviceType devType) noexcept(false)
+void CMMCore::updateCoreProperty(const char* propName, MM::DeviceType devType) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckPropertyName(propName);
 
@@ -1082,7 +1078,7 @@ void CMMCore::updateCoreProperty(const char* propName, MM::DeviceType devType) n
  * @param label   the device label
  */
 void CMMCore::initializeDevice(const char* label ///< the device to initialize
-                               ) noexcept(false)
+                               ) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<DeviceInstance> pDevice = deviceManager_->GetDevice(label);
 
@@ -1102,7 +1098,7 @@ void CMMCore::initializeDevice(const char* label ///< the device to initialize
  * @param label the device label
  */
 DeviceInitializationState
-CMMCore::getDeviceInitializationState(const char* label) const noexcept(false)
+CMMCore::getDeviceInitializationState(const char* label) const MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<DeviceInstance> pDevice = deviceManager_->GetDevice(label);
 
@@ -1137,7 +1133,7 @@ void CMMCore::updateSystemStateCache()
 /**
  * Returns device type.
  */
-MM::DeviceType CMMCore::getDeviceType(const char* label) noexcept(false)
+MM::DeviceType CMMCore::getDeviceType(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return MM::CoreDevice;
@@ -1150,7 +1146,7 @@ MM::DeviceType CMMCore::getDeviceType(const char* label) noexcept(false)
 /**
  * Returns device library (aka module, device adapter) name.
  */
-std::string CMMCore::getDeviceLibrary(const char* label) noexcept(false)
+std::string CMMCore::getDeviceLibrary(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return "";
@@ -1164,7 +1160,7 @@ std::string CMMCore::getDeviceLibrary(const char* label) noexcept(false)
 /**
  * Forcefully unload a library. Experimental. Don't use.
  */
-void CMMCore::unloadLibrary(const char* moduleName) noexcept(false)
+void CMMCore::unloadLibrary(const char* moduleName) MMCORE_LEGACY_THROW(CMMError)
 {
   	if (moduleName == 0)
       throw CMMError(errorText_[MMERR_NullPointerException],  MMERR_NullPointerException);
@@ -1198,7 +1194,7 @@ void CMMCore::unloadLibrary(const char* moduleName) noexcept(false)
  * "Name" is determined by the library and is immutable, while "label" is
  * user assigned and represents a high-level handle to a device.
  */
-std::string CMMCore::getDeviceName(const char* label) noexcept(false)
+std::string CMMCore::getDeviceName(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return "Core";
@@ -1211,7 +1207,7 @@ std::string CMMCore::getDeviceName(const char* label) noexcept(false)
 /**
  * Returns parent device.
  */
-std::string CMMCore::getParentLabel(const char* label) noexcept(false)
+std::string CMMCore::getParentLabel(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       // XXX Should be a throw
@@ -1224,7 +1220,7 @@ std::string CMMCore::getParentLabel(const char* label) noexcept(false)
 /**
  * Sets parent device label
  */
-void CMMCore::setParentLabel(const char* label, const char* parentLabel) noexcept(false)
+void CMMCore::setParentLabel(const char* label, const char* parentLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       // XXX Should be a throw
@@ -1248,7 +1244,7 @@ void CMMCore::setParentLabel(const char* label, const char* parentLabel) noexcep
  * Returns description text for a given device label.
  * "Description" is determined by the library and is immutable.
  */
-std::string CMMCore::getDeviceDescription(const char* label) noexcept(false)
+std::string CMMCore::getDeviceDescription(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return "Core device";
@@ -1270,7 +1266,7 @@ std::string CMMCore::getDeviceDescription(const char* label) noexcept(false)
  * @return the delay time in milliseconds
  * @param label    the device label
  */
-double CMMCore::getDeviceDelayMs(const char* label) noexcept(false)
+double CMMCore::getDeviceDelayMs(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return 0.0;
@@ -1288,7 +1284,7 @@ double CMMCore::getDeviceDelayMs(const char* label) noexcept(false)
  * @param label      the device label
  * @param delayMs    the desired delay in milliseconds
  */
-void CMMCore::setDeviceDelayMs(const char* label, double delayMs) noexcept(false)
+void CMMCore::setDeviceDelayMs(const char* label, double delayMs) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return; // ignore
@@ -1304,7 +1300,7 @@ void CMMCore::setDeviceDelayMs(const char* label, double delayMs) noexcept(false
  * @param label    the device label
  * @return true if the device uses a delay
  */
-bool CMMCore::usesDeviceDelay(const char* label) noexcept(false)
+bool CMMCore::usesDeviceDelay(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return false;
@@ -1319,7 +1315,7 @@ bool CMMCore::usesDeviceDelay(const char* label) noexcept(false)
  * @param label the device label
  * @return true if the device is busy
  */
-bool CMMCore::deviceBusy(const char* label) noexcept(false)
+bool CMMCore::deviceBusy(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return false;
@@ -1345,7 +1341,7 @@ void CMMCore::sleep(double intervalMs) const
  * non-busy.
  * @param label   the device label
  */
-void CMMCore::waitForDevice(const char* label) noexcept(false)
+void CMMCore::waitForDevice(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return; // core property commands always block - no need to poll
@@ -1359,7 +1355,7 @@ void CMMCore::waitForDevice(const char* label) noexcept(false)
  * Waits (blocks the calling thread) until the specified device becomes
  * @param device   the device label
  */
-void CMMCore::waitForDevice(std::shared_ptr<DeviceInstance> pDev) noexcept(false)
+void CMMCore::waitForDevice(std::shared_ptr<DeviceInstance> pDev) MMCORE_LEGACY_THROW(CMMError)
 {
    LOG_DEBUG(coreLogger_) << "Waiting for device " << pDev->GetLabel() << "...";
 
@@ -1398,7 +1394,7 @@ void CMMCore::waitForDevice(std::shared_ptr<DeviceInstance> pDev) noexcept(false
  * of the devices is busy.
  * @return status (true on busy)
  */
-bool CMMCore::systemBusy() noexcept(false)
+bool CMMCore::systemBusy() MMCORE_LEGACY_THROW(CMMError)
 {
    return deviceTypeBusy(MM::AnyType);
 }
@@ -1407,7 +1403,7 @@ bool CMMCore::systemBusy() noexcept(false)
 /**
  * Blocks until all devices in the system become ready (not-busy).
  */
-void CMMCore::waitForSystem() noexcept(false)
+void CMMCore::waitForSystem() MMCORE_LEGACY_THROW(CMMError)
 {
    waitForDeviceType(MM::AnyType);
 }
@@ -1420,7 +1416,7 @@ void CMMCore::waitForSystem() noexcept(false)
  * @return true on busy
  * @param devType   a constant specifying the device type
  */
-bool CMMCore::deviceTypeBusy(MM::DeviceType devType) noexcept(false)
+bool CMMCore::deviceTypeBusy(MM::DeviceType devType) MMCORE_LEGACY_THROW(CMMError)
 {
    std::vector<std::string> devices = deviceManager_->GetDeviceList(devType);
    for (size_t i=0; i<devices.size(); i++)
@@ -1445,7 +1441,7 @@ bool CMMCore::deviceTypeBusy(MM::DeviceType devType) noexcept(false)
  * Blocks until all devices of the specific type become ready (not-busy).
  * @param devType    a constant specifying the device type
  */
-void CMMCore::waitForDeviceType(MM::DeviceType devType) noexcept(false)
+void CMMCore::waitForDeviceType(MM::DeviceType devType) MMCORE_LEGACY_THROW(CMMError)
 {
    std::vector<std::string> devices = deviceManager_->GetDeviceList(devType);
    for (size_t i=0; i<devices.size(); i++)
@@ -1457,7 +1453,7 @@ void CMMCore::waitForDeviceType(MM::DeviceType devType) noexcept(false)
  * @param group      the configuration group
  * @param config     the configuration preset
  */
-void CMMCore::waitForConfig(const char* group, const char* configName) noexcept(false)
+void CMMCore::waitForConfig(const char* group, const char* configName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(group);
    CheckConfigPresetName(configName);
@@ -1477,7 +1473,7 @@ void CMMCore::waitForConfig(const char* group, const char* configName) noexcept(
  * @param label     the stage device label
  * @param position  the desired stage position, in microns
  */
-void CMMCore::setPosition(const char* label, double position) noexcept(false)
+void CMMCore::setPosition(const char* label, double position) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -1499,7 +1495,7 @@ void CMMCore::setPosition(const char* label, double position) noexcept(false)
  * (focus) device.
  * @param position  the desired stage position, in microns
  */
-void CMMCore::setPosition(double position) noexcept(false)
+void CMMCore::setPosition(double position) MMCORE_LEGACY_THROW(CMMError)
 {
     setPosition(getFocusDevice().c_str(), position);
 }
@@ -1509,7 +1505,7 @@ void CMMCore::setPosition(double position) noexcept(false)
  * @param label    the single-axis drive device label
  * @param d        the amount to move the stage, in microns (positive or negative)
  */
-void CMMCore::setRelativePosition(const char* label, double d) noexcept(false)
+void CMMCore::setRelativePosition(const char* label, double d) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -1532,7 +1528,7 @@ void CMMCore::setRelativePosition(const char* label, double d) noexcept(false)
  * positioner (focus) device.
  * @param d        the amount to move the stage, in microns (positive or negative)
  */
-void CMMCore::setRelativePosition(double d) noexcept(false)
+void CMMCore::setRelativePosition(double d) MMCORE_LEGACY_THROW(CMMError)
 {
     setRelativePosition(getFocusDevice().c_str(), d);
 }
@@ -1542,7 +1538,7 @@ void CMMCore::setRelativePosition(double d) noexcept(false)
  * @return the position in microns
  * @param label     the single-axis drive device label
  */
-double CMMCore::getPosition(const char* label) noexcept(false)
+double CMMCore::getPosition(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -1563,7 +1559,7 @@ double CMMCore::getPosition(const char* label) noexcept(false)
  * Z positioner (focus) device.
  * @return the position in microns
  */
-double CMMCore::getPosition() noexcept(false)
+double CMMCore::getPosition() MMCORE_LEGACY_THROW(CMMError)
 {
     return getPosition(getFocusDevice().c_str());
 }
@@ -1574,7 +1570,7 @@ double CMMCore::getPosition() noexcept(false)
  * @param x      the X axis position in microns
  * @param y      the Y axis position in microns
  */
-void CMMCore::setXYPosition(const char* label, double x, double y) noexcept(false)
+void CMMCore::setXYPosition(const char* label, double x, double y) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1598,7 +1594,7 @@ void CMMCore::setXYPosition(const char* label, double x, double y) noexcept(fals
  * @param x      the X axis position in microns
  * @param y      the Y axis position in microns
  */
-void CMMCore::setXYPosition(double x, double y) noexcept(false)
+void CMMCore::setXYPosition(double x, double y) MMCORE_LEGACY_THROW(CMMError)
 {
     setXYPosition(getXYStageDevice().c_str(), x, y);
 }
@@ -1609,7 +1605,7 @@ void CMMCore::setXYPosition(double x, double y) noexcept(false)
  * @param dx     the distance to move in X (positive or negative)
  * @param dy     the distance to move in Y (positive or negative)
  */
-void CMMCore::setRelativeXYPosition(const char* label, double dx, double dy) noexcept(false)
+void CMMCore::setRelativeXYPosition(const char* label, double dx, double dy) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1633,7 +1629,7 @@ void CMMCore::setRelativeXYPosition(const char* label, double dx, double dy) noe
  * @param dx     the distance to move in X (positive or negative)
  * @param dy     the distance to move in Y (positive or negative)
  */
-void CMMCore::setRelativeXYPosition(double dx, double dy) noexcept(false) {
+void CMMCore::setRelativeXYPosition(double dx, double dy) MMCORE_LEGACY_THROW(CMMError) {
     setRelativeXYPosition(getXYStageDevice().c_str(), dx, dy);
 }
 
@@ -1643,7 +1639,7 @@ void CMMCore::setRelativeXYPosition(double dx, double dy) noexcept(false) {
  * @param x            a return parameter yielding the X position in microns
  * @param y            a return parameter yielding the Y position in microns
  */
-void CMMCore::getXYPosition(const char* label, double& x, double& y) noexcept(false)
+void CMMCore::getXYPosition(const char* label, double& x, double& y) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1663,7 +1659,7 @@ void CMMCore::getXYPosition(const char* label, double& x, double& y) noexcept(fa
  * @param x            a return parameter yielding the X position in microns
  * @param y            a return parameter yielding the Y position in microns
  */
-void CMMCore::getXYPosition(double& x, double& y) noexcept(false)
+void CMMCore::getXYPosition(double& x, double& y) MMCORE_LEGACY_THROW(CMMError)
 {
     getXYPosition(getXYStageDevice().c_str(), x, y);
 }
@@ -1673,7 +1669,7 @@ void CMMCore::getXYPosition(double& x, double& y) noexcept(false)
  * @return    the x position
  * @param  label   the stage device label
  */
-double CMMCore::getXPosition(const char* label) noexcept(false)
+double CMMCore::getXPosition(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1696,7 +1692,7 @@ double CMMCore::getXPosition(const char* label) noexcept(false)
  * @return    the x position
  * @param  label   the stage device label
  */
-double CMMCore::getXPosition() noexcept(false)
+double CMMCore::getXPosition() MMCORE_LEGACY_THROW(CMMError)
 {
     return getXPosition(getXYStageDevice().c_str());
 }
@@ -1706,7 +1702,7 @@ double CMMCore::getXPosition() noexcept(false)
  * @return   the y position
  * @param   label   the stage device label
  */
-double CMMCore::getYPosition(const char* label) noexcept(false)
+double CMMCore::getYPosition(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1729,7 +1725,7 @@ double CMMCore::getYPosition(const char* label) noexcept(false)
  * @return    the y position
  * @param  label   the stage device label
  */
-double CMMCore::getYPosition() noexcept(false)
+double CMMCore::getYPosition() MMCORE_LEGACY_THROW(CMMError)
 {
     return getYPosition(getXYStageDevice().c_str());
 }
@@ -1741,7 +1737,7 @@ double CMMCore::getYPosition() noexcept(false)
  *
  * @param label    the stage device label (either XY or focus/Z stage)
  */
-void CMMCore::stop(const char* label) noexcept(false)
+void CMMCore::stop(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<DeviceInstance> stage =
       deviceManager_->GetDevice(label);
@@ -1795,7 +1791,7 @@ void CMMCore::stop(const char* label) noexcept(false)
  *
  * @param label    the stage device label (either XY or focus/Z stage)
  */
-void CMMCore::home(const char* label) noexcept(false)
+void CMMCore::home(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<DeviceInstance> stage =
       deviceManager_->GetDevice(label);
@@ -1848,7 +1844,7 @@ void CMMCore::home(const char* label) noexcept(false)
  *
  * @param label    the stage device label
  */
-void CMMCore::setOriginXY(const char* label) noexcept(false)
+void CMMCore::setOriginXY(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1870,7 +1866,7 @@ void CMMCore::setOriginXY(const char* label) noexcept(false)
  * The current position becomes the new origin. Not to be confused with
  * setAdapterOriginXY().
  */
-void CMMCore::setOriginXY() noexcept(false)
+void CMMCore::setOriginXY() MMCORE_LEGACY_THROW(CMMError)
 {
     setOriginXY(getXYStageDevice().c_str());
 }
@@ -1882,7 +1878,7 @@ void CMMCore::setOriginXY() noexcept(false)
  *
  * @param label    the xy stage device label
  */
-void CMMCore::setOriginX(const char* label) noexcept(false)
+void CMMCore::setOriginX(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1904,7 +1900,7 @@ void CMMCore::setOriginX(const char* label) noexcept(false)
  *
  * The current position becomes the new X = 0.
  */
-void CMMCore::setOriginX() noexcept(false)
+void CMMCore::setOriginX() MMCORE_LEGACY_THROW(CMMError)
 {
    setOriginX(getXYStageDevice().c_str());
 }
@@ -1916,7 +1912,7 @@ void CMMCore::setOriginX() noexcept(false)
  *
  * @param label    the xy stage device label
  */
-void CMMCore::setOriginY(const char* label) noexcept(false)
+void CMMCore::setOriginY(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -1938,7 +1934,7 @@ void CMMCore::setOriginY(const char* label) noexcept(false)
  *
  * The current position becomes the new Y = 0.
  */
-void CMMCore::setOriginY() noexcept(false)
+void CMMCore::setOriginY() MMCORE_LEGACY_THROW(CMMError)
 {
    setOriginY(getXYStageDevice().c_str());
 }
@@ -1951,7 +1947,7 @@ void CMMCore::setOriginY() noexcept(false)
  *
  * @param label    the stage device label
  */
-void CMMCore::setOrigin(const char* label) noexcept(false)
+void CMMCore::setOrigin(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -1973,7 +1969,7 @@ void CMMCore::setOrigin(const char* label) noexcept(false)
  * The current position becomes the new origin (Z = 0). Not to be confused with
  * setAdapterOrigin().
  */
-void CMMCore::setOrigin() noexcept(false)
+void CMMCore::setOrigin() MMCORE_LEGACY_THROW(CMMError)
 {
     setOrigin(getFocusDevice().c_str());
 }
@@ -1988,7 +1984,7 @@ void CMMCore::setOrigin() noexcept(false)
  * @param label    the stage device label
  * @param newZUm   the new coordinate to assign to the current Z position
  */
-void CMMCore::setAdapterOrigin(const char* label, double newZUm) noexcept(false)
+void CMMCore::setAdapterOrigin(const char* label, double newZUm) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -2015,7 +2011,7 @@ void CMMCore::setAdapterOrigin(const char* label, double newZUm) noexcept(false)
  *
  * @param newZUm   the new coordinate to assign to the current Z position
  */
-void CMMCore::setAdapterOrigin(double newZUm) noexcept(false)
+void CMMCore::setAdapterOrigin(double newZUm) MMCORE_LEGACY_THROW(CMMError)
 {
     setAdapterOrigin(getFocusDevice().c_str(), newZUm);
 }
@@ -2031,7 +2027,7 @@ void CMMCore::setAdapterOrigin(double newZUm) noexcept(false)
  * @param newYUm   the new coordinate to assign to the current Y position
  */
 void CMMCore::setAdapterOriginXY(const char* label,
-      double newXUm, double newYUm) noexcept(false)
+      double newXUm, double newYUm) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pXYStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -2058,7 +2054,7 @@ void CMMCore::setAdapterOriginXY(const char* label,
  * @param newXUm   the new coordinate to assign to the current X position
  * @param newYUm   the new coordinate to assign to the current Y position
  */
-void CMMCore::setAdapterOriginXY(double newXUm, double newYUm) noexcept(false)
+void CMMCore::setAdapterOriginXY(double newXUm, double newYUm) MMCORE_LEGACY_THROW(CMMError)
 {
     setAdapterOriginXY(getXYStageDevice().c_str(), newXUm, newYUm);
 }
@@ -2078,7 +2074,7 @@ void CMMCore::setAdapterOriginXY(double newXUm, double newYUm) noexcept(false)
  * An exception is thrown if the direction has not been set and the device
  * encounters an error when determining the default direction.
  */
-int CMMCore::getFocusDirection(const char* stageLabel) noexcept(false)
+int CMMCore::getFocusDirection(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> stage =
       deviceManager_->GetDeviceOfType<StageInstance>(stageLabel);
@@ -2132,7 +2128,7 @@ void CMMCore::setFocusDirection(const char* stageLabel, int sign)
  * @param cameraLabel    the camera device label
  * @return   true if exposure can be sequenced
  */
-bool CMMCore::isExposureSequenceable(const char* cameraLabel) noexcept(false)
+bool CMMCore::isExposureSequenceable(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCamera =
       deviceManager_->GetDeviceOfType<CameraInstance>(cameraLabel);
@@ -2153,7 +2149,7 @@ bool CMMCore::isExposureSequenceable(const char* cameraLabel) noexcept(false)
  * This should only be called for cameras where exposure time is sequenceable
  * @param cameraLabel    the camera device label
  */
-void CMMCore::startExposureSequence(const char* cameraLabel) noexcept(false)
+void CMMCore::startExposureSequence(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCamera =
       deviceManager_->GetDeviceOfType<CameraInstance>(cameraLabel);
@@ -2170,7 +2166,7 @@ void CMMCore::startExposureSequence(const char* cameraLabel) noexcept(false)
  * This should only be called for cameras where exposure time is sequenceable
  * @param cameraLabel   the camera device label
  */
-void CMMCore::stopExposureSequence(const char* cameraLabel) noexcept(false)
+void CMMCore::stopExposureSequence(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCamera =
       deviceManager_->GetDeviceOfType<CameraInstance>(cameraLabel);
@@ -2187,7 +2183,7 @@ void CMMCore::stopExposureSequence(const char* cameraLabel) noexcept(false)
  * This should only be called for cameras where exposure time is sequenceable
  * @param cameraLabel    the camera device label
  */
-long CMMCore::getExposureSequenceMaxLength(const char* cameraLabel) noexcept(false)
+long CMMCore::getExposureSequenceMaxLength(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCamera =
       deviceManager_->GetDeviceOfType<CameraInstance>(cameraLabel);
@@ -2207,7 +2203,7 @@ long CMMCore::getExposureSequenceMaxLength(const char* cameraLabel) noexcept(fal
  * @param cameraLabel      the camera device label
  * @param exposureTime_ms  sequence of exposure times the camera will use during a sequence acquisition
  */
-void CMMCore::loadExposureSequence(const char* cameraLabel, std::vector<double> exposureTime_ms) noexcept(false)
+void CMMCore::loadExposureSequence(const char* cameraLabel, std::vector<double> exposureTime_ms) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCamera =
       deviceManager_->GetDeviceOfType<CameraInstance>(cameraLabel);
@@ -2245,7 +2241,7 @@ void CMMCore::loadExposureSequence(const char* cameraLabel, std::vector<double> 
  * @param label   the stage device label
  * @return   true if the stage can be sequenced
  */
-bool CMMCore::isStageSequenceable(const char* label) noexcept(false)
+bool CMMCore::isStageSequenceable(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -2266,7 +2262,7 @@ bool CMMCore::isStageSequenceable(const char* label) noexcept(false)
  * @param label   the stage device label
  * @return   true if the stage supports linear sequences
  */
-bool CMMCore::isStageLinearSequenceable(const char* label) noexcept(false)
+bool CMMCore::isStageLinearSequenceable(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -2286,7 +2282,7 @@ bool CMMCore::isStageLinearSequenceable(const char* label) noexcept(false)
  * This should only be called for stages
  * @param label    the stage device label
  */
-void CMMCore::startStageSequence(const char* label) noexcept(false)
+void CMMCore::startStageSequence(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -2303,7 +2299,7 @@ void CMMCore::startStageSequence(const char* label) noexcept(false)
  * This should only be called for stages that are sequenceable
  * @param label    the stage device label
  */
-void CMMCore::stopStageSequence(const char* label) noexcept(false)
+void CMMCore::stopStageSequence(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -2321,7 +2317,7 @@ void CMMCore::stopStageSequence(const char* label) noexcept(false)
  * @param label    the stage device label
  * @return         the maximum length (integer)
  */
-long CMMCore::getStageSequenceMaxLength(const char* label) noexcept(false)
+long CMMCore::getStageSequenceMaxLength(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -2341,7 +2337,7 @@ long CMMCore::getStageSequenceMaxLength(const char* label) noexcept(false)
  * @param label              the device label
  * @param positionSequence   a sequence of positions that the stage will execute in response to external triggers
  */
-void CMMCore::loadStageSequence(const char* label, std::vector<double> positionSequence) noexcept(false)
+void CMMCore::loadStageSequence(const char* label, std::vector<double> positionSequence) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(label);
@@ -2375,7 +2371,7 @@ void CMMCore::loadStageSequence(const char* label, std::vector<double> positionS
  *                   Presumably the sequence will repeat after this
  *                   number of TTLs was received
  */
-void CMMCore::setStageLinearSequence(const char* label, double dZ_um, int nSlices) noexcept(false)
+void CMMCore::setStageLinearSequence(const char* label, double dZ_um, int nSlices) MMCORE_LEGACY_THROW(CMMError)
 {
    if (nSlices < 0)
       throw CMMError("Linear sequence cannot have negative length");
@@ -2395,7 +2391,7 @@ void CMMCore::setStageLinearSequence(const char* label, double dZ_um, int nSlice
  * Queries XY stage if it can be used in a sequence
  * @param label    the XY stage device label
  */
-bool CMMCore::isXYStageSequenceable(const char* label) noexcept(false)
+bool CMMCore::isXYStageSequenceable(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -2417,7 +2413,7 @@ bool CMMCore::isXYStageSequenceable(const char* label) noexcept(false)
  * This should only be called for stages
  * @param label       the XY stage device label
  */
-void CMMCore::startXYStageSequence(const char* label) noexcept(false)
+void CMMCore::startXYStageSequence(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -2434,7 +2430,7 @@ void CMMCore::startXYStageSequence(const char* label) noexcept(false)
  * This should only be called for stages that are sequenceable
  * @param label     the XY stage device label
  */
-void CMMCore::stopXYStageSequence(const char* label) noexcept(false)
+void CMMCore::stopXYStageSequence(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -2452,7 +2448,7 @@ void CMMCore::stopXYStageSequence(const char* label) noexcept(false)
  * @param label   the XY stage device label
  * @return        the maximum allowed sequence length
  */
-long CMMCore::getXYStageSequenceMaxLength(const char* label) noexcept(false)
+long CMMCore::getXYStageSequenceMaxLength(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -2476,7 +2472,7 @@ long CMMCore::getXYStageSequenceMaxLength(const char* label) noexcept(false)
  */
 void CMMCore::loadXYStageSequence(const char* label,
                                   std::vector<double> xSequence,
-                                  std::vector<double> ySequence) noexcept(false)
+                                  std::vector<double> ySequence) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<XYStageInstance> pStage =
       deviceManager_->GetDeviceOfType<XYStageInstance>(label);
@@ -2507,7 +2503,7 @@ void CMMCore::loadXYStageSequence(const char* label,
  * Acquires a single image with current settings.
  * Snap is not allowed while the acquisition thread is run
  */
-void CMMCore::snapImage() noexcept(false)
+void CMMCore::snapImage() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -2561,6 +2557,10 @@ void CMMCore::snapImage() noexcept(false)
             }
             waitForDevice(shutter);
          }
+         if (externalCallback_)
+         {
+            externalCallback_->onImageSnapped(camera->GetLabel().c_str());
+         }
 		}catch( CMMError& e){
 			throw e;
 		}
@@ -2609,7 +2609,7 @@ bool CMMCore::getAutoShutter()
 * Opens or closes the specified shutter.
 * @param  state     the desired state of the shutter (true for open)
 */
-void CMMCore::setShutterOpen(const char* shutterLabel, bool state) noexcept(false)
+void CMMCore::setShutterOpen(const char* shutterLabel, bool state) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<ShutterInstance> pShutter =
       deviceManager_->GetDeviceOfType<ShutterInstance>(shutterLabel);
@@ -2637,7 +2637,7 @@ void CMMCore::setShutterOpen(const char* shutterLabel, bool state) noexcept(fals
  * Opens or closes the currently selected (default) shutter.
  * @param  state     the desired state of the shutter (true for open)
  */
-void CMMCore::setShutterOpen(bool state) noexcept(false)
+void CMMCore::setShutterOpen(bool state) MMCORE_LEGACY_THROW(CMMError)
 {
    std::string shutterLabel = getShutterDevice();
    if (shutterLabel.empty()) return;
@@ -2648,7 +2648,7 @@ void CMMCore::setShutterOpen(bool state) noexcept(false)
  * Returns the state of the specified shutter.
  * @param  shutterLabel   the name of the shutter
  */
-bool CMMCore::getShutterOpen(const char* shutterLabel) noexcept(false)
+bool CMMCore::getShutterOpen(const char* shutterLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<ShutterInstance> pShutter =
       deviceManager_->GetDeviceOfType<ShutterInstance>(shutterLabel);
@@ -2669,7 +2669,7 @@ bool CMMCore::getShutterOpen(const char* shutterLabel) noexcept(false)
 /**
  * Returns the state of the currently selected (default) shutter.
  */
-bool CMMCore::getShutterOpen() noexcept(false)
+bool CMMCore::getShutterOpen() MMCORE_LEGACY_THROW(CMMError)
 {
    std::string shutterLabel = getShutterDevice();
    if (shutterLabel.empty()) return true;
@@ -2697,7 +2697,7 @@ bool CMMCore::getShutterOpen() noexcept(false)
  * @return a pointer to the internal image buffer.
  * @throws CMMError   when the camera returns no data
  */
-void* CMMCore::getImage() noexcept(false)
+void* CMMCore::getImage() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (!camera)
@@ -2763,7 +2763,7 @@ void* CMMCore::getImage() noexcept(false)
  * @param channelNr   Channel number for which the image buffer is requested
  * @return a pointer to the internal image buffer.
  */
-void* CMMCore::getImage(unsigned channelNr) noexcept(false)
+void* CMMCore::getImage(unsigned channelNr) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (!camera)
@@ -2828,7 +2828,7 @@ long CMMCore::getImageBufferSize()
  * @param intervalMs       The interval between images, currently only supported by Andor cameras
  * @param stopOnOverflow   whether or not the camera stops acquiring when the circular buffer is full
  */
-void CMMCore::startSequenceAcquisition(long numImages, double intervalMs, bool stopOnOverflow) noexcept(false)
+void CMMCore::startSequenceAcquisition(long numImages, double intervalMs, bool stopOnOverflow) MMCORE_LEGACY_THROW(CMMError)
 {
    // scope for the thread guard
    {
@@ -2874,6 +2874,7 @@ void CMMCore::startSequenceAcquisition(long numImages, double intervalMs, bool s
       throw CMMError(getCoreErrorText(MMERR_CameraNotAvailable).c_str(), MMERR_CameraNotAvailable);
    }
    LOG_DEBUG(coreLogger_) << "Did start sequence acquisition from default camera";
+   // onSequenceAcquisitionStarted will be called by CoreCallback::PrepareForAcq
 }
 
 /**
@@ -2882,7 +2883,7 @@ void CMMCore::startSequenceAcquisition(long numImages, double intervalMs, bool s
  * The difference between this method and the one with the same name but operating on the "default"
  * camera is that it does not automatically initialize the circular buffer.
  */
-void CMMCore::startSequenceAcquisition(const char* label, long numImages, double intervalMs, bool stopOnOverflow) noexcept(false)
+void CMMCore::startSequenceAcquisition(const char* label, long numImages, double intervalMs, bool stopOnOverflow) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCam =
       deviceManager_->GetDeviceOfType<CameraInstance>(label);
@@ -2907,13 +2908,14 @@ void CMMCore::startSequenceAcquisition(const char* label, long numImages, double
 
    LOG_DEBUG(coreLogger_) <<
       "Did start sequence acquisition from camera " << label;
+   // onSequenceAcquisitionStarted will be called by CoreCallback::PrepareForAcq
 }
 
 /**
  * Prepare the camera for the sequence acquisition to save the time in the
  * StartSequenceAcqusition() call which is supposed to come next.
  */
-void CMMCore::prepareSequenceAcquisition(const char* label) noexcept(false)
+void CMMCore::prepareSequenceAcquisition(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCam =
       deviceManager_->GetDeviceOfType<CameraInstance>(label);
@@ -2937,7 +2939,7 @@ void CMMCore::prepareSequenceAcquisition(const char* label) noexcept(false)
 /**
  * Initialize circular buffer based on the current camera settings.
  */
-void CMMCore::initializeCircularBuffer() noexcept(false)
+void CMMCore::initializeCircularBuffer() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -2961,7 +2963,7 @@ void CMMCore::initializeCircularBuffer() noexcept(false)
  * Stops streaming camera sequence acquisition for a specified camera.
  * @param label   The camera name
  */
-void CMMCore::stopSequenceAcquisition(const char* label) noexcept(false)
+void CMMCore::stopSequenceAcquisition(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCam =
       deviceManager_->GetDeviceOfType<CameraInstance>(label);
@@ -2976,13 +2978,14 @@ void CMMCore::stopSequenceAcquisition(const char* label) noexcept(false)
    }
 
    LOG_DEBUG(coreLogger_) << "Did stop sequence acquisition from camera " << label;
+   // onSequenceAcquisitionStopped will be called by CoreCallback::AcqFinished
 }
 
 /**
  * Starts the continuous camera sequence acquisition.
  * This command does not block the calling thread for the duration of the acquisition.
  */
-void CMMCore::startContinuousSequenceAcquisition(double intervalMs) noexcept(false)
+void CMMCore::startContinuousSequenceAcquisition(double intervalMs) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -3012,12 +3015,13 @@ void CMMCore::startContinuousSequenceAcquisition(double intervalMs) noexcept(fal
       throw CMMError(getCoreErrorText(MMERR_CameraNotAvailable).c_str(), MMERR_CameraNotAvailable);
    }
    LOG_DEBUG(coreLogger_) << "Did start continuous sequence acquisition from current camera";
+   // onSequenceAcquisitionStarted will be called by CoreCallback::PrepareForAcq
 }
 
 /**
  * Stops streaming camera sequence acquisition.
  */
-void CMMCore::stopSequenceAcquisition() noexcept(false)
+void CMMCore::stopSequenceAcquisition() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -3038,13 +3042,14 @@ void CMMCore::stopSequenceAcquisition() noexcept(false)
    }
 
    LOG_DEBUG(coreLogger_) << "Did stop sequence acquisition from current camera";
+   // onSequenceAcquisitionStopped will be called by CoreCallback::AcqFinished
 }
 
 /**
  * Check if the current camera is acquiring the sequence
  * Returns false when the sequence is done
  */
-bool CMMCore::isSequenceRunning() throw ()
+bool CMMCore::isSequenceRunning() MMCORE_NOEXCEPT
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -3066,7 +3071,7 @@ bool CMMCore::isSequenceRunning() throw ()
  * Check if the specified camera is acquiring the sequence
  * Returns false when the sequence is done
  */
-bool CMMCore::isSequenceRunning(const char* label) noexcept(false)
+bool CMMCore::isSequenceRunning(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCam =
       deviceManager_->GetDeviceOfType<CameraInstance>(label);
@@ -3079,7 +3084,7 @@ bool CMMCore::isSequenceRunning(const char* label) noexcept(false)
  * Gets the last image from the circular buffer.
  * Returns 0 if the buffer is empty.
  */
-void* CMMCore::getLastImage() noexcept(false)
+void* CMMCore::getLastImage() MMCORE_LEGACY_THROW(CMMError)
 {
 
    // scope for the thread guard
@@ -3106,7 +3111,7 @@ void* CMMCore::getLastImage() noexcept(false)
    }
 }
 
-void* CMMCore::getLastImageMD(unsigned channel, unsigned slice, Metadata& md) const noexcept(false)
+void* CMMCore::getLastImageMD(unsigned channel, unsigned slice, Metadata& md) const MMCORE_LEGACY_THROW(CMMError)
 {
    // Slices have never been implemented on the device interface side
    if (slice != 0)
@@ -3134,7 +3139,7 @@ void* CMMCore::getLastImageMD(unsigned channel, unsigned slice, Metadata& md) co
  * on little endian the format is BGRA888 
  * (see: https://en.wikipedia.org/wiki/RGBA_color_model).
  */
-void* CMMCore::getLastImageMD(Metadata& md) const noexcept(false)
+void* CMMCore::getLastImageMD(Metadata& md) const MMCORE_LEGACY_THROW(CMMError)
 {
    return getLastImageMD(0, 0, md);
 }
@@ -3151,7 +3156,7 @@ void* CMMCore::getLastImageMD(Metadata& md) const noexcept(false)
  * on little endian the format is BGRA888 
  * (see: https://en.wikipedia.org/wiki/RGBA_color_model).
  */
-void* CMMCore::getNBeforeLastImageMD(unsigned long n, Metadata& md) const noexcept(false)
+void* CMMCore::getNBeforeLastImageMD(unsigned long n, Metadata& md) const MMCORE_LEGACY_THROW(CMMError)
 {
    const mm::ImgBuffer* pBuf = cbuf_->GetNthFromTopImageBuffer(n);
    if (pBuf != 0)
@@ -3175,7 +3180,7 @@ void* CMMCore::getNBeforeLastImageMD(unsigned long n, Metadata& md) const noexce
  * on little endian the format is BGRA888 
  * (see: https://en.wikipedia.org/wiki/RGBA_color_model).
  */
-void* CMMCore::popNextImage() noexcept(false)
+void* CMMCore::popNextImage() MMCORE_LEGACY_THROW(CMMError)
 {
    unsigned char* pBuf = const_cast<unsigned char*>(cbuf_->GetNextImage());
    if (pBuf != 0)
@@ -3189,7 +3194,7 @@ void* CMMCore::popNextImage() noexcept(false)
  * channel indicates which cameraChannel image should be retrieved.
  * slice has not been implement and should always be 0
  */
-void* CMMCore::popNextImageMD(unsigned channel, unsigned slice, Metadata& md) noexcept(false)
+void* CMMCore::popNextImageMD(unsigned channel, unsigned slice, Metadata& md) MMCORE_LEGACY_THROW(CMMError)
 {
    // Slices have never been implemented on the device interface side
    if (slice != 0)
@@ -3208,7 +3213,7 @@ void* CMMCore::popNextImageMD(unsigned channel, unsigned slice, Metadata& md) no
 /**
  * Gets and removes the next image (and metadata) from the circular buffer
  */
-void* CMMCore::popNextImageMD(Metadata& md) noexcept(false)
+void* CMMCore::popNextImageMD(Metadata& md) MMCORE_LEGACY_THROW(CMMError)
 {
    return popNextImageMD(0, 0, md);
 }
@@ -3219,7 +3224,7 @@ void* CMMCore::popNextImageMD(Metadata& md) noexcept(false)
  * It is rarely necessary to call this directly since starting a sequence
  * acquisition or changing the ROI will always clear the buffer.
  */
-void CMMCore::clearCircularBuffer() noexcept(false)
+void CMMCore::clearCircularBuffer() MMCORE_LEGACY_THROW(CMMError)
 {
    cbuf_->Clear();
 }
@@ -3228,7 +3233,7 @@ void CMMCore::clearCircularBuffer() noexcept(false)
  * Reserve memory for the circular buffer.
  */
 void CMMCore::setCircularBufferMemoryFootprint(unsigned sizeMB ///< n megabytes
-                                               ) noexcept(false)
+                                               ) MMCORE_LEGACY_THROW(CMMError)
 {
    delete cbuf_; // discard old buffer
    LOG_DEBUG(coreLogger_) << "Will set circular buffer size to " <<
@@ -3402,7 +3407,7 @@ std::string CMMCore::getAutoFocusDevice()
 /**
  * Sets the current auto-focus device.
  */
-void CMMCore::setAutoFocusDevice(const char* autofocusLabel) noexcept(false)
+void CMMCore::setAutoFocusDevice(const char* autofocusLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (autofocusLabel && strlen(autofocusLabel)>0)
    {
@@ -3415,8 +3420,8 @@ void CMMCore::setAutoFocusDevice(const char* autofocusLabel) noexcept(false)
       currentAutofocusDevice_.reset();
       LOG_INFO(coreLogger_) << "Default autofocus unset";
    }
-   properties_->Refresh(); // TODO: more efficient
    std::string newAutofocusLabel = getAutoFocusDevice();
+   properties_->Set(MM::g_Keyword_CoreAutoFocus, newAutofocusLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreAutoFocus, newAutofocusLabel.c_str()));
@@ -3469,7 +3474,7 @@ std::string CMMCore::getGalvoDevice()
 /**
  * Sets the current image processor device.
  */
-void CMMCore::setImageProcessorDevice(const char* procLabel) noexcept(false)
+void CMMCore::setImageProcessorDevice(const char* procLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (procLabel && strlen(procLabel)>0)
    {
@@ -3482,8 +3487,8 @@ void CMMCore::setImageProcessorDevice(const char* procLabel) noexcept(false)
       currentImageProcessor_.reset();
       LOG_INFO(coreLogger_) << "Default image processor unset";
    }
-   properties_->Refresh(); // TODO: more efficient
    std::string newProcLabel = getImageProcessorDevice();
+   properties_->Set(MM::g_Keyword_CoreImageProcessor, newProcLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreImageProcessor, newProcLabel.c_str()));
@@ -3493,7 +3498,7 @@ void CMMCore::setImageProcessorDevice(const char* procLabel) noexcept(false)
 /**
  * Sets the current slm device.
  */
-void CMMCore::setSLMDevice(const char* slmLabel) noexcept(false)
+void CMMCore::setSLMDevice(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (slmLabel && strlen(slmLabel)>0)
    {
@@ -3506,8 +3511,8 @@ void CMMCore::setSLMDevice(const char* slmLabel) noexcept(false)
       currentSLMDevice_.reset();
       LOG_INFO(coreLogger_) << "Default SLM unset";
    }
-   properties_->Refresh(); // TODO: more efficient
    std::string newSLMLabel = getSLMDevice();
+   properties_->Set(MM::g_Keyword_CoreSLM, newSLMLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreSLM, newSLMLabel.c_str()));
@@ -3518,7 +3523,7 @@ void CMMCore::setSLMDevice(const char* slmLabel) noexcept(false)
 /**
  * Sets the current galvo device.
  */
-void CMMCore::setGalvoDevice(const char* galvoLabel) noexcept(false)
+void CMMCore::setGalvoDevice(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (galvoLabel && strlen(galvoLabel)>0)
    {
@@ -3531,8 +3536,8 @@ void CMMCore::setGalvoDevice(const char* galvoLabel) noexcept(false)
       currentGalvoDevice_.reset();
       LOG_INFO(coreLogger_) << "Default galvo unset";
    }
-   properties_->Refresh(); // TODO: more efficient
    std::string newGalvoLabel = getGalvoDevice();
+   properties_->Set(MM::g_Keyword_CoreGalvo, newGalvoLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreGalvo, newGalvoLabel.c_str()));
@@ -3542,7 +3547,7 @@ void CMMCore::setGalvoDevice(const char* galvoLabel) noexcept(false)
 /**
  * Specifies the group determining the channel selection.
  */
-void CMMCore::setChannelGroup(const char* chGroup) noexcept(false)
+void CMMCore::setChannelGroup(const char* chGroup) MMCORE_LEGACY_THROW(CMMError)
 {
    // Don't do anything if the new channelgroup is the same as the old one
    if (channelGroup_.compare(chGroup) == 0)
@@ -3583,7 +3588,7 @@ std::string CMMCore::getChannelGroup()
  * Sets the current shutter device.
  * @param shutter    the shutter device label
  */
-void CMMCore::setShutterDevice(const char* shutterLabel) noexcept(false)
+void CMMCore::setShutterDevice(const char* shutterLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!shutterLabel || strlen(shutterLabel) > 0) // Allow empty label
       CheckDeviceLabel(shutterLabel);
@@ -3620,8 +3625,8 @@ void CMMCore::setShutterDevice(const char* shutterLabel) noexcept(false)
       currentShutterDevice_.reset();
       LOG_INFO(coreLogger_) << "Default shutter unset";
    }
-   properties_->Refresh(); // TODO: more efficient
    std::string newShutterLabel = getShutterDevice();
+   properties_->Set(MM::g_Keyword_CoreShutter, newShutterLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreShutter, newShutterLabel.c_str()));
@@ -3632,7 +3637,7 @@ void CMMCore::setShutterDevice(const char* shutterLabel) noexcept(false)
  * Sets the current focus device.
  * @param focus    the focus stage device label
  */
-void CMMCore::setFocusDevice(const char* focusLabel) noexcept(false)
+void CMMCore::setFocusDevice(const char* focusLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (focusLabel && strlen(focusLabel)>0)
    {
@@ -3645,8 +3650,8 @@ void CMMCore::setFocusDevice(const char* focusLabel) noexcept(false)
       currentFocusDevice_.reset();
       LOG_INFO(coreLogger_) << "Default stage unset";
    }
-   properties_->Refresh(); // TODO: more efficient
    std::string newFocusLabel = getFocusDevice();
+   properties_->Set(MM::g_Keyword_CoreFocus, newFocusLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreFocus, newFocusLabel.c_str()));
@@ -3656,7 +3661,7 @@ void CMMCore::setFocusDevice(const char* focusLabel) noexcept(false)
 /**
  * Sets the current XY device.
  */
-void CMMCore::setXYStageDevice(const char* xyDeviceLabel) noexcept(false)
+void CMMCore::setXYStageDevice(const char* xyDeviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (xyDeviceLabel && strlen(xyDeviceLabel)>0)
    {
@@ -3670,6 +3675,7 @@ void CMMCore::setXYStageDevice(const char* xyDeviceLabel) noexcept(false)
       LOG_INFO(coreLogger_) << "Default xy stage unset";
    }
    std::string newXYStageLabel = getXYStageDevice();
+   properties_->Set(MM::g_Keyword_CoreXYStage, newXYStageLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreXYStage, newXYStageLabel.c_str()));
@@ -3680,7 +3686,7 @@ void CMMCore::setXYStageDevice(const char* xyDeviceLabel) noexcept(false)
  * Sets the current camera device.
  * @param camera   the camera device label
  */
-void CMMCore::setCameraDevice(const char* cameraLabel) noexcept(false)
+void CMMCore::setCameraDevice(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    // If a sequence acquisition is running, the camera cannot be switched. (In
    // order to start sequences for multiple cameras, one must instead use the
@@ -3707,8 +3713,8 @@ void CMMCore::setCameraDevice(const char* cameraLabel) noexcept(false)
       currentCameraDevice_.reset();
       LOG_INFO(coreLogger_) << "Default camera unset";
    }
-   properties_->Refresh(); // TODO: more efficient
    std::string newCameraLabel = getCameraDevice();
+   properties_->Set(MM::g_Keyword_CoreCamera, newCameraLabel.c_str());
    {
       MMThreadGuard scg(stateCacheLock_);
       stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreCamera, newCameraLabel.c_str()));
@@ -3721,7 +3727,7 @@ void CMMCore::setCameraDevice(const char* cameraLabel) noexcept(false)
  * @return property name array
  * @param label    the device label
  */
-std::vector<std::string> CMMCore::getDevicePropertyNames(const char* label) noexcept(false)
+std::vector<std::string> CMMCore::getDevicePropertyNames(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return properties_->GetNames();
@@ -3770,7 +3776,7 @@ std::vector<std::string> CMMCore::getLoadedDevicesOfType(MM::DeviceType devType)
  * @param label     the device label
  * @param propName  the property name
  */
-std::vector<std::string> CMMCore::getAllowedPropertyValues(const char* label, const char* propName) noexcept(false)
+std::vector<std::string> CMMCore::getAllowedPropertyValues(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return properties_->GetAllowedValues(propName);
@@ -3800,7 +3806,7 @@ std::vector<std::string> CMMCore::getAllowedPropertyValues(const char* label, co
  * @param label      the device label
  * @param propName   the property name
  */
-std::string CMMCore::getProperty(const char* label, const char* propName) noexcept(false)
+std::string CMMCore::getProperty(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return properties_->Get(propName);
@@ -3828,7 +3834,7 @@ std::string CMMCore::getProperty(const char* label, const char* propName) noexce
  * @param label       the device label
  * @param propName    the property name
  */
-std::string CMMCore::getPropertyFromCache(const char* label, const char* propName) const noexcept(false)
+std::string CMMCore::getPropertyFromCache(const char* label, const char* propName) const MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return properties_->Get(propName);
@@ -3854,7 +3860,7 @@ std::string CMMCore::getPropertyFromCache(const char* label, const char* propNam
  * @param propValue   the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName,
-                          const char* propValue) noexcept(false)
+                          const char* propValue) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckDeviceLabel(label);
    CheckPropertyName(propName);
@@ -3897,7 +3903,7 @@ void CMMCore::setProperty(const char* label, const char* propName,
  * @param propValue    the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName,
-                          const bool propValue) noexcept(false)
+                          const bool propValue) MMCORE_LEGACY_THROW(CMMError)
 {
    setProperty(label, propName, (propValue ? "1" : "0"));
 }
@@ -3910,7 +3916,7 @@ void CMMCore::setProperty(const char* label, const char* propName,
  * @param propValue  the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName,
-                          const long propValue) noexcept(false)
+                          const long propValue) MMCORE_LEGACY_THROW(CMMError)
 {
    setProperty(label, propName, ToString(propValue).c_str());
 }
@@ -3923,7 +3929,7 @@ void CMMCore::setProperty(const char* label, const char* propName,
  * @param propValue  the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName,
-                          const float propValue) noexcept(false)
+                          const float propValue) MMCORE_LEGACY_THROW(CMMError)
 {
    setProperty(label, propName, ToString(propValue).c_str());
 }
@@ -3936,7 +3942,7 @@ void CMMCore::setProperty(const char* label, const char* propName,
  * @param propValue      the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName,
-                          const double propValue) noexcept(false)
+                          const double propValue) MMCORE_LEGACY_THROW(CMMError)
 {
    setProperty(label, propName, ToString(propValue).c_str());
 }
@@ -3946,7 +3952,7 @@ void CMMCore::setProperty(const char* label, const char* propName,
  * Checks if device has a property with a specified name.
  * The exception will be thrown in case device label is not defined.
  */
-bool CMMCore::hasProperty(const char* label, const char* propName) noexcept(false)
+bool CMMCore::hasProperty(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return properties_->Has(propName);
@@ -3964,7 +3970,7 @@ bool CMMCore::hasProperty(const char* label, const char* propName) noexcept(fals
  * @param label    the device label
  * @param propName the property name
  */
-bool CMMCore::isPropertyReadOnly(const char* label, const char* propName) noexcept(false)
+bool CMMCore::isPropertyReadOnly(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return properties_->IsReadOnly(propName);
@@ -3982,7 +3988,7 @@ bool CMMCore::isPropertyReadOnly(const char* label, const char* propName) noexce
  * @param label      the device label
  * @param propName   the property name
  */
-bool CMMCore::isPropertyPreInit(const char* label, const char* propName) noexcept(false)
+bool CMMCore::isPropertyPreInit(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return false;
@@ -3996,7 +4002,7 @@ bool CMMCore::isPropertyPreInit(const char* label, const char* propName) noexcep
 /**
  * Returns the property lower limit value, if the property has limits - 0 otherwise.
  */
-double CMMCore::getPropertyLowerLimit(const char* label, const char* propName) noexcept(false)
+double CMMCore::getPropertyLowerLimit(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return 0.0;
@@ -4010,7 +4016,7 @@ double CMMCore::getPropertyLowerLimit(const char* label, const char* propName) n
 /**
  * Returns the property upper limit value, if the property has limits - 0 otherwise.
  */
-double CMMCore::getPropertyUpperLimit(const char* label, const char* propName) noexcept(false)
+double CMMCore::getPropertyUpperLimit(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return 0.0;
@@ -4026,7 +4032,7 @@ double CMMCore::getPropertyUpperLimit(const char* label, const char* propName) n
  * @param label      the device name
  * @param propName   the property label
  */
-bool CMMCore::hasPropertyLimits(const char* label, const char* propName) noexcept(false)
+bool CMMCore::hasPropertyLimits(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return false;
@@ -4042,7 +4048,7 @@ bool CMMCore::hasPropertyLimits(const char* label, const char* propName) noexcep
  * @param label      the device name
  * @param propName   the property label
  */
-bool CMMCore::isPropertySequenceable(const char* label, const char* propName) noexcept(false)
+bool CMMCore::isPropertySequenceable(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return false;
@@ -4059,7 +4065,7 @@ bool CMMCore::isPropertySequenceable(const char* label, const char* propName) no
  * @param label      the device name
  * @param propName   the property label
  */
-long CMMCore::getPropertySequenceMaxLength(const char* label, const char* propName) noexcept(false)
+long CMMCore::getPropertySequenceMaxLength(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       return 0;
@@ -4077,7 +4083,7 @@ long CMMCore::getPropertySequenceMaxLength(const char* label, const char* propNa
  * @param label      the device name
  * @param propName   the property label
  */
-void CMMCore::startPropertySequence(const char* label, const char* propName) noexcept(false)
+void CMMCore::startPropertySequence(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       // XXX Should be a throw
@@ -4095,7 +4101,7 @@ void CMMCore::startPropertySequence(const char* label, const char* propName) noe
  * @param label     the device label
  * @param propName  the property name
  */
-void CMMCore::stopPropertySequence(const char* label, const char* propName) noexcept(false)
+void CMMCore::stopPropertySequence(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       // XXX Should be a throw
@@ -4114,7 +4120,7 @@ void CMMCore::stopPropertySequence(const char* label, const char* propName) noex
  * @param propName        the property label
  * @param eventSequence   the sequence of events/states that the device will execute in response to external triggers
  */
-void CMMCore::loadPropertySequence(const char* label, const char* propName, std::vector<std::string> eventSequence) noexcept(false)
+void CMMCore::loadPropertySequence(const char* label, const char* propName, std::vector<std::string> eventSequence) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
       // XXX Should be a throw
@@ -4139,11 +4145,12 @@ void CMMCore::loadPropertySequence(const char* label, const char* propName, std:
 /**
  * Returns the intrinsic property type.
  */
-MM::PropertyType CMMCore::getPropertyType(const char* label, const char* propName) noexcept(false)
+MM::PropertyType CMMCore::getPropertyType(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (IsCoreDeviceLabel(label))
-      // TODO: return the proper core type
-      return MM::Undef;
+   {
+      return properties_->GetPropertyType(propName);
+   }
    std::shared_ptr<DeviceInstance> pDevice = deviceManager_->GetDevice(label);
    CheckPropertyName(propName);
 
@@ -4312,7 +4319,7 @@ std::string CMMCore::getCameraChannelName(unsigned int channelNr)
  * Sets the exposure setting of the current camera in milliseconds.
  * @param dExp   the exposure in milliseconds
  */
-void CMMCore::setExposure(double dExp) noexcept(false)
+void CMMCore::setExposure(double dExp) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (!camera)
@@ -4335,7 +4342,7 @@ void CMMCore::setExposure(double dExp) noexcept(false)
  * @param label  the camera device label
  * @param dExp   the exposure in milliseconds
  */
-void CMMCore::setExposure(const char* label, double dExp) noexcept(false)
+void CMMCore::setExposure(const char* label, double dExp) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCamera =
       deviceManager_->GetDeviceOfType<CameraInstance>(label);
@@ -4365,7 +4372,7 @@ void CMMCore::setExposure(const char* label, double dExp) noexcept(false)
  * Returns the current exposure setting of the camera in milliseconds.
  * @return the exposure time in milliseconds
  */
-double CMMCore::getExposure() noexcept(false)
+double CMMCore::getExposure() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -4383,7 +4390,7 @@ double CMMCore::getExposure() noexcept(false)
 * @param label  the camera device label
 * @return the exposure time in milliseconds
 */
-double CMMCore::getExposure(const char* label) noexcept(false)
+double CMMCore::getExposure(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
   std::shared_ptr<CameraInstance> pCamera =
         deviceManager_->GetDeviceOfType<CameraInstance>(label);
@@ -4413,7 +4420,7 @@ double CMMCore::getExposure(const char* label) noexcept(false)
  * @param xSize  number of horizontal pixels
  * @param ySize  number of horizontal pixels
  */
-void CMMCore::setROI(int x, int y, int xSize, int ySize) noexcept(false)
+void CMMCore::setROI(int x, int y, int xSize, int ySize) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -4453,7 +4460,7 @@ void CMMCore::setROI(int x, int y, int xSize, int ySize) noexcept(false)
  * @param xSize  number of horizontal pixels
  * @param ySize  number of horizontal pixels
  */
-void CMMCore::getROI(int& x, int& y, int& xSize, int& ySize) noexcept(false)
+void CMMCore::getROI(int& x, int& y, int& xSize, int& ySize) MMCORE_LEGACY_THROW(CMMError)
 {
    unsigned uX(0), uY(0), uXSize(0), uYSize(0);
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
@@ -4492,7 +4499,7 @@ void CMMCore::getROI(int& x, int& y, int& xSize, int& ySize) noexcept(false)
 * @param xSize  number of horizontal pixels
 * @param ySize  number of horizontal pixels
 */
-void CMMCore::setROI(const char* label, int x, int y, int xSize, int ySize) noexcept(false)
+void CMMCore::setROI(const char* label, int x, int y, int xSize, int ySize) MMCORE_LEGACY_THROW(CMMError)
 {
   std::shared_ptr<CameraInstance> camera = deviceManager_->GetDeviceOfType<CameraInstance>(label);
   if (camera)
@@ -4530,7 +4537,7 @@ void CMMCore::setROI(const char* label, int x, int y, int xSize, int ySize) noex
  * @param xSize  number of horizontal pixels
  * @param ySize  number of vertical pixels
  */
-void CMMCore::getROI(const char* label, int& x, int& y, int& xSize, int& ySize) noexcept(false)
+void CMMCore::getROI(const char* label, int& x, int& y, int& xSize, int& ySize) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> pCam =
       deviceManager_->GetDeviceOfType<CameraInstance>(label);
@@ -4553,7 +4560,7 @@ void CMMCore::getROI(const char* label, int& x, int& y, int& xSize, int& ySize) 
  * A successful call to this method will clear any images in the sequence
  * buffer, even if the ROI does not change.
  */
-void CMMCore::clearROI() noexcept(false)
+void CMMCore::clearROI() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (camera)
@@ -4575,7 +4582,7 @@ void CMMCore::clearROI() noexcept(false)
 /**
  * Queries the camera to determine if it supports multiple ROIs.
  */
-bool CMMCore::isMultiROISupported() noexcept(false)
+bool CMMCore::isMultiROISupported() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (!camera)
@@ -4589,7 +4596,7 @@ bool CMMCore::isMultiROISupported() noexcept(false)
 /**
  * Queries the camera to determine if multiple ROIs are currently set.
  */
-bool CMMCore::isMultiROIEnabled() noexcept(false)
+bool CMMCore::isMultiROIEnabled() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (!camera)
@@ -4612,7 +4619,7 @@ bool CMMCore::isMultiROIEnabled() noexcept(false)
  */
 void CMMCore::setMultiROI(std::vector<unsigned> xs, std::vector<unsigned> ys,
       std::vector<unsigned> widths,
-      std::vector<unsigned> heights) noexcept(false)
+      std::vector<unsigned> heights) MMCORE_LEGACY_THROW(CMMError)
 {
    if (xs.size() != ys.size() ||
 	   xs.size() != widths.size() ||
@@ -4647,7 +4654,7 @@ void CMMCore::setMultiROI(std::vector<unsigned> xs, std::vector<unsigned> ys,
  */
 void CMMCore::getMultiROI(std::vector<unsigned>& xs, std::vector<unsigned>& ys,
       std::vector<unsigned>& widths,
-      std::vector<unsigned>& heights) noexcept(false)
+      std::vector<unsigned>& heights) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<CameraInstance> camera = currentCameraDevice_.lock();
    if (!camera)
@@ -4693,7 +4700,7 @@ void CMMCore::getMultiROI(std::vector<unsigned>& xs, std::vector<unsigned>& ys,
  * @param deviceLabel  the device label
  * @param state        the new state
  */
-void CMMCore::setState(const char* deviceLabel, long state) noexcept(false)
+void CMMCore::setState(const char* deviceLabel, long state) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StateInstance> pStateDev =
       deviceManager_->GetDeviceOfType<StateInstance>(deviceLabel);
@@ -4731,7 +4738,7 @@ void CMMCore::setState(const char* deviceLabel, long state) noexcept(false)
  * @return                the current state
  * @param deviceLabel     the device label
  */
-long CMMCore::getState(const char* deviceLabel) noexcept(false)
+long CMMCore::getState(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StateInstance> pStateDev =
       deviceManager_->GetDeviceOfType<StateInstance>(deviceLabel);
@@ -4772,7 +4779,7 @@ long CMMCore::getNumberOfStates(const char* deviceLabel)
  * @param deviceLabel     the device label
  * @param stateLabel      the state label
  */
-void CMMCore::setStateLabel(const char* deviceLabel, const char* stateLabel) noexcept(false)
+void CMMCore::setStateLabel(const char* deviceLabel, const char* stateLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StateInstance> pStateDev =
       deviceManager_->GetDeviceOfType<StateInstance>(deviceLabel);
@@ -4809,7 +4816,7 @@ void CMMCore::setStateLabel(const char* deviceLabel, const char* stateLabel) noe
  * @return   the current state's label
  * @param deviceLabel     the device label
  */
-std::string CMMCore::getStateLabel(const char* deviceLabel) noexcept(false)
+std::string CMMCore::getStateLabel(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StateInstance> pStateDev =
       deviceManager_->GetDeviceOfType<StateInstance>(deviceLabel);
@@ -4825,7 +4832,7 @@ std::string CMMCore::getStateLabel(const char* deviceLabel) noexcept(false)
  * @param state          the state to be labeled
  * @param label          the label for the specified state
  */
-void CMMCore::defineStateLabel(const char* deviceLabel, long state, const char* label) noexcept(false)
+void CMMCore::defineStateLabel(const char* deviceLabel, long state, const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StateInstance> pStateDev =
       deviceManager_->GetDeviceOfType<StateInstance>(deviceLabel);
@@ -4886,7 +4893,7 @@ void CMMCore::defineStateLabel(const char* deviceLabel, long state, const char* 
  * @return  an array of state labels
  * @param deviceLabel       the device label
  */
-std::vector<std::string> CMMCore::getStateLabels(const char* deviceLabel) noexcept(false)
+std::vector<std::string> CMMCore::getStateLabels(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StateInstance> pStateDev =
       deviceManager_->GetDeviceOfType<StateInstance>(deviceLabel);
@@ -4907,7 +4914,7 @@ std::vector<std::string> CMMCore::getStateLabels(const char* deviceLabel) noexce
  * @param deviceLabel     the device label
  * @param stateLabel      the label for which the state is being queried
  */
-long CMMCore::getStateFromLabel(const char* deviceLabel, const char* stateLabel) noexcept(false)
+long CMMCore::getStateFromLabel(const char* deviceLabel, const char* stateLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StateInstance> pStateDev =
       deviceManager_->GetDeviceOfType<StateInstance>(deviceLabel);
@@ -4925,7 +4932,7 @@ long CMMCore::getStateFromLabel(const char* deviceLabel, const char* stateLabel)
 /**
  * Creates an empty configuration group.
  */
-void CMMCore::defineConfigGroup(const char* groupName) noexcept(false)
+void CMMCore::defineConfigGroup(const char* groupName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
 
@@ -4941,7 +4948,7 @@ void CMMCore::defineConfigGroup(const char* groupName) noexcept(false)
 /**
  * Deletes an entire configuration group.
  */
-void CMMCore::deleteConfigGroup(const char* groupName) noexcept(false)
+void CMMCore::deleteConfigGroup(const char* groupName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
 
@@ -4957,7 +4964,7 @@ void CMMCore::deleteConfigGroup(const char* groupName) noexcept(false)
 /**
  * Renames a configuration group.
  */
-void CMMCore::renameConfigGroup(const char* oldGroupName, const char* newGroupName) noexcept(false)
+void CMMCore::renameConfigGroup(const char* oldGroupName, const char* newGroupName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(oldGroupName);
    CheckConfigGroupName(newGroupName);
@@ -4982,7 +4989,7 @@ void CMMCore::renameConfigGroup(const char* oldGroupName, const char* newGroupNa
  * @param groupName    the configuration group name
  * @param configName   the configuration preset name
  */
-void CMMCore::defineConfig(const char* groupName, const char* configName) noexcept(false)
+void CMMCore::defineConfig(const char* groupName, const char* configName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(configName);
@@ -5013,7 +5020,7 @@ void CMMCore::defineConfig(const char* groupName, const char* configName) noexce
  * @param propName     the property name
  * @param value        the property value
  */
-void CMMCore::defineConfig(const char* groupName, const char* configName, const char* deviceLabel, const char* propName, const char* value) noexcept(false)
+void CMMCore::defineConfig(const char* groupName, const char* configName, const char* deviceLabel, const char* propName, const char* value) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(configName);
@@ -5051,7 +5058,7 @@ void CMMCore::defineConfig(const char* groupName, const char* configName, const 
  * @param propName property name
  * @param value property value
 */
-void CMMCore::definePixelSizeConfig(const char* resolutionID, const char* deviceLabel, const char* propName, const char* value) noexcept(false)
+void CMMCore::definePixelSizeConfig(const char* resolutionID, const char* deviceLabel, const char* propName, const char* value) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
    CheckDeviceLabel(deviceLabel);
@@ -5069,7 +5076,7 @@ void CMMCore::definePixelSizeConfig(const char* resolutionID, const char* device
  * Defines an empty pixel size entry.
 */
 
-void CMMCore::definePixelSizeConfig(const char* resolutionID) noexcept(false)
+void CMMCore::definePixelSizeConfig(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5084,7 +5091,7 @@ void CMMCore::definePixelSizeConfig(const char* resolutionID) noexcept(false)
  *
  * @return true if the configuration is already defined
  */
-bool CMMCore::isPixelSizeConfigDefined(const char* resolutionID) const noexcept(false)
+bool CMMCore::isPixelSizeConfigDefined(const char* resolutionID) const MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5094,7 +5101,7 @@ bool CMMCore::isPixelSizeConfigDefined(const char* resolutionID) const noexcept(
 /**
  * Sets pixel size in microns for the specified resolution sensing configuration preset.
  */
-void CMMCore::setPixelSizeUm(const char* resolutionID, double pixSize)  noexcept(false)
+void CMMCore::setPixelSizeUm(const char* resolutionID, double pixSize)  MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5118,7 +5125,7 @@ void CMMCore::setPixelSizeUm(const char* resolutionID, double pixSize)  noexcept
  * Order: row[0]col[0] row[0]c[1] row[0]c[2] row[1]c[0] row[1]c[1] row[1]c[2]
  * The given vector has to have 6 doubles, or bad stuff will happen
  */
-void CMMCore::setPixelSizeAffine(const char* resolutionID, std::vector<double> affine)  noexcept(false)
+void CMMCore::setPixelSizeAffine(const char* resolutionID, std::vector<double> affine)  MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5153,7 +5160,7 @@ void CMMCore::setPixelSizeAffine(const char* resolutionID, std::vector<double> a
  * @param resolutionID   The pixel size configuration group name
  * @param dxdz       Angle of the Z-stage axis with the camera axis (dimensionless)
  */
-void CMMCore::setPixelSizedxdz(const char* resolutionID, double dxdz)  noexcept(false)
+void CMMCore::setPixelSizedxdz(const char* resolutionID, double dxdz)  MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5180,7 +5187,7 @@ void CMMCore::setPixelSizedxdz(const char* resolutionID, double dxdz)  noexcept(
  * @param resolutionID   The pixel size configuration group name
  * @param dydz       Angle of the Z-stage axis with the camera axis (dimensionless)
  */
-void CMMCore::setPixelSizedydz(const char* resolutionID, double dydz)  noexcept(false)
+void CMMCore::setPixelSizedydz(const char* resolutionID, double dydz)  MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5203,7 +5210,7 @@ void CMMCore::setPixelSizedydz(const char* resolutionID, double dydz)  noexcept(
  * @param resolutionID   The pixel size configuration group name
  * @param optimalZ       Optimal z step in microns
  */
-void CMMCore::setPixelSizeOptimalZUm(const char* resolutionID, double optimalZ)  noexcept(false)
+void CMMCore::setPixelSizeOptimalZUm(const char* resolutionID, double optimalZ)  MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5224,7 +5231,7 @@ void CMMCore::setPixelSizeOptimalZUm(const char* resolutionID, double optimalZ) 
  *
  * @param resolutionID   the pixel size configuration group name
  */
-void CMMCore::setPixelSizeConfig(const char* resolutionID) noexcept(false)
+void CMMCore::setPixelSizeConfig(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5255,7 +5262,7 @@ void CMMCore::setPixelSizeConfig(const char* resolutionID) noexcept(false)
  * @param groupName   the configuration group name
  * @param configName  the configuration preset name
  */
-void CMMCore::setConfig(const char* groupName, const char* configName) noexcept(false)
+void CMMCore::setConfig(const char* groupName, const char* configName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(configName);
@@ -5289,7 +5296,7 @@ void CMMCore::setConfig(const char* groupName, const char* configName) noexcept(
  * configuration was not previously defined.
  *
  */
-void CMMCore::renameConfig(const char* groupName, const char* oldConfigName, const char* newConfigName) noexcept(false)
+void CMMCore::renameConfig(const char* groupName, const char* oldConfigName, const char* newConfigName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(oldConfigName);
@@ -5311,7 +5318,7 @@ void CMMCore::renameConfig(const char* groupName, const char* oldConfigName, con
  * configuration was not previously defined.
  *
  */
-void CMMCore::deleteConfig(const char* groupName, const char* configName) noexcept(false)
+void CMMCore::deleteConfig(const char* groupName, const char* configName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(configName);
@@ -5334,7 +5341,7 @@ void CMMCore::deleteConfig(const char* groupName, const char* configName) noexce
  * configuration was not previously defined.
  *
  */
-void CMMCore::deleteConfig(const char* groupName, const char* configName, const char* deviceLabel, const char* propName) noexcept(false)
+void CMMCore::deleteConfig(const char* groupName, const char* configName, const char* deviceLabel, const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(configName);
@@ -5410,7 +5417,7 @@ std::vector<std::string> CMMCore::getAvailablePixelSizeConfigs() const
  *
  * @return The current configuration preset's name
  */
-std::string CMMCore::getCurrentConfig(const char* groupName) noexcept(false)
+std::string CMMCore::getCurrentConfig(const char* groupName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
 
@@ -5440,7 +5447,7 @@ std::string CMMCore::getCurrentConfig(const char* groupName) noexcept(false)
  *
  * @return The cache's current configuration preset name
  */
-std::string CMMCore::getCurrentConfigFromCache(const char* groupName) noexcept(false)
+std::string CMMCore::getCurrentConfigFromCache(const char* groupName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
 
@@ -5466,7 +5473,7 @@ std::string CMMCore::getCurrentConfigFromCache(const char* groupName) noexcept(f
  *
  * @return The configuration object
  */
-Configuration CMMCore::getConfigData(const char* groupName, const char* configName) noexcept(false)
+Configuration CMMCore::getConfigData(const char* groupName, const char* configName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigGroupName(groupName);
    CheckConfigPresetName(configName);
@@ -5490,7 +5497,7 @@ Configuration CMMCore::getConfigData(const char* groupName, const char* configNa
  * Returns the configuration object for a give pixel size preset.
  * @return The configuration object
  */
-Configuration CMMCore::getPixelSizeConfigData(const char* configName) noexcept(false)
+Configuration CMMCore::getPixelSizeConfigData(const char* configName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(configName);
 
@@ -5513,7 +5520,7 @@ Configuration CMMCore::getPixelSizeConfigData(const char* configName) noexcept(f
  * configuration was not previously defined.
  *
  */
-void CMMCore::renamePixelSizeConfig(const char* oldConfigName, const char* newConfigName) noexcept(false)
+void CMMCore::renamePixelSizeConfig(const char* oldConfigName, const char* newConfigName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(oldConfigName);
    CheckConfigPresetName(newConfigName);
@@ -5534,7 +5541,7 @@ void CMMCore::renamePixelSizeConfig(const char* oldConfigName, const char* newCo
  * configuration was not previously defined.
  *
  */
-void CMMCore::deletePixelSizeConfig(const char* configName) noexcept(false)
+void CMMCore::deletePixelSizeConfig(const char* configName) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(configName);
 
@@ -5552,7 +5559,7 @@ void CMMCore::deletePixelSizeConfig(const char* configName) noexcept(false)
 /**
  * Get the current pixel configuration name
  **/
-std::string CMMCore::getCurrentPixelSizeConfig() noexcept(false)
+std::string CMMCore::getCurrentPixelSizeConfig() MMCORE_LEGACY_THROW(CMMError)
 {
 	return getCurrentPixelSizeConfig(false);
 }
@@ -5560,7 +5567,7 @@ std::string CMMCore::getCurrentPixelSizeConfig() noexcept(false)
 /**
  * Get the current pixel configuration name
  **/
-std::string CMMCore::getCurrentPixelSizeConfig(bool cached) noexcept(false)
+std::string CMMCore::getCurrentPixelSizeConfig(bool cached) MMCORE_LEGACY_THROW(CMMError)
 {
    // get a list of configuration names
    std::vector<std::string> cfgs = pixelSizeGroup_->GetAvailable();
@@ -5681,7 +5688,7 @@ double CMMCore::getPixelSizeUm(bool cached)
 /**
  * Returns the pixel size in um for the requested pixel size group
  */
-double CMMCore::getPixelSizeUmByID(const char* resolutionID) noexcept(false)
+double CMMCore::getPixelSizeUmByID(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5696,7 +5703,7 @@ double CMMCore::getPixelSizeUmByID(const char* resolutionID) noexcept(false)
  * Returns the current Affine Transform to related camera pixels with stage movement..
  * This function returns the stored affine transform corrected for binning
  */
-std::vector<double> CMMCore::getPixelSizeAffine() noexcept(false)
+std::vector<double> CMMCore::getPixelSizeAffine() MMCORE_LEGACY_THROW(CMMError)
 {
 	 return getPixelSizeAffine(false);
 }
@@ -5706,7 +5713,7 @@ std::vector<double> CMMCore::getPixelSizeAffine() noexcept(false)
  * This function returns the stored affine transform corrected for binning
  * and known magnification devices
  */
-std::vector<double> CMMCore::getPixelSizeAffine(bool cached) noexcept(false)
+std::vector<double> CMMCore::getPixelSizeAffine(bool cached) MMCORE_LEGACY_THROW(CMMError)
 {
    std::string resolutionID = getCurrentPixelSizeConfig(cached);
    if (resolutionID.length() > 0)
@@ -5725,31 +5732,11 @@ std::vector<double> CMMCore::getPixelSizeAffine(bool cached) noexcept(false)
 
       double factor = binning / getMagnificationFactor();
 
-      if (factor != 1.0)
-      {
-         // create a scaling matrix
-         double scaleM[3][3]= { {factor, 0.0, 0.0}, {0.0, factor, 0.0}, {0.0, 0.0, 1.0} };
-         // and multiply scaling matrix with the affine transform
-         double input[3][3] = { {af.at(0), af.at(1), af.at(2)}, {af.at(3), af.at(4), af.at(5)}, {0.0, 0.0, 1.0} };
-         double output[3][3];
-         for (int r = 0; r < 3; r++)
-         {
-            for (int c = 0; c < 3; c++)
-            {
-               output[r][c] = 0.0;
-               for (int i = 0; i < 3; i++)
-               {
-                  output[r][c] = output[r][c] + scaleM[r][i] * input[i][c];
-               }
-            }
+      if (factor != 1.0) {
+         for (double& v : af) {
+            v *= factor;
          }
-         // copy result back into affine transform
-         for (int i = 0; i < 3; i++)
-            af.at(i) = output[0][i];
-         for (int i = 0; i < 3; i++)
-            af.at(i + 3) = output[1][i];
       }
-
       return af;
    }
    else
@@ -5765,7 +5752,7 @@ std::vector<double> CMMCore::getPixelSizeAffine(bool cached) noexcept(false)
  * The raw affine transform without correction for binning and magnification
  * will be returned.
  */
-std::vector<double> CMMCore::getPixelSizeAffineByID(const char* resolutionID) noexcept(false)
+std::vector<double> CMMCore::getPixelSizeAffineByID(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5818,7 +5805,7 @@ double CMMCore::getMagnificationFactor() const
  *
  * @return        angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)
  */
-double CMMCore::getPixelSizedxdz() noexcept(false)
+double CMMCore::getPixelSizedxdz() MMCORE_LEGACY_THROW(CMMError)
 {
 	 return getPixelSizedxdz(false);
 }
@@ -5836,7 +5823,7 @@ double CMMCore::getPixelSizedxdz() noexcept(false)
  *                the hardware.
  * @return        angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)
  */
-double CMMCore::getPixelSizedxdz(bool cached) noexcept(false)
+double CMMCore::getPixelSizedxdz(bool cached) MMCORE_LEGACY_THROW(CMMError)
 {
    std::string resolutionID;
    resolutionID = getCurrentPixelSizeConfig(cached);
@@ -5869,7 +5856,7 @@ double CMMCore::getPixelSizedxdz(bool cached) noexcept(false)
  * @param resolutionID   The pixel size configuration group name
  * @return        Angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)
  */
-double CMMCore::getPixelSizedxdz(const char* resolutionID) noexcept(false)
+double CMMCore::getPixelSizedxdz(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5891,7 +5878,7 @@ double CMMCore::getPixelSizedxdz(const char* resolutionID) noexcept(false)
  *
  * @return   angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)
  */
-double CMMCore::getPixelSizedydz() noexcept(false)
+double CMMCore::getPixelSizedydz() MMCORE_LEGACY_THROW(CMMError)
 {
 	 return getPixelSizedydz(false);
 }
@@ -5909,7 +5896,7 @@ double CMMCore::getPixelSizedydz() noexcept(false)
  * @cached   Uses System state cache to find active pixel size config when true
  * @return   angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)
  */
-double CMMCore::getPixelSizedydz(bool cached) noexcept(false)
+double CMMCore::getPixelSizedydz(bool cached) MMCORE_LEGACY_THROW(CMMError)
 {
    std::string resolutionID;
    resolutionID = getCurrentPixelSizeConfig(cached);
@@ -5942,7 +5929,7 @@ double CMMCore::getPixelSizedydz(bool cached) noexcept(false)
  * @resolutionID   Name of Pixel Size configuration for this dy /dz angle
  * @return   angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)
  */
-double CMMCore::getPixelSizedydz(const char* resolutionID) noexcept(false)
+double CMMCore::getPixelSizedydz(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -5959,7 +5946,7 @@ double CMMCore::getPixelSizedydz(const char* resolutionID) noexcept(false)
  * communicate to the end user what the optimal Z step size is for this 
  * pixel size configuration
  */
-double CMMCore::getPixelSizeOptimalZUm() noexcept(false)
+double CMMCore::getPixelSizeOptimalZUm() MMCORE_LEGACY_THROW(CMMError)
 {
 	 return getPixelSizeOptimalZUm(false);
 }
@@ -5972,7 +5959,7 @@ double CMMCore::getPixelSizeOptimalZUm() noexcept(false)
  *
  * @cached   Uses System state cache to find active pixel size config when true
  */
-double CMMCore::getPixelSizeOptimalZUm(bool cached) noexcept(false)
+double CMMCore::getPixelSizeOptimalZUm(bool cached) MMCORE_LEGACY_THROW(CMMError)
 {
    std::string resolutionID;
    resolutionID = getCurrentPixelSizeConfig(cached);
@@ -5998,7 +5985,7 @@ double CMMCore::getPixelSizeOptimalZUm(bool cached) noexcept(false)
  * communicate to the end user what the optimal Z step size is for this 
  * pixel size configuration
  */
-double CMMCore::getPixelSizeOptimalZUm(const char* resolutionID) noexcept(false)
+double CMMCore::getPixelSizeOptimalZUm(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckConfigPresetName(resolutionID);
 
@@ -6044,7 +6031,7 @@ void CMMCore::setSerialProperties(const char* portName,
                                   const char* delayBetweenCharsMs,
                                   const char* handshaking,
                                   const char* parity,
-                                  const char* stopBits) noexcept(false)
+                                  const char* stopBits) MMCORE_LEGACY_THROW(CMMError)
 {
    setProperty(portName, MM::g_Keyword_AnswerTimeout, answerTimeout);
    setProperty(portName, MM::g_Keyword_BaudRate, baudRate);
@@ -6059,7 +6046,7 @@ void CMMCore::setSerialProperties(const char* portName,
  * This command blocks until it receives an answer from the device terminated by the specified
  * sequence.
  */
-void CMMCore::setSerialPortCommand(const char* portLabel, const char* command, const char* term) noexcept(false)
+void CMMCore::setSerialPortCommand(const char* portLabel, const char* command, const char* term) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SerialInstance> pSerial =
       deviceManager_->GetDeviceOfType<SerialInstance>(portLabel);
@@ -6079,7 +6066,7 @@ void CMMCore::setSerialPortCommand(const char* portLabel, const char* command, c
 /**
  * Continuously read from the serial port until the terminating sequence is encountered.
  */
-std::string CMMCore::getSerialPortAnswer(const char* portLabel, const char* term) noexcept(false)
+std::string CMMCore::getSerialPortAnswer(const char* portLabel, const char* term) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SerialInstance> pSerial =
       deviceManager_->GetDeviceOfType<SerialInstance>(portLabel);
@@ -6102,7 +6089,7 @@ std::string CMMCore::getSerialPortAnswer(const char* portLabel, const char* term
 /**
  * Sends an array of characters to the serial port and returns immediately.
  */
-void CMMCore::writeToSerialPort(const char* portLabel, const std::vector<char> &data) noexcept(false)
+void CMMCore::writeToSerialPort(const char* portLabel, const std::vector<char> &data) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SerialInstance> pSerial =
       deviceManager_->GetDeviceOfType<SerialInstance>(portLabel);
@@ -6118,7 +6105,7 @@ void CMMCore::writeToSerialPort(const char* portLabel, const std::vector<char> &
 /**
  * Reads the contents of the Rx buffer.
  */
-std::vector<char> CMMCore::readFromSerialPort(const char* portLabel) noexcept(false)
+std::vector<char> CMMCore::readFromSerialPort(const char* portLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SerialInstance> pSerial =
       deviceManager_->GetDeviceOfType<SerialInstance>(portLabel);
@@ -6145,7 +6132,7 @@ std::vector<char> CMMCore::readFromSerialPort(const char* portLabel) noexcept(fa
 /**
  * Write an 8-bit monochrome image to the SLM.
  */
-void CMMCore::setSLMImage(const char* deviceLabel, unsigned char* pixels) noexcept(false)
+void CMMCore::setSLMImage(const char* deviceLabel, unsigned char* pixels) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6163,7 +6150,7 @@ void CMMCore::setSLMImage(const char* deviceLabel, unsigned char* pixels) noexce
 /**
  * Write a 32-bit color image to the SLM.
  */
-void CMMCore::setSLMImage(const char* deviceLabel, imgRGB32 pixels) noexcept(false)
+void CMMCore::setSLMImage(const char* deviceLabel, imgRGB32 pixels) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6181,7 +6168,7 @@ void CMMCore::setSLMImage(const char* deviceLabel, imgRGB32 pixels) noexcept(fal
 /**
  * Set all SLM pixels to a single 8-bit intensity.
  */
-void CMMCore::setSLMPixelsTo(const char* deviceLabel, unsigned char intensity) noexcept(false)
+void CMMCore::setSLMPixelsTo(const char* deviceLabel, unsigned char intensity) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6198,7 +6185,7 @@ void CMMCore::setSLMPixelsTo(const char* deviceLabel, unsigned char intensity) n
 /**
  * Set all SLM pixels to an RGB color.
  */
-void CMMCore::setSLMPixelsTo(const char* deviceLabel, unsigned char red, unsigned char green, unsigned char blue) noexcept(false)
+void CMMCore::setSLMPixelsTo(const char* deviceLabel, unsigned char red, unsigned char green, unsigned char blue) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6215,7 +6202,7 @@ void CMMCore::setSLMPixelsTo(const char* deviceLabel, unsigned char red, unsigne
 /**
  * Display the waiting image on the SLM.
  */
-void CMMCore::displaySLMImage(const char* deviceLabel) noexcept(false)
+void CMMCore::displaySLMImage(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6233,7 +6220,7 @@ void CMMCore::displaySLMImage(const char* deviceLabel) noexcept(false)
  * For SLM devices with build-in light source (such as projectors)
  * this will set the exposure time, but not (yet) start the illumination
  */
-void CMMCore::setSLMExposure(const char* deviceLabel, double exposure_ms) noexcept(false)
+void CMMCore::setSLMExposure(const char* deviceLabel, double exposure_ms) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6250,7 +6237,7 @@ void CMMCore::setSLMExposure(const char* deviceLabel, double exposure_ms) noexce
 /**
  * Returns the exposure time that will be used by the SLM for illumination
  */
-double CMMCore::getSLMExposure(const char* deviceLabel) noexcept(false)
+double CMMCore::getSLMExposure(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6265,7 +6252,7 @@ double CMMCore::getSLMExposure(const char* deviceLabel) noexcept(false)
  *
  * @param deviceLabel name of the SLM
  */
-unsigned CMMCore::getSLMWidth(const char* deviceLabel) noexcept(false)
+unsigned CMMCore::getSLMWidth(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6280,7 +6267,7 @@ unsigned CMMCore::getSLMWidth(const char* deviceLabel) noexcept(false)
  *
  * @param deviceLabel name of the SLM
  */
-unsigned CMMCore::getSLMHeight(const char* deviceLabel) noexcept(false)
+unsigned CMMCore::getSLMHeight(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6295,7 +6282,7 @@ unsigned CMMCore::getSLMHeight(const char* deviceLabel) noexcept(false)
  *
  * @param deviceLabel name of the SLM
  */
-unsigned CMMCore::getSLMNumberOfComponents(const char* deviceLabel) noexcept(false)
+unsigned CMMCore::getSLMNumberOfComponents(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6309,7 +6296,7 @@ unsigned CMMCore::getSLMNumberOfComponents(const char* deviceLabel) noexcept(fal
  *
  * @param deviceLabel name of the SLM
  */
-unsigned CMMCore::getSLMBytesPerPixel(const char* deviceLabel) noexcept(false)
+unsigned CMMCore::getSLMBytesPerPixel(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6324,7 +6311,7 @@ unsigned CMMCore::getSLMBytesPerPixel(const char* deviceLabel) noexcept(false)
  *
  * @param deviceLabel name of the SLM
  */
-long CMMCore::getSLMSequenceMaxLength(const char* deviceLabel) noexcept(false)
+long CMMCore::getSLMSequenceMaxLength(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6342,7 +6329,7 @@ long CMMCore::getSLMSequenceMaxLength(const char* deviceLabel) noexcept(false)
  *
  * @param deviceLabel name of the SLM
  */
-void CMMCore::startSLMSequence(const char* deviceLabel) noexcept(false)
+void CMMCore::startSLMSequence(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6358,7 +6345,7 @@ void CMMCore::startSLMSequence(const char* deviceLabel) noexcept(false)
  *
  * @param deviceLabel name of the SLM
  */
-void CMMCore::stopSLMSequence(const char* deviceLabel) noexcept(false)
+void CMMCore::stopSLMSequence(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6375,7 +6362,7 @@ void CMMCore::stopSLMSequence(const char* deviceLabel) noexcept(false)
  * @param deviceLabel name of the SLM
  * @param imagesequence pointers to the images to be used in the sequence
  */
-void CMMCore::loadSLMSequence(const char* deviceLabel, std::vector<unsigned char *> imageSequence) noexcept(false)
+void CMMCore::loadSLMSequence(const char* deviceLabel, std::vector<unsigned char *> imageSequence) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<SLMInstance> pSLM =
       deviceManager_->GetDeviceOfType<SLMInstance>(deviceLabel);
@@ -6405,7 +6392,7 @@ void CMMCore::loadSLMSequence(const char* deviceLabel, std::vector<unsigned char
 /**
  * Set the Galvo to an x,y position and fire the laser for a predetermined duration.
  */
-void CMMCore::pointGalvoAndFire(const char* deviceLabel, double x, double y, double pulseTime_us) noexcept(false)
+void CMMCore::pointGalvoAndFire(const char* deviceLabel, double x, double y, double pulseTime_us) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6421,7 +6408,7 @@ void CMMCore::pointGalvoAndFire(const char* deviceLabel, double x, double y, dou
    }
 }
 
-void CMMCore::setGalvoSpotInterval(const char* deviceLabel, double pulseTime_us) noexcept(false)
+void CMMCore::setGalvoSpotInterval(const char* deviceLabel, double pulseTime_us) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6441,7 +6428,7 @@ void CMMCore::setGalvoSpotInterval(const char* deviceLabel, double pulseTime_us)
 /**
  * Set the Galvo to an x,y position
  */
-void CMMCore::setGalvoPosition(const char* deviceLabel, double x, double y) noexcept(false)
+void CMMCore::setGalvoPosition(const char* deviceLabel, double x, double y) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6460,7 +6447,7 @@ void CMMCore::setGalvoPosition(const char* deviceLabel, double x, double y) noex
 /**
  * Get the Galvo x,y position
  */
-void CMMCore::getGalvoPosition(const char* deviceLabel, double &x, double &y) noexcept(false)
+void CMMCore::getGalvoPosition(const char* deviceLabel, double &x, double &y) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6479,7 +6466,7 @@ void CMMCore::getGalvoPosition(const char* deviceLabel, double &x, double &y) no
 /**
  * Set the galvo's illumination state to on or off
  */
-void CMMCore::setGalvoIlluminationState(const char* deviceLabel, bool on) noexcept(false)
+void CMMCore::setGalvoIlluminationState(const char* deviceLabel, bool on) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6500,7 +6487,7 @@ void CMMCore::setGalvoIlluminationState(const char* deviceLabel, bool on) noexce
 /**
  * Get the Galvo x range
  */
-double CMMCore::getGalvoXRange(const char* deviceLabel) noexcept(false)
+double CMMCore::getGalvoXRange(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6512,7 +6499,7 @@ double CMMCore::getGalvoXRange(const char* deviceLabel) noexcept(false)
 /**
  * Get the Galvo x minimum
  */
-double CMMCore::getGalvoXMinimum(const char* deviceLabel) noexcept(false)
+double CMMCore::getGalvoXMinimum(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6524,7 +6511,7 @@ double CMMCore::getGalvoXMinimum(const char* deviceLabel) noexcept(false)
 /**
  * Get the Galvo y range
  */
-double CMMCore::getGalvoYRange(const char* deviceLabel) noexcept(false)
+double CMMCore::getGalvoYRange(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6536,7 +6523,7 @@ double CMMCore::getGalvoYRange(const char* deviceLabel) noexcept(false)
 /**
  * Get the Galvo y minimum
  */
-double CMMCore::getGalvoYMinimum(const char* deviceLabel) noexcept(false)
+double CMMCore::getGalvoYMinimum(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6548,7 +6535,7 @@ double CMMCore::getGalvoYMinimum(const char* deviceLabel) noexcept(false)
 /**
  * Add a vertex to a galvo polygon.
  */
-void CMMCore::addGalvoPolygonVertex(const char* deviceLabel, int polygonIndex, double x, double y) noexcept(false)
+void CMMCore::addGalvoPolygonVertex(const char* deviceLabel, int polygonIndex, double x, double y) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6567,7 +6554,7 @@ void CMMCore::addGalvoPolygonVertex(const char* deviceLabel, int polygonIndex, d
 /**
  * Remove all added polygons
  */
-void CMMCore::deleteGalvoPolygons(const char* deviceLabel) noexcept(false)
+void CMMCore::deleteGalvoPolygons(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6587,7 +6574,7 @@ void CMMCore::deleteGalvoPolygons(const char* deviceLabel) noexcept(false)
 /**
  * Load a set of galvo polygons to the device
  */
-void CMMCore::loadGalvoPolygons(const char* deviceLabel) noexcept(false)
+void CMMCore::loadGalvoPolygons(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6606,7 +6593,7 @@ void CMMCore::loadGalvoPolygons(const char* deviceLabel) noexcept(false)
 /**
  * Set the number of times to loop galvo polygons
  */
-void CMMCore::setGalvoPolygonRepetitions(const char* deviceLabel, int repetitions) noexcept(false)
+void CMMCore::setGalvoPolygonRepetitions(const char* deviceLabel, int repetitions) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6626,7 +6613,7 @@ void CMMCore::setGalvoPolygonRepetitions(const char* deviceLabel, int repetition
 /**
  * Run a loop of galvo polygons
  */
-void CMMCore::runGalvoPolygons(const char* deviceLabel) noexcept(false)
+void CMMCore::runGalvoPolygons(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6645,7 +6632,7 @@ void CMMCore::runGalvoPolygons(const char* deviceLabel) noexcept(false)
 /**
  * Run a sequence of galvo positions
  */
-void CMMCore::runGalvoSequence(const char* deviceLabel) noexcept(false)
+void CMMCore::runGalvoSequence(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6664,7 +6651,7 @@ void CMMCore::runGalvoSequence(const char* deviceLabel) noexcept(false)
 /**
  * Get the name of the active galvo channel (for a multi-laser galvo device).
  */
-std::string CMMCore::getGalvoChannel(const char* deviceLabel) noexcept(false)
+std::string CMMCore::getGalvoChannel(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<GalvoInstance> pGalvo =
       deviceManager_->GetDeviceOfType<GalvoInstance>(deviceLabel);
@@ -6681,7 +6668,7 @@ std::string CMMCore::getGalvoChannel(const char* deviceLabel) noexcept(false)
 /**
 * Stops the pressure pump
 */
-void CMMCore::pressurePumpStop(const char* deviceLabel) noexcept(false)
+void CMMCore::pressurePumpStop(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<PressurePumpInstance> pPump =
         deviceManager_->GetDeviceOfType<PressurePumpInstance>(deviceLabel);
@@ -6699,7 +6686,7 @@ void CMMCore::pressurePumpStop(const char* deviceLabel) noexcept(false)
 /**
 * Calibrates the pump
 */
-void CMMCore::pressurePumpCalibrate(const char* deviceLabel) noexcept(false)
+void CMMCore::pressurePumpCalibrate(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<PressurePumpInstance> pPump =
         deviceManager_->GetDeviceOfType<PressurePumpInstance>(deviceLabel);
@@ -6717,7 +6704,7 @@ void CMMCore::pressurePumpCalibrate(const char* deviceLabel) noexcept(false)
 /**
 * Returns boolean whether the pump is operational before calibration
 */
-bool CMMCore::pressurePumpRequiresCalibration(const char* deviceLabel) noexcept(false)
+bool CMMCore::pressurePumpRequiresCalibration(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<PressurePumpInstance> pPump =
         deviceManager_->GetDeviceOfType<PressurePumpInstance>(deviceLabel);
@@ -6729,7 +6716,7 @@ bool CMMCore::pressurePumpRequiresCalibration(const char* deviceLabel) noexcept(
 /**
 * Gets the pressure of the pump in kPa
 */
-double CMMCore::getPumpPressureKPa(const char* deviceLabel) noexcept(false)
+double CMMCore::getPumpPressureKPa(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<PressurePumpInstance> pPump =
         deviceManager_->GetDeviceOfType<PressurePumpInstance>(deviceLabel);
@@ -6749,7 +6736,7 @@ double CMMCore::getPumpPressureKPa(const char* deviceLabel) noexcept(false)
 /**
 * Sets the pressure of the pump in kPa
 */
-void CMMCore::setPumpPressureKPa(const char* deviceLabel, double pressurekPa) noexcept(false)
+void CMMCore::setPumpPressureKPa(const char* deviceLabel, double pressurekPa) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<PressurePumpInstance> pPump =
         deviceManager_->GetDeviceOfType<PressurePumpInstance>(deviceLabel);
@@ -6767,7 +6754,7 @@ void CMMCore::setPumpPressureKPa(const char* deviceLabel, double pressurekPa) no
 /**
 * Stops the volumetric pump
 */
-void CMMCore::volumetricPumpStop(const char* deviceLabel) noexcept(false)
+void CMMCore::volumetricPumpStop(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6785,7 +6772,7 @@ void CMMCore::volumetricPumpStop(const char* deviceLabel) noexcept(false)
 /**
 * Homes the pump
 */
-void CMMCore::volumetricPumpHome(const char* deviceLabel) noexcept(false)
+void CMMCore::volumetricPumpHome(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6800,7 +6787,7 @@ void CMMCore::volumetricPumpHome(const char* deviceLabel) noexcept(false)
     }
 }
 
-bool CMMCore::volumetricPumpRequiresHoming(const char* deviceLabel) noexcept(false)
+bool CMMCore::volumetricPumpRequiresHoming(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6812,7 +6799,7 @@ bool CMMCore::volumetricPumpRequiresHoming(const char* deviceLabel) noexcept(fal
 /**
 * Sets whether the pump direction needs to be inverted
 */
-void CMMCore::invertPumpDirection(const char* deviceLabel, bool invert) noexcept(false)
+void CMMCore::invertPumpDirection(const char* deviceLabel, bool invert) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6830,7 +6817,7 @@ void CMMCore::invertPumpDirection(const char* deviceLabel, bool invert) noexcept
 /**
 * Gets whether the pump direction needs to be inverted
 */
-bool CMMCore::isPumpDirectionInverted(const char* deviceLabel) noexcept(false)
+bool CMMCore::isPumpDirectionInverted(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6851,7 +6838,7 @@ bool CMMCore::isPumpDirectionInverted(const char* deviceLabel) noexcept(false)
 * Sets the volume of fluid in the pump in uL. Note it does not withdraw upto
 * this amount. It is merely to inform MM of the volume in a prefilled pump.
 */
-void CMMCore::setPumpVolume(const char* deviceLabel, double volUl) noexcept(false)
+void CMMCore::setPumpVolume(const char* deviceLabel, double volUl) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6869,7 +6856,7 @@ void CMMCore::setPumpVolume(const char* deviceLabel, double volUl) noexcept(fals
 /**
 * Get the fluid volume in the pump in uL
 */
-double CMMCore::getPumpVolume(const char* deviceLabel) noexcept(false)
+double CMMCore::getPumpVolume(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6889,7 +6876,7 @@ double CMMCore::getPumpVolume(const char* deviceLabel) noexcept(false)
 /**
 * Sets the max volume of the pump in uL
 */
-void CMMCore::setPumpMaxVolume(const char* deviceLabel, double volUl) noexcept(false)
+void CMMCore::setPumpMaxVolume(const char* deviceLabel, double volUl) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6907,7 +6894,7 @@ void CMMCore::setPumpMaxVolume(const char* deviceLabel, double volUl) noexcept(f
 /**
 * Gets the max volume of the pump in uL
 */
-double CMMCore::getPumpMaxVolume(const char* deviceLabel) noexcept(false)
+double CMMCore::getPumpMaxVolume(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6927,7 +6914,7 @@ double CMMCore::getPumpMaxVolume(const char* deviceLabel) noexcept(false)
 /**
 * Sets the flowrate of the pump in uL per second
 */
-void CMMCore::setPumpFlowrate(const char* deviceLabel, double UlperSec) noexcept(false)
+void CMMCore::setPumpFlowrate(const char* deviceLabel, double UlperSec) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6945,7 +6932,7 @@ void CMMCore::setPumpFlowrate(const char* deviceLabel, double UlperSec) noexcept
 /**
 * Gets the flowrate of the pump in uL per second
 */
-double CMMCore::getPumpFlowrate(const char* deviceLabel) noexcept(false)
+double CMMCore::getPumpFlowrate(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6966,7 +6953,7 @@ double CMMCore::getPumpFlowrate(const char* deviceLabel) noexcept(false)
 * Start dispensing at the set flowrate until syringe is empty, or manually
 * stopped (whichever occurs first).
 */
-void CMMCore::pumpStart(const char* deviceLabel) noexcept(false)
+void CMMCore::pumpStart(const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -6984,7 +6971,7 @@ void CMMCore::pumpStart(const char* deviceLabel) noexcept(false)
 /**
 * Dispenses for the provided duration (in seconds) at the set flowrate
 */
-void CMMCore::pumpDispenseDurationSeconds(const char* deviceLabel, double seconds) noexcept(false)
+void CMMCore::pumpDispenseDurationSeconds(const char* deviceLabel, double seconds) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -7002,7 +6989,7 @@ void CMMCore::pumpDispenseDurationSeconds(const char* deviceLabel, double second
 /**
 * Dispenses the provided volume (in uL) at the set flowrate
 */
-void CMMCore::pumpDispenseVolumeUl(const char* deviceLabel, double microLiter) noexcept(false)
+void CMMCore::pumpDispenseVolumeUl(const char* deviceLabel, double microLiter) MMCORE_LEGACY_THROW(CMMError)
 {
     std::shared_ptr<VolumetricPumpInstance> pPump =
         deviceManager_->GetDeviceOfType<VolumetricPumpInstance>(deviceLabel);
@@ -7025,7 +7012,7 @@ void CMMCore::pumpDispenseVolumeUl(const char* deviceLabel, double microLiter) n
  * The file records only read-write properties.
  * The file format is directly readable by the complementary loadSystemState() command.
  */
-void CMMCore::saveSystemState(const char* fileName) noexcept(false)
+void CMMCore::saveSystemState(const char* fileName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!fileName)
       throw CMMError("Null filename");
@@ -7059,7 +7046,7 @@ void CMMCore::saveSystemState(const char* fileName) noexcept(false)
  *
  * Format specification: the same as in loadSystemConfiguration() command
  */
-void CMMCore::loadSystemState(const char* fileName) noexcept(false)
+void CMMCore::loadSystemState(const char* fileName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!fileName)
       throw CMMError("Null filename");
@@ -7131,7 +7118,7 @@ void CMMCore::loadSystemState(const char* fileName) noexcept(false)
  * setup: devices, labels, pre-initialization properties, and configurations.
  * The file format is the same as for the system state.
  */
-void CMMCore::saveSystemConfiguration(const char* fileName) noexcept(false)
+void CMMCore::saveSystemConfiguration(const char* fileName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!fileName)
       throw CMMError("Null filename");
@@ -7351,7 +7338,7 @@ void CMMCore::saveSystemConfiguration(const char* fileName) noexcept(false)
  *
  * This function is not thread-safe.
  */
-void CMMCore::loadSystemConfiguration(const char* fileName) noexcept(false)
+void CMMCore::loadSystemConfiguration(const char* fileName) MMCORE_LEGACY_THROW(CMMError)
 {
    try
    {
@@ -7392,7 +7379,7 @@ void CMMCore::loadSystemConfiguration(const char* fileName) noexcept(false)
 }
 
 
-void CMMCore::loadSystemConfigurationImpl(const char* fileName) noexcept(false)
+void CMMCore::loadSystemConfigurationImpl(const char* fileName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!fileName)
       throw CMMError("Null filename");
@@ -7725,7 +7712,7 @@ double CMMCore::getCurrentFocusScore()
 /**
  * Enables or disables the operation of the continuous focusing hardware device.
  */
-void CMMCore::enableContinuousFocus(bool enable) noexcept(false)
+void CMMCore::enableContinuousFocus(bool enable) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<AutoFocusInstance> autofocus =
       currentAutofocusDevice_.lock();
@@ -7755,7 +7742,7 @@ void CMMCore::enableContinuousFocus(bool enable) noexcept(false)
 /**
  * Checks if the continuous focusing hardware device is ON or OFF.
  */
-bool CMMCore::isContinuousFocusEnabled() noexcept(false)
+bool CMMCore::isContinuousFocusEnabled() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<AutoFocusInstance> autofocus =
       currentAutofocusDevice_.lock();
@@ -7778,7 +7765,7 @@ bool CMMCore::isContinuousFocusEnabled() noexcept(false)
 /**
 * Returns the lock-in status of the continuous focusing device.
 */
-bool CMMCore::isContinuousFocusLocked() noexcept(false)
+bool CMMCore::isContinuousFocusLocked() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<AutoFocusInstance> autofocus =
       currentAutofocusDevice_.lock();
@@ -7796,7 +7783,7 @@ bool CMMCore::isContinuousFocusLocked() noexcept(false)
 /**
  * Check if a stage has continuous focusing capability (positions can be set while continuous focus runs).
  */
-bool CMMCore::isContinuousFocusDrive(const char* stageLabel) noexcept(false)
+bool CMMCore::isContinuousFocusDrive(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<StageInstance> pStage =
       deviceManager_->GetDeviceOfType<StageInstance>(stageLabel);
@@ -7809,7 +7796,7 @@ bool CMMCore::isContinuousFocusDrive(const char* stageLabel) noexcept(false)
 /**
  * Performs focus acquisition and lock for the one-shot focusing device.
  */
-void CMMCore::fullFocus() noexcept(false)
+void CMMCore::fullFocus() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<AutoFocusInstance> autofocus =
       currentAutofocusDevice_.lock();
@@ -7832,7 +7819,7 @@ void CMMCore::fullFocus() noexcept(false)
 /**
  * Performs incremental focus for the one-shot focusing device.
  */
-void CMMCore::incrementalFocus() noexcept(false)
+void CMMCore::incrementalFocus() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<AutoFocusInstance> autofocus =
       currentAutofocusDevice_.lock();
@@ -7856,7 +7843,7 @@ void CMMCore::incrementalFocus() noexcept(false)
 /**
  * Applies offset the one-shot focusing device.
  */
-void CMMCore::setAutoFocusOffset(double offset) noexcept(false)
+void CMMCore::setAutoFocusOffset(double offset) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<AutoFocusInstance> autofocus =
       currentAutofocusDevice_.lock();
@@ -7879,7 +7866,7 @@ void CMMCore::setAutoFocusOffset(double offset) noexcept(false)
 /**
  * Measures offset for the one-shot focusing device.
  */
-double CMMCore::getAutoFocusOffset() noexcept(false)
+double CMMCore::getAutoFocusOffset() MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<AutoFocusInstance> autofocus =
       currentAutofocusDevice_.lock();
@@ -7973,13 +7960,13 @@ void CMMCore::CreateCoreProperties()
    properties_ = new CorePropertyCollection(this);
 
    // Initialize
-   CoreProperty propInit("0", false);
+   CoreProperty propInit("0", false, MM::Integer);
    propInit.AddAllowedValue("0");
    propInit.AddAllowedValue("1");
    properties_->Add(MM::g_Keyword_CoreInitialize, propInit);
 
    // Auto shutter
-   CoreProperty propAutoShutter("1", false);
+   CoreProperty propAutoShutter("1", false, MM::Integer);
    propAutoShutter.AddAllowedValue("0");
    propAutoShutter.AddAllowedValue("1");
    properties_->Add(MM::g_Keyword_CoreAutoShutter, propAutoShutter);
@@ -8021,7 +8008,7 @@ void CMMCore::CreateCoreProperties()
    properties_->AddAllowedValue(MM::g_Keyword_CoreChannelGroup, "");
 
    // Time after which we give up on checking the Busy flag status
-   CoreProperty propBusyTimeoutMs;
+   CoreProperty propBusyTimeoutMs("5000", false, MM::Integer);
    properties_->Add(MM::g_Keyword_CoreTimeoutMs, propBusyTimeoutMs);
 
    properties_->Refresh();
@@ -8032,7 +8019,7 @@ static bool ContainsForbiddenCharacters(const std::string& str)
    return (std::string::npos != str.find_first_of(MM::g_FieldDelimiters));
 }
 
-void CMMCore::CheckDeviceLabel(const char* label) noexcept(false)
+void CMMCore::CheckDeviceLabel(const char* label) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!label)
       throw CMMError("Null device label", MMERR_NullPointerException);
@@ -8043,7 +8030,7 @@ void CMMCore::CheckDeviceLabel(const char* label) noexcept(false)
             MMERR_InvalidContents);
 }
 
-void CMMCore::CheckPropertyName(const char* propName) noexcept(false)
+void CMMCore::CheckPropertyName(const char* propName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!propName)
       throw CMMError("Null property name", MMERR_NullPointerException);
@@ -8052,7 +8039,7 @@ void CMMCore::CheckPropertyName(const char* propName) noexcept(false)
             MMERR_InvalidContents);
 }
 
-void CMMCore::CheckPropertyValue(const char* value) noexcept(false)
+void CMMCore::CheckPropertyValue(const char* value) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!value)
       throw CMMError("Null property value", MMERR_NullPointerException);
@@ -8061,7 +8048,7 @@ void CMMCore::CheckPropertyValue(const char* value) noexcept(false)
             MMERR_InvalidContents);
 }
 
-void CMMCore::CheckStateLabel(const char* stateLabel) noexcept(false)
+void CMMCore::CheckStateLabel(const char* stateLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!stateLabel)
       throw CMMError("Null state label", MMERR_NullPointerException);
@@ -8070,7 +8057,7 @@ void CMMCore::CheckStateLabel(const char* stateLabel) noexcept(false)
             MMERR_InvalidContents);
 }
 
-void CMMCore::CheckConfigGroupName(const char* groupName) noexcept(false)
+void CMMCore::CheckConfigGroupName(const char* groupName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!groupName)
       throw CMMError("Null configuration group name", MMERR_NullPointerException);
@@ -8079,7 +8066,7 @@ void CMMCore::CheckConfigGroupName(const char* groupName) noexcept(false)
             MMERR_InvalidContents);
 }
 
-void CMMCore::CheckConfigPresetName(const char* presetName) noexcept(false)
+void CMMCore::CheckConfigPresetName(const char* presetName) MMCORE_LEGACY_THROW(CMMError)
 {
    if (!presetName)
       throw CMMError("Null configuration preset name", MMERR_NullPointerException);
@@ -8092,7 +8079,7 @@ void CMMCore::CheckConfigPresetName(const char* presetName) noexcept(false)
             MMERR_BadConfigName);
 }
 
-bool CMMCore::IsCoreDeviceLabel(const char* label) const noexcept(false)
+bool CMMCore::IsCoreDeviceLabel(const char* label) const MMCORE_LEGACY_THROW(CMMError)
 {
    if (!label)
       throw CMMError("Null device label", MMERR_NullPointerException);
@@ -8105,7 +8092,7 @@ bool CMMCore::IsCoreDeviceLabel(const char* label) const noexcept(false)
  * until all success or no more change takes place
  * If errors remain, throw an error
  */
-void CMMCore::applyConfiguration(const Configuration& config) noexcept(false)
+void CMMCore::applyConfiguration(const Configuration& config) MMCORE_LEGACY_THROW(CMMError)
 {
    std::ostringstream sall;
    bool error = false;
@@ -8401,7 +8388,7 @@ MM::DeviceDetectionStatus CMMCore::detectDevice(const char* label)
  *
  * @param hubDeviceLabel    the label for the device of type Hub
  */
-std::vector<std::string> CMMCore::getInstalledDevices(const char* hubDeviceLabel) noexcept(false)
+std::vector<std::string> CMMCore::getInstalledDevices(const char* hubDeviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<HubInstance> pHub =
       deviceManager_->GetDeviceOfType<HubInstance>(hubDeviceLabel);
@@ -8410,13 +8397,13 @@ std::vector<std::string> CMMCore::getInstalledDevices(const char* hubDeviceLabel
    return pHub->GetInstalledPeripheralNames();
 }
 
-std::vector<std::string> CMMCore::getLoadedPeripheralDevices(const char* hubLabel) noexcept(false)
+std::vector<std::string> CMMCore::getLoadedPeripheralDevices(const char* hubLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    CheckDeviceLabel(hubLabel);
    return deviceManager_->GetLoadedPeripherals(hubLabel);
 }
 
-std::string CMMCore::getInstalledDeviceDescription(const char* hubLabel, const char* deviceLabel) noexcept(false)
+std::string CMMCore::getInstalledDeviceDescription(const char* hubLabel, const char* deviceLabel) MMCORE_LEGACY_THROW(CMMError)
 {
    std::shared_ptr<HubInstance> pHub =
       deviceManager_->GetDeviceOfType<HubInstance>(hubLabel);
@@ -8428,4 +8415,25 @@ std::string CMMCore::getInstalledDeviceDescription(const char* hubLabel, const c
       description = pHub->GetInstalledPeripheralDescription(deviceLabel);
    }
    return description.empty() ? "N/A" : description;
+}
+
+/**
+ * \brief Testing only: load a mock device adapter.
+ * 
+ * This function is designed for unit testing of MMCore itself, and its
+ * interface is subject to change. It is also not designed for language
+ * bindings (Java, Python) in mind (at least for now).
+ * 
+ * Do not use this in production code.
+ * 
+ * The caller is responsible for keeping \p implementation valid until this
+ * Core is destroyed (or until unloadLibrary(name) is called, but that is
+ * not recommended.)
+ */
+void CMMCore::loadMockDeviceAdapter(const char* name,
+      MockDeviceAdapter* implementation) MMCORE_LEGACY_THROW(CMMError)
+{
+   if (!name)
+      throw CMMError("Null device adapter name");
+   pluginManager_->LoadMockAdapter(name, implementation);
 }

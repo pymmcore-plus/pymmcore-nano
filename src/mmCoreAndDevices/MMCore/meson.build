@@ -30,6 +30,8 @@ mmcore_sources = files(
     'LoadableModules/LoadedDeviceAdapter.cpp',
     'LoadableModules/LoadedModule.cpp',
     'LoadableModules/LoadedModuleImpl.cpp',
+    'LoadableModules/LoadedDeviceAdapterImplMock.cpp',
+    'LoadableModules/LoadedDeviceAdapterImplRegular.cpp',
     'LoadableModules/LoadedModuleImplUnix.cpp',
     'LoadableModules/LoadedModuleImplWindows.cpp',
     'Logging/Metadata.cpp',

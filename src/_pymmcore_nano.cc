@@ -274,18 +274,20 @@ NB_MODULE(_pymmcore_nano, m) {
 
     /////////////////// Module Attributes ///////////////////
 
-    m.attr("DEVICE_INTERFACE_VERSION") = DEVICE_INTERFACE_VERSION;
-    m.attr("MODULE_INTERFACE_VERSION") = MODULE_INTERFACE_VERSION;
-    std::string version = std::to_string(MMCore_versionMajor) + "." +
-                          std::to_string(MMCore_versionMinor) + "." +
-                          std::to_string(MMCore_versionPatch);
+    m.attr("DEVICE_INTERFACE_VERSION") = CMMCore::getMMDeviceDeviceInterfaceVersion();
+    m.attr("MODULE_INTERFACE_VERSION") = CMMCore::getMMDeviceModuleInterfaceVersion();
+    std::string version = std::to_string(CMMCore::getMMCoreVersionMajor()) + "." +
+                          std::to_string(CMMCore::getMMCoreVersionMinor()) + "." +
+                          std::to_string(CMMCore::getMMCoreVersionPatch());
     m.attr("MMCore_version") = version;
     m.attr("MMCore_version_info") =
-        std::tuple(MMCore_versionMajor, MMCore_versionMinor, MMCore_versionPatch);
+        std::tuple(CMMCore::getMMCoreVersionMajor(), CMMCore::getMMCoreVersionMinor(),
+                   CMMCore::getMMCoreVersionPatch());
     // the final combined version
     m.attr("PYMMCORE_NANO_VERSION") = PYMMCORE_NANO_VERSION;
-    m.attr("__version__") =
-        version + "." + std::to_string(DEVICE_INTERFACE_VERSION) + "." + PYMMCORE_NANO_VERSION;
+    m.attr("__version__") = version + "." +
+                            std::to_string(CMMCore::getMMDeviceDeviceInterfaceVersion()) + "." +
+                            PYMMCORE_NANO_VERSION;
 
     m.attr("MM_CODE_OK") = MM_CODE_OK;
     m.attr("MM_CODE_ERR") = MM_CODE_ERR;

@@ -1,5 +1,5 @@
-from pathlib import Path
 import re
+from pathlib import Path
 
 SRC = Path(__file__).parent.parent / "src"
 MMCORE = SRC / "mmCoreAndDevices" / "MMCore"
