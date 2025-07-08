@@ -127,7 +127,7 @@ def cmmcore_members(src: Path) -> List[str]:
     return sorted({m.group(1) for m in NB_DEF_RE.finditer(binding_block)})
 
 
-def test_bindings_complete():
+def test_cmmcore_members():
     """Test that the bindings are complete by checking public members of CMMCore."""
     members = public_members(
         str(MMCORE_H),
