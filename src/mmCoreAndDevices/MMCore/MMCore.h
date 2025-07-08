@@ -45,19 +45,6 @@
  * file (MMCore.cpp).
  */
 
-// We use exception specifications to instruct SWIG to generate the correct
-// exception specifications for Java.
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4290) // 'C++ exception specification ignored'
-#endif
-
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-// 'dynamic exception specifications are deprecated in C++11 [-Wdeprecated]'
-#pragma GCC diagnostic ignored "-Wdeprecated"
-#endif
-
 #include "../MMDevice/DeviceThreads.h"
 #include "../MMDevice/MMDevice.h"
 #include "../MMDevice/MMDeviceConstants.h"
@@ -65,6 +52,7 @@
 #include "Error.h"
 #include "ErrorCodes.h"
 #include "Logging/Logger.h"
+#include "MockDeviceAdapter.h"
 
 #include <cstring>
 #include <deque>
@@ -86,9 +74,6 @@
 #   define MMCORE_DEPRECATED(prototype) prototype
 #endif
 
-extern const int MMCore_versionMajor;
-extern const int MMCore_versionMinor;
-extern const int MMCore_versionPatch;
 
 class CPluginManager;
 class CircularBuffer;
@@ -155,43 +140,56 @@ public:
 
    /** \name Core feature control. */
    ///@{
-   static void enableFeature(const char* name, bool enable) noexcept(false);
-   static bool isFeatureEnabled(const char* name) noexcept(false);
+   static void enableFeature(const char* name, bool enable) MMCORE_LEGACY_THROW(CMMError);
+   static bool isFeatureEnabled(const char* name) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Initialization and setup. */
    ///@{
    void loadDevice(const char* label, const char* moduleName,
-         const char* deviceName) noexcept(false);
-   void unloadDevice(const char* label) noexcept(false);
-   void unloadAllDevices() noexcept(false);
-   void initializeAllDevices() noexcept(false);
-   void initializeDevice(const char* label) noexcept(false);
-   DeviceInitializationState getDeviceInitializationState(const char* label) const noexcept(false);
-   void reset() noexcept(false);
+         const char* deviceName) MMCORE_LEGACY_THROW(CMMError);
+   void unloadDevice(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   void unloadAllDevices() MMCORE_LEGACY_THROW(CMMError);
+   void initializeAllDevices() MMCORE_LEGACY_THROW(CMMError);
+   void initializeDevice(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   DeviceInitializationState getDeviceInitializationState(const char* label) const MMCORE_LEGACY_THROW(CMMError);
+   void reset() MMCORE_LEGACY_THROW(CMMError);
 
-   void unloadLibrary(const char* moduleName) noexcept(false);
+   void unloadLibrary(const char* moduleName) MMCORE_LEGACY_THROW(CMMError);
 
-   void updateCoreProperties() noexcept(false);
+   void updateCoreProperties() MMCORE_LEGACY_THROW(CMMError);
 
    std::string getCoreErrorText(int code) const;
 
+   // Note that version functions need to be implemented in the .cpp file so
+   // that they reflect the actual code being run (e.g., in a DLL), not the
+   // header or language bindings layer (where applicable).
+
+   // These two are not 'static' for backward compatibility (would break binary
+   // compatibility of Java bindings).
    std::string getVersionInfo() const;
    std::string getAPIVersionInfo() const;
+
+   static int getMMCoreVersionMajor();
+   static int getMMCoreVersionMinor();
+   static int getMMCoreVersionPatch();
+   static int getMMDeviceModuleInterfaceVersion();
+   static int getMMDeviceDeviceInterfaceVersion();
+
    Configuration getSystemState();
    void setSystemState(const Configuration& conf);
-   Configuration getConfigState(const char* group, const char* config) noexcept(false);
-   Configuration getConfigGroupState(const char* group) noexcept(false);
-   void saveSystemState(const char* fileName) noexcept(false);
-   void loadSystemState(const char* fileName) noexcept(false);
-   void saveSystemConfiguration(const char* fileName) noexcept(false);
-   void loadSystemConfiguration(const char* fileName) noexcept(false);
+   Configuration getConfigState(const char* group, const char* config) MMCORE_LEGACY_THROW(CMMError);
+   Configuration getConfigGroupState(const char* group) MMCORE_LEGACY_THROW(CMMError);
+   void saveSystemState(const char* fileName) MMCORE_LEGACY_THROW(CMMError);
+   void loadSystemState(const char* fileName) MMCORE_LEGACY_THROW(CMMError);
+   void saveSystemConfiguration(const char* fileName) MMCORE_LEGACY_THROW(CMMError);
+   void loadSystemConfiguration(const char* fileName) MMCORE_LEGACY_THROW(CMMError);
    void registerCallback(MMEventCallback* cb);
    ///@}
 
    /** \name Logging and log management. */
    ///@{
-   void setPrimaryLogFile(const char* filename, bool truncate = false) noexcept(false);
+   void setPrimaryLogFile(const char* filename, bool truncate = false) MMCORE_LEGACY_THROW(CMMError);
    std::string getPrimaryLogFile() const;
 
    void logMessage(const char* msg);
@@ -202,8 +200,8 @@ public:
    bool stderrLogEnabled();
 
    int startSecondaryLogFile(const char* filename, bool enableDebug,
-         bool truncate = true, bool synchronous = false) noexcept(false);
-   void stopSecondaryLogFile(int handle) noexcept(false);
+         bool truncate = true, bool synchronous = false) MMCORE_LEGACY_THROW(CMMError);
+   void stopSecondaryLogFile(int handle) MMCORE_LEGACY_THROW(CMMError);
 
    ///@}
 
@@ -212,11 +210,11 @@ public:
    std::vector<std::string> getDeviceAdapterSearchPaths();
    void setDeviceAdapterSearchPaths(const std::vector<std::string>& paths);
 
-   std::vector<std::string> getDeviceAdapterNames() noexcept(false);
+   std::vector<std::string> getDeviceAdapterNames() MMCORE_LEGACY_THROW(CMMError);
 
-   std::vector<std::string> getAvailableDevices(const char* library) noexcept(false);
-   std::vector<std::string> getAvailableDeviceDescriptions(const char* library) noexcept(false);
-   std::vector<long> getAvailableDeviceTypes(const char* library) noexcept(false);
+   std::vector<std::string> getAvailableDevices(const char* library) MMCORE_LEGACY_THROW(CMMError);
+   std::vector<std::string> getAvailableDeviceDescriptions(const char* library) MMCORE_LEGACY_THROW(CMMError);
+   std::vector<long> getAvailableDeviceTypes(const char* library) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Generic device control.
@@ -226,45 +224,45 @@ public:
    ///@{
    std::vector<std::string> getLoadedDevices() const;
    std::vector<std::string> getLoadedDevicesOfType(MM::DeviceType devType) const;
-   MM::DeviceType getDeviceType(const char* label) noexcept(false);
-   std::string getDeviceLibrary(const char* label) noexcept(false);
-   std::string getDeviceName(const char* label) noexcept(false);
-   std::string getDeviceDescription(const char* label) noexcept(false);
+   MM::DeviceType getDeviceType(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   std::string getDeviceLibrary(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   std::string getDeviceName(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   std::string getDeviceDescription(const char* label) MMCORE_LEGACY_THROW(CMMError);
 
-   std::vector<std::string> getDevicePropertyNames(const char* label) noexcept(false);
-   bool hasProperty(const char* label, const char* propName) noexcept(false);
-   std::string getProperty(const char* label, const char* propName) noexcept(false);
-   void setProperty(const char* label, const char* propName, const char* propValue) noexcept(false);
-   void setProperty(const char* label, const char* propName, const bool propValue) noexcept(false);
-   void setProperty(const char* label, const char* propName, const long propValue) noexcept(false);
-   void setProperty(const char* label, const char* propName, const float propValue) noexcept(false);
-   void setProperty(const char* label, const char* propName, const double propValue) noexcept(false);
+   std::vector<std::string> getDevicePropertyNames(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   bool hasProperty(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   std::string getProperty(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   void setProperty(const char* label, const char* propName, const char* propValue) MMCORE_LEGACY_THROW(CMMError);
+   void setProperty(const char* label, const char* propName, const bool propValue) MMCORE_LEGACY_THROW(CMMError);
+   void setProperty(const char* label, const char* propName, const long propValue) MMCORE_LEGACY_THROW(CMMError);
+   void setProperty(const char* label, const char* propName, const float propValue) MMCORE_LEGACY_THROW(CMMError);
+   void setProperty(const char* label, const char* propName, const double propValue) MMCORE_LEGACY_THROW(CMMError);
 
-   std::vector<std::string> getAllowedPropertyValues(const char* label, const char* propName) noexcept(false);
-   bool isPropertyReadOnly(const char* label, const char* propName) noexcept(false);
-   bool isPropertyPreInit(const char* label, const char* propName) noexcept(false);
-   bool isPropertySequenceable(const char* label, const char* propName) noexcept(false);
-   bool hasPropertyLimits(const char* label, const char* propName) noexcept(false);
-   double getPropertyLowerLimit(const char* label, const char* propName) noexcept(false);
-   double getPropertyUpperLimit(const char* label, const char* propName) noexcept(false);
-   MM::PropertyType getPropertyType(const char* label, const char* propName) noexcept(false);
+   std::vector<std::string> getAllowedPropertyValues(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   bool isPropertyReadOnly(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   bool isPropertyPreInit(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   bool isPropertySequenceable(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   bool hasPropertyLimits(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   double getPropertyLowerLimit(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   double getPropertyUpperLimit(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   MM::PropertyType getPropertyType(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
 
-   void startPropertySequence(const char* label, const char* propName) noexcept(false);
-   void stopPropertySequence(const char* label, const char* propName) noexcept(false);
-   long getPropertySequenceMaxLength(const char* label, const char* propName) noexcept(false);
-   void loadPropertySequence(const char* label, const char* propName, std::vector<std::string> eventSequence) noexcept(false);
+   void startPropertySequence(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   void stopPropertySequence(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   long getPropertySequenceMaxLength(const char* label, const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   void loadPropertySequence(const char* label, const char* propName, std::vector<std::string> eventSequence) MMCORE_LEGACY_THROW(CMMError);
 
-   bool deviceBusy(const char* label) noexcept(false);
-   void waitForDevice(const char* label) noexcept(false);
-   void waitForConfig(const char* group, const char* configName) noexcept(false);
-   bool systemBusy() noexcept(false);
-   void waitForSystem() noexcept(false);
-   bool deviceTypeBusy(MM::DeviceType devType) noexcept(false);
-   void waitForDeviceType(MM::DeviceType devType) noexcept(false);
+   bool deviceBusy(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   void waitForDevice(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   void waitForConfig(const char* group, const char* configName) MMCORE_LEGACY_THROW(CMMError);
+   bool systemBusy() MMCORE_LEGACY_THROW(CMMError);
+   void waitForSystem() MMCORE_LEGACY_THROW(CMMError);
+   bool deviceTypeBusy(MM::DeviceType devType) MMCORE_LEGACY_THROW(CMMError);
+   void waitForDeviceType(MM::DeviceType devType) MMCORE_LEGACY_THROW(CMMError);
 
-   double getDeviceDelayMs(const char* label) noexcept(false);
-   void setDeviceDelayMs(const char* label, double delayMs) noexcept(false);
-   bool usesDeviceDelay(const char* label) noexcept(false);
+   double getDeviceDelayMs(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   void setDeviceDelayMs(const char* label, double delayMs) MMCORE_LEGACY_THROW(CMMError);
+   bool usesDeviceDelay(const char* label) MMCORE_LEGACY_THROW(CMMError);
 
    void setTimeoutMs(long timeoutMs) {if (timeoutMs > 0) timeoutMs_ = timeoutMs;}
    long getTimeoutMs() { return timeoutMs_;}
@@ -283,15 +281,15 @@ public:
    std::string getSLMDevice();
    std::string getGalvoDevice();
    std::string getChannelGroup();
-   void setCameraDevice(const char* cameraLabel) noexcept(false);
-   void setShutterDevice(const char* shutterLabel) noexcept(false);
-   void setFocusDevice(const char* focusLabel) noexcept(false);
-   void setXYStageDevice(const char* xyStageLabel) noexcept(false);
-   void setAutoFocusDevice(const char* focusLabel) noexcept(false);
-   void setImageProcessorDevice(const char* procLabel) noexcept(false);
-   void setSLMDevice(const char* slmLabel) noexcept(false);
-   void setGalvoDevice(const char* galvoLabel) noexcept(false);
-   void setChannelGroup(const char* channelGroup) noexcept(false);
+   void setCameraDevice(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setShutterDevice(const char* shutterLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setFocusDevice(const char* focusLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setXYStageDevice(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setAutoFocusDevice(const char* focusLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setImageProcessorDevice(const char* procLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setSLMDevice(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setGalvoDevice(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setChannelGroup(const char* channelGroup) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name System state cache.
@@ -303,99 +301,99 @@ public:
    Configuration getSystemStateCache() const;
    void updateSystemStateCache();
    std::string getPropertyFromCache(const char* deviceLabel,
-         const char* propName) const noexcept(false);
-   std::string getCurrentConfigFromCache(const char* groupName) noexcept(false);
-   Configuration getConfigGroupStateFromCache(const char* group) noexcept(false);
+         const char* propName) const MMCORE_LEGACY_THROW(CMMError);
+   std::string getCurrentConfigFromCache(const char* groupName) MMCORE_LEGACY_THROW(CMMError);
+   Configuration getConfigGroupStateFromCache(const char* group) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Configuration groups. */
    ///@{
-   void defineConfig(const char* groupName, const char* configName) noexcept(false);
+   void defineConfig(const char* groupName, const char* configName) MMCORE_LEGACY_THROW(CMMError);
    void defineConfig(const char* groupName, const char* configName,
          const char* deviceLabel, const char* propName,
-         const char* value) noexcept(false);
-   void defineConfigGroup(const char* groupName) noexcept(false);
-   void deleteConfigGroup(const char* groupName) noexcept(false);
+         const char* value) MMCORE_LEGACY_THROW(CMMError);
+   void defineConfigGroup(const char* groupName) MMCORE_LEGACY_THROW(CMMError);
+   void deleteConfigGroup(const char* groupName) MMCORE_LEGACY_THROW(CMMError);
    void renameConfigGroup(const char* oldGroupName,
-         const char* newGroupName) noexcept(false);
+         const char* newGroupName) MMCORE_LEGACY_THROW(CMMError);
    bool isGroupDefined(const char* groupName);
    bool isConfigDefined(const char* groupName, const char* configName);
-   void setConfig(const char* groupName, const char* configName) noexcept(false);
-   void deleteConfig(const char* groupName, const char* configName) noexcept(false);
+   void setConfig(const char* groupName, const char* configName) MMCORE_LEGACY_THROW(CMMError);
+   void deleteConfig(const char* groupName, const char* configName) MMCORE_LEGACY_THROW(CMMError);
    void deleteConfig(const char* groupName, const char* configName,
-         const char* deviceLabel, const char* propName) noexcept(false);
+         const char* deviceLabel, const char* propName) MMCORE_LEGACY_THROW(CMMError);
    void renameConfig(const char* groupName, const char* oldConfigName,
-         const char* newConfigName) noexcept(false);
+         const char* newConfigName) MMCORE_LEGACY_THROW(CMMError);
    std::vector<std::string> getAvailableConfigGroups() const;
    std::vector<std::string> getAvailableConfigs(const char* configGroup) const;
-   std::string getCurrentConfig(const char* groupName) noexcept(false);
+   std::string getCurrentConfig(const char* groupName) MMCORE_LEGACY_THROW(CMMError);
    Configuration getConfigData(const char* configGroup,
-         const char* configName) noexcept(false);
+         const char* configName) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name The pixel size configuration group. */
    ///@{
-   std::string getCurrentPixelSizeConfig() noexcept(false);
-   std::string getCurrentPixelSizeConfig(bool cached) noexcept(false);
+   std::string getCurrentPixelSizeConfig() MMCORE_LEGACY_THROW(CMMError);
+   std::string getCurrentPixelSizeConfig(bool cached) MMCORE_LEGACY_THROW(CMMError);
    double getPixelSizeUm();
    double getPixelSizeUm(bool cached);
-   double getPixelSizeUmByID(const char* resolutionID) noexcept(false);
-   std::vector<double> getPixelSizeAffine() noexcept(false);
-   std::vector<double> getPixelSizeAffine(bool cached) noexcept(false);
-   std::vector<double> getPixelSizeAffineByID(const char* resolutionID) noexcept(false);
-   double getPixelSizedxdz() noexcept(false);
-   double getPixelSizedxdz(bool cached) noexcept(false);
-   double getPixelSizedxdz(const char* resolutionID) noexcept(false);
-   double getPixelSizedydz() noexcept(false);
-   double getPixelSizedydz(bool cached) noexcept(false);
-   double getPixelSizedydz(const char* resolutionID) noexcept(false);
-   double getPixelSizeOptimalZUm() noexcept(false);
-   double getPixelSizeOptimalZUm(bool cached) noexcept(false);
-   double getPixelSizeOptimalZUm(const char* resolutionID) noexcept(false);
+   double getPixelSizeUmByID(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError);
+   std::vector<double> getPixelSizeAffine() MMCORE_LEGACY_THROW(CMMError);
+   std::vector<double> getPixelSizeAffine(bool cached) MMCORE_LEGACY_THROW(CMMError);
+   std::vector<double> getPixelSizeAffineByID(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizedxdz() MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizedxdz(bool cached) MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizedxdz(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizedydz() MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizedydz(bool cached) MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizedydz(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizeOptimalZUm() MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizeOptimalZUm(bool cached) MMCORE_LEGACY_THROW(CMMError);
+   double getPixelSizeOptimalZUm(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError);
    double getMagnificationFactor() const;
-   void setPixelSizeUm(const char* resolutionID, double pixSize)  noexcept(false);
-   void setPixelSizeAffine(const char* resolutionID, std::vector<double> affine)  noexcept(false);
-   void setPixelSizedxdz(const char* resolutionID, double dXdZ)  noexcept(false);
-   void setPixelSizedydz(const char* resolutionID, double dYdZ)  noexcept(false);
-   void setPixelSizeOptimalZUm(const char* resolutionID, double optimalZ)  noexcept(false);
+   void setPixelSizeUm(const char* resolutionID, double pixSize)  MMCORE_LEGACY_THROW(CMMError);
+   void setPixelSizeAffine(const char* resolutionID, std::vector<double> affine)  MMCORE_LEGACY_THROW(CMMError);
+   void setPixelSizedxdz(const char* resolutionID, double dXdZ)  MMCORE_LEGACY_THROW(CMMError);
+   void setPixelSizedydz(const char* resolutionID, double dYdZ)  MMCORE_LEGACY_THROW(CMMError);
+   void setPixelSizeOptimalZUm(const char* resolutionID, double optimalZ)  MMCORE_LEGACY_THROW(CMMError);
    void definePixelSizeConfig(const char* resolutionID,
          const char* deviceLabel, const char* propName,
-         const char* value) noexcept(false);
-   void definePixelSizeConfig(const char* resolutionID) noexcept(false);
+         const char* value) MMCORE_LEGACY_THROW(CMMError);
+   void definePixelSizeConfig(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError);
    std::vector<std::string> getAvailablePixelSizeConfigs() const;
-   bool isPixelSizeConfigDefined(const char* resolutionID) const noexcept(false);
-   void setPixelSizeConfig(const char* resolutionID) noexcept(false);
+   bool isPixelSizeConfigDefined(const char* resolutionID) const MMCORE_LEGACY_THROW(CMMError);
+   void setPixelSizeConfig(const char* resolutionID) MMCORE_LEGACY_THROW(CMMError);
    void renamePixelSizeConfig(const char* oldConfigName,
-         const char* newConfigName) noexcept(false);
-   void deletePixelSizeConfig(const char* configName) noexcept(false);
-   Configuration getPixelSizeConfigData(const char* configName) noexcept(false);
+         const char* newConfigName) MMCORE_LEGACY_THROW(CMMError);
+   void deletePixelSizeConfig(const char* configName) MMCORE_LEGACY_THROW(CMMError);
+   Configuration getPixelSizeConfigData(const char* configName) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Image acquisition. */
    ///@{
-   void setROI(int x, int y, int xSize, int ySize) noexcept(false);
-   void setROI(const char* label, int x, int y, int xSize, int ySize) noexcept(false);
-   void getROI(int& x, int& y, int& xSize, int& ySize) noexcept(false);
-   void getROI(const char* label, int& x, int& y, int& xSize, int& ySize) noexcept(false);
-   void clearROI() noexcept(false);
+   void setROI(int x, int y, int xSize, int ySize) MMCORE_LEGACY_THROW(CMMError);
+   void setROI(const char* label, int x, int y, int xSize, int ySize) MMCORE_LEGACY_THROW(CMMError);
+   void getROI(int& x, int& y, int& xSize, int& ySize) MMCORE_LEGACY_THROW(CMMError);
+   void getROI(const char* label, int& x, int& y, int& xSize, int& ySize) MMCORE_LEGACY_THROW(CMMError);
+   void clearROI() MMCORE_LEGACY_THROW(CMMError);
 
-   bool isMultiROISupported() noexcept(false);
-   bool isMultiROIEnabled() noexcept(false);
+   bool isMultiROISupported() MMCORE_LEGACY_THROW(CMMError);
+   bool isMultiROIEnabled() MMCORE_LEGACY_THROW(CMMError);
    void setMultiROI(std::vector<unsigned> xs, std::vector<unsigned> ys,
            std::vector<unsigned> widths,
-           std::vector<unsigned> heights) noexcept(false);
+           std::vector<unsigned> heights) MMCORE_LEGACY_THROW(CMMError);
    void getMultiROI(std::vector<unsigned>& xs, std::vector<unsigned>& ys,
            std::vector<unsigned>& widths,
-           std::vector<unsigned>& heights) noexcept(false);
+           std::vector<unsigned>& heights) MMCORE_LEGACY_THROW(CMMError);
 
-   void setExposure(double exp) noexcept(false);
-   void setExposure(const char* cameraLabel, double dExp) noexcept(false);
-   double getExposure() noexcept(false);
-   double getExposure(const char* label) noexcept(false);
+   void setExposure(double exp) MMCORE_LEGACY_THROW(CMMError);
+   void setExposure(const char* cameraLabel, double dExp) MMCORE_LEGACY_THROW(CMMError);
+   double getExposure() MMCORE_LEGACY_THROW(CMMError);
+   double getExposure(const char* label) MMCORE_LEGACY_THROW(CMMError);
 
-   void snapImage() noexcept(false);
-   void* getImage() noexcept(false);
-   void* getImage(unsigned numChannel) noexcept(false);
+   void snapImage() MMCORE_LEGACY_THROW(CMMError);
+   void* getImage() MMCORE_LEGACY_THROW(CMMError);
+   void* getImage(unsigned numChannel) MMCORE_LEGACY_THROW(CMMError);
 
    unsigned getImageWidth();
    unsigned getImageHeight();
@@ -408,140 +406,140 @@ public:
 
    void setAutoShutter(bool state);
    bool getAutoShutter();
-   void setShutterOpen(bool state) noexcept(false);
-   bool getShutterOpen() noexcept(false);
-   void setShutterOpen(const char* shutterLabel, bool state) noexcept(false);
-   bool getShutterOpen(const char* shutterLabel) noexcept(false);
+   void setShutterOpen(bool state) MMCORE_LEGACY_THROW(CMMError);
+   bool getShutterOpen() MMCORE_LEGACY_THROW(CMMError);
+   void setShutterOpen(const char* shutterLabel, bool state) MMCORE_LEGACY_THROW(CMMError);
+   bool getShutterOpen(const char* shutterLabel) MMCORE_LEGACY_THROW(CMMError);
 
    void startSequenceAcquisition(long numImages, double intervalMs,
-         bool stopOnOverflow) noexcept(false);
+         bool stopOnOverflow) MMCORE_LEGACY_THROW(CMMError);
    void startSequenceAcquisition(const char* cameraLabel, long numImages,
-         double intervalMs, bool stopOnOverflow) noexcept(false);
-   void prepareSequenceAcquisition(const char* cameraLabel) noexcept(false);
-   void startContinuousSequenceAcquisition(double intervalMs) noexcept(false);
-   void stopSequenceAcquisition() noexcept(false);
-   void stopSequenceAcquisition(const char* cameraLabel) noexcept(false);
-   bool isSequenceRunning() throw ();
-   bool isSequenceRunning(const char* cameraLabel) noexcept(false);
+         double intervalMs, bool stopOnOverflow) MMCORE_LEGACY_THROW(CMMError);
+   void prepareSequenceAcquisition(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
+   void startContinuousSequenceAcquisition(double intervalMs) MMCORE_LEGACY_THROW(CMMError);
+   void stopSequenceAcquisition() MMCORE_LEGACY_THROW(CMMError);
+   void stopSequenceAcquisition(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
+   bool isSequenceRunning() MMCORE_NOEXCEPT;
+   bool isSequenceRunning(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
 
-   void* getLastImage() noexcept(false);
-   void* popNextImage() noexcept(false);
+   void* getLastImage() MMCORE_LEGACY_THROW(CMMError);
+   void* popNextImage() MMCORE_LEGACY_THROW(CMMError);
    void* getLastImageMD(unsigned channel, unsigned slice, Metadata& md)
-      const noexcept(false);
+      const MMCORE_LEGACY_THROW(CMMError);
    void* popNextImageMD(unsigned channel, unsigned slice, Metadata& md)
-      noexcept(false);
-   void* getLastImageMD(Metadata& md) const noexcept(false);
+      MMCORE_LEGACY_THROW(CMMError);
+   void* getLastImageMD(Metadata& md) const MMCORE_LEGACY_THROW(CMMError);
    void* getNBeforeLastImageMD(unsigned long n, Metadata& md)
-      const noexcept(false);
-   void* popNextImageMD(Metadata& md) noexcept(false);
+      const MMCORE_LEGACY_THROW(CMMError);
+   void* popNextImageMD(Metadata& md) MMCORE_LEGACY_THROW(CMMError);
 
    long getRemainingImageCount();
    long getBufferTotalCapacity();
    long getBufferFreeCapacity();
    bool isBufferOverflowed() const;
-   void setCircularBufferMemoryFootprint(unsigned sizeMB) noexcept(false);
+   void setCircularBufferMemoryFootprint(unsigned sizeMB) MMCORE_LEGACY_THROW(CMMError);
    unsigned getCircularBufferMemoryFootprint();
-   void initializeCircularBuffer() noexcept(false);
-   void clearCircularBuffer() noexcept(false);
+   void initializeCircularBuffer() MMCORE_LEGACY_THROW(CMMError);
+   void clearCircularBuffer() MMCORE_LEGACY_THROW(CMMError);
 
-   bool isExposureSequenceable(const char* cameraLabel) noexcept(false);
-   void startExposureSequence(const char* cameraLabel) noexcept(false);
-   void stopExposureSequence(const char* cameraLabel) noexcept(false);
-   long getExposureSequenceMaxLength(const char* cameraLabel) noexcept(false);
+   bool isExposureSequenceable(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
+   void startExposureSequence(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
+   void stopExposureSequence(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
+   long getExposureSequenceMaxLength(const char* cameraLabel) MMCORE_LEGACY_THROW(CMMError);
    void loadExposureSequence(const char* cameraLabel,
-         std::vector<double> exposureSequence_ms) noexcept(false);
+         std::vector<double> exposureSequence_ms) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Autofocus control. */
    ///@{
    double getLastFocusScore();
    double getCurrentFocusScore();
-   void enableContinuousFocus(bool enable) noexcept(false);
-   bool isContinuousFocusEnabled() noexcept(false);
-   bool isContinuousFocusLocked() noexcept(false);
-   bool isContinuousFocusDrive(const char* stageLabel) noexcept(false);
-   void fullFocus() noexcept(false);
-   void incrementalFocus() noexcept(false);
-   void setAutoFocusOffset(double offset) noexcept(false);
-   double getAutoFocusOffset() noexcept(false);
+   void enableContinuousFocus(bool enable) MMCORE_LEGACY_THROW(CMMError);
+   bool isContinuousFocusEnabled() MMCORE_LEGACY_THROW(CMMError);
+   bool isContinuousFocusLocked() MMCORE_LEGACY_THROW(CMMError);
+   bool isContinuousFocusDrive(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void fullFocus() MMCORE_LEGACY_THROW(CMMError);
+   void incrementalFocus() MMCORE_LEGACY_THROW(CMMError);
+   void setAutoFocusOffset(double offset) MMCORE_LEGACY_THROW(CMMError);
+   double getAutoFocusOffset() MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name State device control. */
    ///@{
-   void setState(const char* stateDeviceLabel, long state) noexcept(false);
-   long getState(const char* stateDeviceLabel) noexcept(false);
+   void setState(const char* stateDeviceLabel, long state) MMCORE_LEGACY_THROW(CMMError);
+   long getState(const char* stateDeviceLabel) MMCORE_LEGACY_THROW(CMMError);
    long getNumberOfStates(const char* stateDeviceLabel);
    void setStateLabel(const char* stateDeviceLabel,
-         const char* stateLabel) noexcept(false);
-   std::string getStateLabel(const char* stateDeviceLabel) noexcept(false);
+         const char* stateLabel) MMCORE_LEGACY_THROW(CMMError);
+   std::string getStateLabel(const char* stateDeviceLabel) MMCORE_LEGACY_THROW(CMMError);
    void defineStateLabel(const char* stateDeviceLabel,
-         long state, const char* stateLabel) noexcept(false);
+         long state, const char* stateLabel) MMCORE_LEGACY_THROW(CMMError);
    std::vector<std::string> getStateLabels(const char* stateDeviceLabel)
-      noexcept(false);
+      MMCORE_LEGACY_THROW(CMMError);
    long getStateFromLabel(const char* stateDeviceLabel,
-         const char* stateLabel) noexcept(false);
+         const char* stateLabel) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Focus (Z) stage control. */
    ///@{
-   void setPosition(const char* stageLabel, double position) noexcept(false);
-   void setPosition(double position) noexcept(false);
-   double getPosition(const char* stageLabel) noexcept(false);
-   double getPosition() noexcept(false);
-   void setRelativePosition(const char* stageLabel, double d) noexcept(false);
-   void setRelativePosition(double d) noexcept(false);
-   void setOrigin(const char* stageLabel) noexcept(false);
-   void setOrigin() noexcept(false);
-   void setAdapterOrigin(const char* stageLabel, double newZUm) noexcept(false);
-   void setAdapterOrigin(double newZUm) noexcept(false);
+   void setPosition(const char* stageLabel, double position) MMCORE_LEGACY_THROW(CMMError);
+   void setPosition(double position) MMCORE_LEGACY_THROW(CMMError);
+   double getPosition(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
+   double getPosition() MMCORE_LEGACY_THROW(CMMError);
+   void setRelativePosition(const char* stageLabel, double d) MMCORE_LEGACY_THROW(CMMError);
+   void setRelativePosition(double d) MMCORE_LEGACY_THROW(CMMError);
+   void setOrigin(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setOrigin() MMCORE_LEGACY_THROW(CMMError);
+   void setAdapterOrigin(const char* stageLabel, double newZUm) MMCORE_LEGACY_THROW(CMMError);
+   void setAdapterOrigin(double newZUm) MMCORE_LEGACY_THROW(CMMError);
 
    void setFocusDirection(const char* stageLabel, int sign);
-   int getFocusDirection(const char* stageLabel) noexcept(false);
+   int getFocusDirection(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
 
-   bool isStageSequenceable(const char* stageLabel) noexcept(false);
-   bool isStageLinearSequenceable(const char* stageLabel) noexcept(false);
-   void startStageSequence(const char* stageLabel) noexcept(false);
-   void stopStageSequence(const char* stageLabel) noexcept(false);
-   long getStageSequenceMaxLength(const char* stageLabel) noexcept(false);
+   bool isStageSequenceable(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
+   bool isStageLinearSequenceable(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void startStageSequence(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void stopStageSequence(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
+   long getStageSequenceMaxLength(const char* stageLabel) MMCORE_LEGACY_THROW(CMMError);
    void loadStageSequence(const char* stageLabel,
-         std::vector<double> positionSequence) noexcept(false);
-   void setStageLinearSequence(const char* stageLabel, double dZ_um, int nSlices) noexcept(false);
+         std::vector<double> positionSequence) MMCORE_LEGACY_THROW(CMMError);
+   void setStageLinearSequence(const char* stageLabel, double dZ_um, int nSlices) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name XY stage control. */
    ///@{
    void setXYPosition(const char* xyStageLabel,
-         double x, double y) noexcept(false);
-   void setXYPosition(double x, double y) noexcept(false);
+         double x, double y) MMCORE_LEGACY_THROW(CMMError);
+   void setXYPosition(double x, double y) MMCORE_LEGACY_THROW(CMMError);
    void setRelativeXYPosition(const char* xyStageLabel,
-         double dx, double dy) noexcept(false);
-   void setRelativeXYPosition(double dx, double dy) noexcept(false);
+         double dx, double dy) MMCORE_LEGACY_THROW(CMMError);
+   void setRelativeXYPosition(double dx, double dy) MMCORE_LEGACY_THROW(CMMError);
    void getXYPosition(const char* xyStageLabel,
-         double &x_stage, double &y_stage) noexcept(false);
-   void getXYPosition(double &x_stage, double &y_stage) noexcept(false);
-   double getXPosition(const char* xyStageLabel) noexcept(false);
-   double getYPosition(const char* xyStageLabel) noexcept(false);
-   double getXPosition() noexcept(false);
-   double getYPosition() noexcept(false);
-   void stop(const char* xyOrZStageLabel) noexcept(false);
-   void home(const char* xyOrZStageLabel) noexcept(false);
-   void setOriginXY(const char* xyStageLabel) noexcept(false);
-   void setOriginXY() noexcept(false);
-   void setOriginX(const char* xyStageLabel) noexcept(false);
-   void setOriginX() noexcept(false);
-   void setOriginY(const char* xyStageLabel) noexcept(false);
-   void setOriginY() noexcept(false);
+         double &x_stage, double &y_stage) MMCORE_LEGACY_THROW(CMMError);
+   void getXYPosition(double &x_stage, double &y_stage) MMCORE_LEGACY_THROW(CMMError);
+   double getXPosition(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   double getYPosition(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   double getXPosition() MMCORE_LEGACY_THROW(CMMError);
+   double getYPosition() MMCORE_LEGACY_THROW(CMMError);
+   void stop(const char* xyOrZStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void home(const char* xyOrZStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setOriginXY(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setOriginXY() MMCORE_LEGACY_THROW(CMMError);
+   void setOriginX(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setOriginX() MMCORE_LEGACY_THROW(CMMError);
+   void setOriginY(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setOriginY() MMCORE_LEGACY_THROW(CMMError);
    void setAdapterOriginXY(const char* xyStageLabel,
-         double newXUm, double newYUm) noexcept(false);
-   void setAdapterOriginXY(double newXUm, double newYUm) noexcept(false);
+         double newXUm, double newYUm) MMCORE_LEGACY_THROW(CMMError);
+   void setAdapterOriginXY(double newXUm, double newYUm) MMCORE_LEGACY_THROW(CMMError);
 
-   bool isXYStageSequenceable(const char* xyStageLabel) noexcept(false);
-   void startXYStageSequence(const char* xyStageLabel) noexcept(false);
-   void stopXYStageSequence(const char* xyStageLabel) noexcept(false);
-   long getXYStageSequenceMaxLength(const char* xyStageLabel) noexcept(false);
+   bool isXYStageSequenceable(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void startXYStageSequence(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   void stopXYStageSequence(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
+   long getXYStageSequenceMaxLength(const char* xyStageLabel) MMCORE_LEGACY_THROW(CMMError);
    void loadXYStageSequence(const char* xyStageLabel,
          std::vector<double> xSequence,
-         std::vector<double> ySequence) noexcept(false);
+         std::vector<double> ySequence) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Serial port control. */
@@ -552,16 +550,16 @@ public:
       const char* delayBetweenCharsMs,
       const char* handshaking,
       const char* parity,
-      const char* stopBits) noexcept(false);
+      const char* stopBits) MMCORE_LEGACY_THROW(CMMError);
 
    void setSerialPortCommand(const char* portLabel, const char* command,
-         const char* term) noexcept(false);
+         const char* term) MMCORE_LEGACY_THROW(CMMError);
    std::string getSerialPortAnswer(const char* portLabel,
-         const char* term) noexcept(false);
+         const char* term) MMCORE_LEGACY_THROW(CMMError);
    void writeToSerialPort(const char* portLabel,
-         const std::vector<char> &data) noexcept(false);
+         const std::vector<char> &data) MMCORE_LEGACY_THROW(CMMError);
    std::vector<char> readFromSerialPort(const char* portLabel)
-      noexcept(false);
+      MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name SLM control.
@@ -571,27 +569,27 @@ public:
     */
    ///@{
    void setSLMImage(const char* slmLabel,
-         unsigned char * pixels) noexcept(false);
-   void setSLMImage(const char* slmLabel, imgRGB32 pixels) noexcept(false);
+         unsigned char * pixels) MMCORE_LEGACY_THROW(CMMError);
+   void setSLMImage(const char* slmLabel, imgRGB32 pixels) MMCORE_LEGACY_THROW(CMMError);
    void setSLMPixelsTo(const char* slmLabel,
-         unsigned char intensity) noexcept(false);
+         unsigned char intensity) MMCORE_LEGACY_THROW(CMMError);
    void setSLMPixelsTo(const char* slmLabel,
          unsigned char red, unsigned char green,
-         unsigned char blue) noexcept(false);
-   void displaySLMImage(const char* slmLabel) noexcept(false);
+         unsigned char blue) MMCORE_LEGACY_THROW(CMMError);
+   void displaySLMImage(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
    void setSLMExposure(const char* slmLabel, double exposure_ms)
-      noexcept(false);
-   double getSLMExposure(const char* slmLabel) noexcept(false);
-   unsigned getSLMWidth(const char* slmLabel) noexcept(false);
-   unsigned getSLMHeight(const char* slmLabel) noexcept(false);
-   unsigned getSLMNumberOfComponents(const char* slmLabel) noexcept(false);
-   unsigned getSLMBytesPerPixel(const char* slmLabel) noexcept(false);
+      MMCORE_LEGACY_THROW(CMMError);
+   double getSLMExposure(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
+   unsigned getSLMWidth(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
+   unsigned getSLMHeight(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
+   unsigned getSLMNumberOfComponents(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
+   unsigned getSLMBytesPerPixel(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
 
-   long getSLMSequenceMaxLength(const char* slmLabel) noexcept(false);
-   void startSLMSequence(const char* slmLabel) noexcept(false);
-   void stopSLMSequence(const char* slmLabel) noexcept(false);
+   long getSLMSequenceMaxLength(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
+   void startSLMSequence(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
+   void stopSLMSequence(const char* slmLabel) MMCORE_LEGACY_THROW(CMMError);
    void loadSLMSequence(const char* slmLabel,
-         std::vector<unsigned char*> imageSequence) noexcept(false);
+         std::vector<unsigned char*> imageSequence) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Galvo control.
@@ -600,28 +598,28 @@ public:
     */
    ///@{
    void pointGalvoAndFire(const char* galvoLabel, double x, double y,
-         double pulseTime_us) noexcept(false);
+         double pulseTime_us) MMCORE_LEGACY_THROW(CMMError);
    void setGalvoSpotInterval(const char* galvoLabel,
-         double pulseTime_us) noexcept(false);
+         double pulseTime_us) MMCORE_LEGACY_THROW(CMMError);
    void setGalvoPosition(const char* galvoLabel, double x, double y)
-      noexcept(false);
+      MMCORE_LEGACY_THROW(CMMError);
    void getGalvoPosition(const char* galvoLabel,
-         double &x_stage, double &y_stage) noexcept(false); // using x_stage to get swig to work
+         double &x_stage, double &y_stage) MMCORE_LEGACY_THROW(CMMError); // using x_stage to get swig to work
    void setGalvoIlluminationState(const char* galvoLabel, bool on)
-      noexcept(false);
-   double getGalvoXRange(const char* galvoLabel) noexcept(false);
-   double getGalvoXMinimum(const char* galvoLabel) noexcept(false);
-   double getGalvoYRange(const char* galvoLabel) noexcept(false);
-   double getGalvoYMinimum(const char* galvoLabel) noexcept(false);
+      MMCORE_LEGACY_THROW(CMMError);
+   double getGalvoXRange(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
+   double getGalvoXMinimum(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
+   double getGalvoYRange(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
+   double getGalvoYMinimum(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
    void addGalvoPolygonVertex(const char* galvoLabel, int polygonIndex,
-         double x, double y) noexcept(false);
-   void deleteGalvoPolygons(const char* galvoLabel) noexcept(false);
-   void loadGalvoPolygons(const char* galvoLabel) noexcept(false);
+         double x, double y) MMCORE_LEGACY_THROW(CMMError);
+   void deleteGalvoPolygons(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
+   void loadGalvoPolygons(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
    void setGalvoPolygonRepetitions(const char* galvoLabel, int repetitions)
-      noexcept(false);
-   void runGalvoPolygons(const char* galvoLabel) noexcept(false);
-   void runGalvoSequence(const char* galvoLabel) noexcept(false);
-   std::string getGalvoChannel(const char* galvoLabel) noexcept(false);
+      MMCORE_LEGACY_THROW(CMMError);
+   void runGalvoPolygons(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
+   void runGalvoSequence(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
+   std::string getGalvoChannel(const char* galvoLabel) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name PressurePump control
@@ -629,11 +627,11 @@ public:
    * Control of pressure pumps
    */
    ///@{
-   void pressurePumpStop(const char* pumpLabel) noexcept(false);
-   void pressurePumpCalibrate(const char* pumpLabel) noexcept(false);
-   bool pressurePumpRequiresCalibration(const char* pumpLabel) noexcept(false);
-   void setPumpPressureKPa(const char* pumplabel, double pressure) noexcept(false);
-   double getPumpPressureKPa(const char* pumplabel) noexcept(false);
+   void pressurePumpStop(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void pressurePumpCalibrate(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   bool pressurePumpRequiresCalibration(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setPumpPressureKPa(const char* pumplabel, double pressure) MMCORE_LEGACY_THROW(CMMError);
+   double getPumpPressureKPa(const char* pumplabel) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name VolumetricPump control
@@ -641,20 +639,20 @@ public:
    * Control of volumetric pumps
    */
    ///@{
-   void volumetricPumpStop(const char* pumpLabel) noexcept(false);
-   void volumetricPumpHome(const char* pumpLabel) noexcept(false);
-   bool volumetricPumpRequiresHoming(const char* pumpLabel) noexcept(false);
-   void invertPumpDirection(const char* pumpLabel, bool invert) noexcept(false);
-   bool isPumpDirectionInverted(const char* pumpLabel) noexcept(false);
-   void setPumpVolume(const char* pumpLabel, double volume) noexcept(false);
-   double getPumpVolume(const char* pumpLabel) noexcept(false);
-   void setPumpMaxVolume(const char* pumpLabel, double volume) noexcept(false);
-   double getPumpMaxVolume(const char* pumpLabel) noexcept(false);
-   void setPumpFlowrate(const char* pumpLabel, double volume) noexcept(false);
-   double getPumpFlowrate(const char* pumpLabel) noexcept(false);
-   void pumpStart(const char* pumpLabel) noexcept(false);
-   void pumpDispenseDurationSeconds(const char* pumpLabel, double seconds) noexcept(false);
-   void pumpDispenseVolumeUl(const char* pumpLabel, double microLiter) noexcept(false);
+   void volumetricPumpStop(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void volumetricPumpHome(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   bool volumetricPumpRequiresHoming(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void invertPumpDirection(const char* pumpLabel, bool invert) MMCORE_LEGACY_THROW(CMMError);
+   bool isPumpDirectionInverted(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setPumpVolume(const char* pumpLabel, double volume) MMCORE_LEGACY_THROW(CMMError);
+   double getPumpVolume(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setPumpMaxVolume(const char* pumpLabel, double volume) MMCORE_LEGACY_THROW(CMMError);
+   double getPumpMaxVolume(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void setPumpFlowrate(const char* pumpLabel, double volume) MMCORE_LEGACY_THROW(CMMError);
+   double getPumpFlowrate(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void pumpStart(const char* pumpLabel) MMCORE_LEGACY_THROW(CMMError);
+   void pumpDispenseDurationSeconds(const char* pumpLabel, double seconds) MMCORE_LEGACY_THROW(CMMError);
+   void pumpDispenseVolumeUl(const char* pumpLabel, double microLiter) MMCORE_LEGACY_THROW(CMMError);
    ///@}
 
    /** \name Device discovery. */
@@ -665,15 +663,23 @@ public:
 
    /** \name Hub and peripheral devices. */
    ///@{
-   std::string getParentLabel(const char* peripheralLabel) noexcept(false);
+   std::string getParentLabel(const char* peripheralLabel) MMCORE_LEGACY_THROW(CMMError);
    void setParentLabel(const char* deviceLabel,
-         const char* parentHubLabel) noexcept(false);
+         const char* parentHubLabel) MMCORE_LEGACY_THROW(CMMError);
 
-   std::vector<std::string> getInstalledDevices(const char* hubLabel) noexcept(false);
+   std::vector<std::string> getInstalledDevices(const char* hubLabel) MMCORE_LEGACY_THROW(CMMError);
    std::string getInstalledDeviceDescription(const char* hubLabel,
-         const char* peripheralLabel) noexcept(false);
-   std::vector<std::string> getLoadedPeripheralDevices(const char* hubLabel) noexcept(false);
+         const char* peripheralLabel) MMCORE_LEGACY_THROW(CMMError);
+   std::vector<std::string> getLoadedPeripheralDevices(const char* hubLabel) MMCORE_LEGACY_THROW(CMMError);
    ///@}
+
+#if !defined(SWIGJAVA) && !defined(SWIGPYTHON)
+   /** \name Testing */
+   ///@{
+   void loadMockDeviceAdapter(const char* name,
+         MockDeviceAdapter* implementation) MMCORE_LEGACY_THROW(CMMError);
+   ///@}
+#endif
 
 private:
    // make object non-copyable
@@ -731,34 +737,26 @@ private:
    void CreateCoreProperties();
 
    // Parameter/value validation
-   static void CheckDeviceLabel(const char* label) noexcept(false);
-   static void CheckPropertyName(const char* propName) noexcept(false);
-   static void CheckPropertyValue(const char* propValue) noexcept(false);
-   static void CheckStateLabel(const char* stateLabel) noexcept(false);
-   static void CheckConfigGroupName(const char* groupName) noexcept(false);
-   static void CheckConfigPresetName(const char* presetName) noexcept(false);
-   bool IsCoreDeviceLabel(const char* label) const noexcept(false);
+   static void CheckDeviceLabel(const char* label) MMCORE_LEGACY_THROW(CMMError);
+   static void CheckPropertyName(const char* propName) MMCORE_LEGACY_THROW(CMMError);
+   static void CheckPropertyValue(const char* propValue) MMCORE_LEGACY_THROW(CMMError);
+   static void CheckStateLabel(const char* stateLabel) MMCORE_LEGACY_THROW(CMMError);
+   static void CheckConfigGroupName(const char* groupName) MMCORE_LEGACY_THROW(CMMError);
+   static void CheckConfigPresetName(const char* presetName) MMCORE_LEGACY_THROW(CMMError);
+   bool IsCoreDeviceLabel(const char* label) const MMCORE_LEGACY_THROW(CMMError);
 
-   void applyConfiguration(const Configuration& config) noexcept(false);
+   void applyConfiguration(const Configuration& config) MMCORE_LEGACY_THROW(CMMError);
    int applyProperties(std::vector<PropertySetting>& props, std::string& lastError);
-   void waitForDevice(std::shared_ptr<DeviceInstance> pDev) noexcept(false);
-   Configuration getConfigGroupState(const char* group, bool fromCache) noexcept(false);
+   void waitForDevice(std::shared_ptr<DeviceInstance> pDev) MMCORE_LEGACY_THROW(CMMError);
+   Configuration getConfigGroupState(const char* group, bool fromCache) MMCORE_LEGACY_THROW(CMMError);
    std::string getDeviceErrorText(int deviceCode, std::shared_ptr<DeviceInstance> pDevice);
    std::string getDeviceName(std::shared_ptr<DeviceInstance> pDev);
    void logError(const char* device, const char* msg);
    void updateAllowedChannelGroups();
    void assignDefaultRole(std::shared_ptr<DeviceInstance> pDev);
-   void updateCoreProperty(const char* propName, MM::DeviceType devType) noexcept(false);
-   void loadSystemConfigurationImpl(const char* fileName) noexcept(false);
-   void initializeAllDevicesSerial() noexcept(false);
-   void initializeAllDevicesParallel() noexcept(false);
+   void updateCoreProperty(const char* propName, MM::DeviceType devType) MMCORE_LEGACY_THROW(CMMError);
+   void loadSystemConfigurationImpl(const char* fileName) MMCORE_LEGACY_THROW(CMMError);
+   void initializeAllDevicesSerial() MMCORE_LEGACY_THROW(CMMError);
+   void initializeAllDevicesParallel() MMCORE_LEGACY_THROW(CMMError);
    int initializeVectorOfDevices(std::vector<std::pair<std::shared_ptr<DeviceInstance>, std::string> > pDevices);
 };
-
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif

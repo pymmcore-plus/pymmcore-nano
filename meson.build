@@ -3,7 +3,7 @@
 project(
   'pymmcore-nano',
   'cpp',
-version : '11.5.1.73.2',
+version : '11.9.0.73.2',
   meson_version : '>= 1.2.0',
   default_options : ['cpp_std=c++17']
 )
@@ -15,8 +15,6 @@ endif
 py = import('python').find_installation(pure: false)
 nanobind_dep = dependency('nanobind', static: true)
 
-# patch nanobind stubgen until https://github.com/wjakob/nanobind/pull/938
-_ = run_command(py.full_path(), 'scripts/patch_nanobind.py').stdout().strip()
 
 # Run a command to get the Python include path
 python_include_path = run_command(
@@ -33,10 +31,6 @@ endif
 mmdevice_dep = dependency('mmdevice_dep')
 mmcore_dep   = dependency('mmcore_dep')
 
-
-# ---------- patch c++14 to c++17 ----------
-
-# run_command(py.full_path(), 'scripts/patch_sources.py', check: true)
 
 # --------------------------
 

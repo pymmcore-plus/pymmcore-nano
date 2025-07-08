@@ -5,11 +5,12 @@ circumventing any calls to `import _pymmcore_nano` in the process.
 """
 
 import importlib.util
-from pathlib import Path
 import re
 import subprocess
 import sys
+from pathlib import Path
 from types import ModuleType
+
 from nanobind.stubgen import StubGen
 
 

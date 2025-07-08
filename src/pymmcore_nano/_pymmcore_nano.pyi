@@ -5,8 +5,8 @@ from numpy.typing import ArrayLike
 
 DEVICE_INTERFACE_VERSION: int = 73
 MODULE_INTERFACE_VERSION: int = 10
-MMCore_version: str = "11.5.1"
-MMCore_version_info: tuple = (11, 5, 1)
+MMCore_version: str = "11.9.0"
+MMCore_version_info: tuple = (11, 9, 0)
 PYMMCORE_NANO_VERSION: str = "2"
 MM_CODE_OK: int = 0
 MM_CODE_ERR: int = 1
