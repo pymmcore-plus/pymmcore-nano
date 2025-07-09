@@ -21,6 +21,7 @@ NB_DEF_RE = re.compile(r'\.def(?:_static|_readwrite|_readonly)?\s*\(\s*"([^"]+)"
 NB_CLASS_RE = re.compile(r"\bnb::class_<\s*([^,>]+)\s*[,>]")
 M_ATTR_RE = re.compile(r'm\.attr\s*\(\s*"([^"]+)"\s*\)')
 ENUM_VALUE_RE = re.compile(r'\.value\s*\(\s*"([^"]+)"')
+BIND_ENUM_VALUE_RE = re.compile(r'BIND_ENUM_VALUE\s*\([^,]+,\s*"([^"]+)"')
 DEFINE_RE = re.compile(r"^\s*#define\s+([A-Z_][A-Z0-9_]*)\s+", re.MULTILINE)
 ENUM_RE = re.compile(r"nb::enum_<[^>]+>\s*\([^)]+\)")
 
@@ -185,7 +186,7 @@ def extract_binding_constants(bindings_file: Path) -> dict[str, set[str]]:
 
     Returns a dictionary with keys:
     - 'module_attrs': constants bound with m.attr()
-    - 'enum_values': enum values bound with .value()
+    - 'enum_values': enum values bound with .value() or BIND_ENUM_VALUE()
     """
     content = bindings_file.read_text()
 
@@ -196,7 +197,11 @@ def extract_binding_constants(bindings_file: Path) -> dict[str, set[str]]:
     for match in M_ATTR_RE.finditer(content):
         module_attrs.add(match.group(1))
 
-    # Extract enum definitions and their values
+    # Extract enum values from BIND_ENUM_VALUE calls
+    for match in BIND_ENUM_VALUE_RE.finditer(content):
+        enum_values.add(match.group(1))
+
+    # Extract enum definitions and their values (legacy .value() calls)
     enum_blocks = []
 
     # Find all enum blocks
@@ -212,7 +217,7 @@ def extract_binding_constants(bindings_file: Path) -> dict[str, set[str]]:
         enum_blocks.append(enum_block)
         pos = block_end
 
-    # Extract values from each enum block
+    # Extract values from each enum block (legacy .value() calls)
     for block in enum_blocks:
         for match in ENUM_VALUE_RE.finditer(block):
             enum_values.add(match.group(1))
