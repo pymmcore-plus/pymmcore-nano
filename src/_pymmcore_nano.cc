@@ -10,11 +10,6 @@
 #include "MMEventCallback.h"
 #include "ModuleInterface.h"
 
-#ifdef MMCORE_ENABLE_TESTING
-#include "MockDeviceAdapter.h"
-#include "PythonMockDevices.h"
-#endif
-
 namespace nb = nanobind;
 
 using namespace nb::literals;
@@ -1674,37 +1669,6 @@ MMCore will send notifications on internal events using this interface
              "peripheralLabel"_a RGIL)
         .def("getLoadedPeripheralDevices", &CMMCore::getLoadedPeripheralDevices, "hubLabel"_a RGIL)
 
-#ifdef MMCORE_ENABLE_TESTING
-        // Mock device adapter support (for testing only)
-        .def("loadMockDeviceAdapter", &CMMCore::loadMockDeviceAdapter, 
-             "name"_a, "implementation"_a RGIL,
-             "Load a mock device adapter for testing purposes")
-#endif
 
         ;
-
-#ifdef MMCORE_ENABLE_TESTING
-    // Simplified Device interface for testing - skip GetType to avoid enum duplicate
-    nb::class_<MM::Device>(m, "Device")
-        .def("Initialize", &MM::Device::Initialize)
-        .def("Shutdown", &MM::Device::Shutdown)
-        .def("Busy", &MM::Device::Busy)
-        .def("GetDelayMs", &MM::Device::GetDelayMs)
-        .def("SetDelayMs", &MM::Device::SetDelayMs);
-
-    // MockDeviceAdapter interface for testing
-    nb::class_<MockDeviceAdapter>(m, "MockDeviceAdapter")
-        .def("InitializeModuleData", &MockDeviceAdapter::InitializeModuleData)
-        .def("CreateDevice", &MockDeviceAdapter::CreateDevice,
-             nb::rv_policy::reference_internal)
-        .def("DeleteDevice", &MockDeviceAdapter::DeleteDevice);
-
-    // Concrete mock device adapter for easy testing
-    nb::class_<PythonMockDeviceAdapter, MockDeviceAdapter>(m, "PythonMockDeviceAdapter")
-        .def(nb::init<>())
-        .def("InitializeModuleData", &PythonMockDeviceAdapter::InitializeModuleData)
-        .def("CreateDevice", &PythonMockDeviceAdapter::CreateDevice,
-             nb::rv_policy::reference_internal)
-        .def("DeleteDevice", &PythonMockDeviceAdapter::DeleteDevice);
-#endif
 }

@@ -4,7 +4,7 @@ set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
 builddir := "builddir"
 
 # install deps and editable package for development
-install devices="true" coverage="false" verbose="true" testing="false":
+install devices="true" coverage="false" verbose="true":
 	uv sync --no-install-project
 	uv pip install -e . \
 		--no-build-isolation \
@@ -12,14 +12,9 @@ install devices="true" coverage="false" verbose="true" testing="false":
 		--force-reinstall \
 		-C=setup-args="-Dbuild_device_adapters={{devices}}" \
 		-C=setup-args="-Db_coverage={{coverage}}" \
-		-C=setup-args="-Denable_testing={{testing}}" \
 		-C=setup-args="-Dbuildtype=debugoptimized" \
 		-C=build-dir={{builddir}} \
 		-C=editable-verbose={{verbose}} -v
-
-# install for testing with mock device support
-test-install:
-	just install true true true true
 
 # quick build after having already setup the build directory
 build:
@@ -46,7 +41,7 @@ test:
 
 # run tests with coverage
 test-cov:
-	just test-install
+	just install true true true
 	rm -rf coverage coverage.xml coverage_cpp.xml
 	{{ python }} -m pytest -v --color=yes --cov --cov-report=xml
 	gcovr

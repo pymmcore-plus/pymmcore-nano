@@ -16,6 +16,3 @@ option('client_interface', type: 'boolean', value: false,
 option('build_device_adapters', type: 'boolean', value: false,
   description: 'Build device adapters in addition to the core library',
 )
-option('enable_testing', type: 'boolean', value: false,
-  description: 'Enable test-only APIs like mock device adapters'
-)
