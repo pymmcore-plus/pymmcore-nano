@@ -46,6 +46,9 @@ endif
 if get_option('match_swig')
     cpp_args += ['-DMATCH_SWIG']
 endif
+if get_option('enable_testing')
+    cpp_args += ['-DMMCORE_ENABLE_TESTING']
+endif
 
 
 ext_module = py.extension_module(

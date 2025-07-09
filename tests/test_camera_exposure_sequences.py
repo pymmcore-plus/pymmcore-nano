@@ -26,7 +26,8 @@ def test_camera_exposure_sequence_max_length(demo_core: pmn.CMMCore) -> None:
         assert isinstance(max_length, int)
         assert max_length >= 0
     except pmn.CMMError as e:
-        # Some cameras may not support exposure sequences - that's okay, we tested the code path
+        # Some cameras may not support exposure sequences -
+        # that's okay, we tested the code path
         assert "sequenc" in str(e).lower() or "support" in str(e).lower()
 
 
@@ -158,7 +159,12 @@ def test_camera_exposure_sequence_invalid_exposures(demo_core: pmn.CMMCore) -> N
     except pmn.CMMError as e:
         # May fail for negative exposures or unsupported sequences
         error_msg = str(e).lower()
-        assert "sequenc" in error_msg or "exposur" in error_msg or "support" in error_msg or "negativ" in error_msg
+        assert (
+            "sequenc" in error_msg
+            or "exposur" in error_msg
+            or "support" in error_msg
+            or "negativ" in error_msg
+        )
 
     # Test with zero exposures
     try:
@@ -166,7 +172,9 @@ def test_camera_exposure_sequence_invalid_exposures(demo_core: pmn.CMMCore) -> N
     except pmn.CMMError as e:
         # May fail for zero exposures or unsupported sequences
         error_msg = str(e).lower()
-        assert "sequenc" in error_msg or "exposur" in error_msg or "support" in error_msg
+        assert (
+            "sequenc" in error_msg or "exposur" in error_msg or "support" in error_msg
+        )
 
 
 def test_camera_exposure_sequence_stop_without_start(demo_core: pmn.CMMCore) -> None:

@@ -64,7 +64,8 @@ def test_image_processor_with_camera_operations(demo_core: pmn.CMMCore) -> None:
         img = demo_core.getImage()
         assert img is not None
 
-        # Image should be processed (we can't easily verify the flip, but code path is exercised)
+        # Image should be processed (we can't easily verify the flip,
+        # but code path is exercised)
         assert img.shape[0] > 0 and img.shape[1] > 0
 
     finally:
