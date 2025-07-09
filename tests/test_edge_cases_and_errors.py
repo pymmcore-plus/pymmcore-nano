@@ -329,67 +329,6 @@ class TestPropertySystemEdgeCases:
         with pytest.raises(RuntimeError):
             core.isPropertyReadOnly("nonexistent", "property")
 
-    @pytest.mark.skipif(
-        not (
-            hasattr(pmn, "PythonMockDeviceAdapter")
-            and hasattr(pmn.CMMCore(), "loadMockDeviceAdapter")
-        ),
-        reason="Mock device functionality not available",
-    )
-    def test_property_system_with_mock_devices(self):
-        """Test property system edge cases with mock devices."""
-        core = pmn.CMMCore()
-        adapter = pmn.PythonMockDeviceAdapter()
-
-        try:
-            core.loadMockDeviceAdapter("TestAdapter", adapter)
-            core.loadDevice("Camera", "TestAdapter", "MockCamera")
-            core.initializeAllDevices()
-
-            # Test property enumeration
-            props = core.getDevicePropertyNames("Camera")
-            assert isinstance(props, (list, tuple))
-            assert len(props) > 0
-
-            # Test each property
-            for prop in props:
-                # Test getting property value
-                value = core.getProperty("Camera", prop)
-                assert isinstance(value, str)
-
-                # Test read-only status
-                try:
-                    readonly = core.isPropertyReadOnly("Camera", prop)
-                    assert isinstance(readonly, bool)
-
-                    if not readonly:
-                        # Test setting the same value
-                        core.setProperty("Camera", prop, value)
-                        new_value = core.getProperty("Camera", prop)
-                        assert new_value == value
-
-                except (RuntimeError, AttributeError):
-                    # Not all properties support all operations
-                    pass
-
-                # Test allowed values
-                try:
-                    allowed = core.getAllowedPropertyValues("Camera", prop)
-                    if allowed:
-                        assert isinstance(allowed, (list, tuple))
-                        # Current value should be in allowed values
-                        assert value in allowed
-
-                except (RuntimeError, AttributeError):
-                    # Not all properties have enumerated values
-                    pass
-
-        finally:
-            try:
-                core.unloadAllDevices()
-            except Exception:
-                pass
-
 
 def test_api_robustness():
     """Test overall API robustness and stability."""

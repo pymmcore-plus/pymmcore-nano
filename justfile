@@ -49,9 +49,8 @@ test-cov:
 	just test-install
 	rm -rf coverage coverage.xml coverage_cpp.xml
 	{{ python }} -m pytest -v --color=yes --cov --cov-report=xml
-	gcovr --filter=src/mmCoreAndDevices/MMCore/MMCore.cpp --xml coverage_cpp.xml -s
-	@echo "\n=== C++ Coverage Summary for MMCore.cpp ==="
-	gcovr --filter=src/mmCoreAndDevices/MMCore/MMCore.cpp --print-summary
+	gcovr
+
 
 # clean up coverage artifacts
 clean-cov:
