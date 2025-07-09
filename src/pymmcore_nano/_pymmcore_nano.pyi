@@ -444,6 +444,12 @@ class MMEventCallback:
     def onExposureChanged(self, name: str, newExposure: float) -> None: ...
     def onStagePositionChanged(self, name: str, pos: float) -> None: ...
     def onXYStagePositionChanged(self, name: str, xpos: float, ypos: float) -> None: ...
+    def onImageSnapped(self, cameraLabel: str) -> None:
+        """Called when an image is snapped"""
+    def onSequenceAcquisitionStarted(self, cameraLabel: str) -> None:
+        """Called when sequence acquisition starts"""
+    def onSequenceAcquisitionStopped(self, cameraLabel: str) -> None:
+        """Called when sequence acquisition stops"""
 
 class CMMError(RuntimeError):
     pass

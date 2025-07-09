@@ -8,13 +8,14 @@ from clang.cindex import AccessSpecifier, Cursor, CursorKind, Index
 
 ROOT = Path(__file__).parent.parent
 MMCORE_H = ROOT / "src/mmCoreAndDevices/MMCore/MMCore.h"
+MMDEVICE_CALLBACK_H = ROOT / "src/mmCoreAndDevices/MMCore/MMEventCallback.h"
 MMDEVICE_CONSTANTS_H = ROOT / "src/mmCoreAndDevices/MMDevice/MMDeviceConstants.h"
 BINDINGS = ROOT / "src/_pymmcore_nano.cc"
 IGNORE_MEMBERS = {"noop"}
 
 # Regex patterns for parsing bindings
 NB_DEF_RE = re.compile(r'\.def(?:_static|_readwrite|_readonly)?\s*\(\s*"([^"]+)"')
-NB_CLASS_RE = re.compile(r"\bnb::class_<\s*CMMCore\s*>\s*\(")
+NB_CLASS_RE = re.compile(r"\bnb::class_<\s*([^,>]+)\s*[,>]")
 M_ATTR_RE = re.compile(r'm\.attr\s*\(\s*"([^"]+)"\s*\)')
 ENUM_VALUE_RE = re.compile(r'\.value\s*\(\s*"([^"]+)"')
 DEFINE_RE = re.compile(r"^\s*#define\s+([A-Z_][A-Z0-9_]*)\s+", re.MULTILINE)
@@ -37,14 +38,15 @@ def walk_preorder(node: Cursor) -> Iterator[Cursor]:
 def find_class_def(root: Cursor, name: str) -> Cursor | None:
     """Return the full class definition cursor for *name* in the AST rooted at *root*.
 
-    Walks the tree depth-first and returns the first ``CursorKind.CLASS_DECL``
-    that both matches *name* and is a definition (not a forward declaration).
+    Walks the tree depth-first and returns the first ``CursorKind.CLASS_DECL`` or
+    ``CursorKind.STRUCT_DECL`` that both matches *name* and is a definition
+    (not a forward declaration).
     """
     return next(
         (
             cur
             for cur in walk_preorder(root)
-            if cur.kind == CursorKind.CLASS_DECL  # pyright: ignore
+            if cur.kind in (CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL)  # pyright: ignore
             and cur.spelling == name
             and cur.is_definition()
         ),
@@ -96,23 +98,36 @@ def public_members(
     )
 
 
-def cmmcore_members(src: Path) -> list[str]:
-    """Extract bound CMMCore member names from the nanobind source file.
+def extract_class_members(src: Path, class_name: str) -> list[str]:
+    """Extract bound class member names from the nanobind source file.
 
-    The function locates the ``nb::class_<CMMCore>(...)`` statement and then
+    The function locates the ``nb::class_<ClassName>(...)`` statement and then
     collects the first argument of every ``.def*("name", ...)`` call that
     appears in that statement.
+
+    Parameters
+    ----------
+    src
+        Path to the nanobind source file.
+    class_name
+        Name of the class to extract members for.
     """
     text = src.read_text()
 
-    # Find the beginning of the CMMCore binding.
-    if (start_match := NB_CLASS_RE.search(text)) is None:
-        return []
+    # Find all class bindings and locate the one for our target class
+    matches = list(NB_CLASS_RE.finditer(text))
 
-    end_pos = _find_statement_end(text, start_match.start())
-    binding_block = text[start_match.start() : end_pos]
+    for match in matches:
+        # Extract the class name from the match
+        bound_class = match.group(1).strip()
 
-    return sorted({m.group(1) for m in NB_DEF_RE.finditer(binding_block)})
+        # Check if this is the class we're looking for
+        if bound_class == class_name:
+            end_pos = _find_statement_end(text, match.start())
+            binding_block = text[match.start() : end_pos]
+            return sorted({m.group(1) for m in NB_DEF_RE.finditer(binding_block)})
+
+    return []
 
 
 def extract_header_constants(header: str | Path) -> dict[str, set[str]]:
@@ -232,6 +247,104 @@ def _find_statement_end(code: str, pos: int) -> int:
     raise RuntimeError("Could not find end of statement.")
 
 
+def _find_class_end(code: str, class_start: int) -> int:
+    """Find the end of a C++ class definition starting at class_start."""
+    # Find the opening brace
+    brace_start = code.find("{", class_start)
+    if brace_start == -1:
+        raise RuntimeError("Could not find opening brace for class")
+
+    # Count braces to find the closing brace
+    brace_count = 0
+    in_string = False
+    escaped = False
+    i = brace_start
+
+    while i < len(code):
+        ch = code[i]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+        else:
+            if ch == '"':
+                in_string = True
+            elif ch == "{":
+                brace_count += 1
+            elif ch == "}":
+                brace_count -= 1
+                if brace_count == 0:
+                    return i + 1
+        i += 1
+
+    raise RuntimeError("Could not find end of class definition")
+
+
+def extract_trampoline_methods(
+    src: Path, trampoline_class_name: str
+) -> tuple[set[str], int]:
+    """Extract trampoline class information from the nanobind source file.
+
+    Returns a tuple with:
+    - 'override_methods': set of method names with NB_OVERRIDE calls
+    - 'trampoline_count': the number specified in NB_TRAMPOLINE
+    """
+    text = src.read_text()
+
+    # Find the trampoline class definition
+    trampoline_pattern = rf"class\s+{re.escape(trampoline_class_name)}\s*:"
+    match = re.search(trampoline_pattern, text)
+    if not match:
+        return set(), 0
+
+    # Find the end of the class definition
+    class_start = match.start()
+    class_end = _find_class_end(text, class_start)
+    class_block = text[class_start:class_end]
+
+    # Extract NB_TRAMPOLINE count
+    trampoline_pattern = r"NB_TRAMPOLINE\([^,]+,\s*(\d+)\)"
+    trampoline_match = re.search(trampoline_pattern, class_block)
+    trampoline_count = int(trampoline_match.group(1)) if trampoline_match else 0
+
+    # Extract methods with NB_OVERRIDE
+    override_pattern = r"NB_OVERRIDE\(\s*([^,\)]+)"
+    override_methods = {
+        match.group(1).strip() for match in re.finditer(override_pattern, class_block)
+    }
+
+    return override_methods, trampoline_count
+
+
+def extract_virtual_methods(
+    header: str | Path, class_name: str, extra_args: Sequence[str] | None = None
+) -> set[str]:
+    """Extract virtual method names from a C++ header file."""
+    index = Index.create()
+    args: list[str] = ["-x", "c++", "-std=c++17", *(extra_args or [])]
+    tu = index.parse(str(header), args=args)
+
+    cls = find_class_def(tu.cursor, class_name)
+    if cls is None:
+        raise RuntimeError(f"Definition of '{class_name}' not found in {header!s}")
+
+    virtual_methods = set()
+
+    for child in cls.get_children():
+        if (
+            child.kind == CursorKind.CXX_METHOD  # pyright: ignore
+            and child.access_specifier == AccessSpecifier.PUBLIC  # pyright: ignore
+            and child.is_virtual_method()
+            and child.spelling not in IGNORE_MEMBERS | {class_name}
+        ):
+            virtual_methods.add(child.spelling)
+
+    return virtual_methods
+
+
 def test_cmmcore_members():
     """Test that the bindings are complete by checking public members of CMMCore."""
     members = public_members(
@@ -243,11 +356,99 @@ def test_cmmcore_members():
         ],
     )
     assert members, "No public members found in CMMCore"
-    binding_members = cmmcore_members(BINDINGS)
+    binding_members = extract_class_members(BINDINGS, "CMMCore")
     assert binding_members, "No .def calls found in bindings"
 
     if missing := (set(members) - set(binding_members)):
         assert not missing, f"Missing bindings for: {', '.join(missing)}"
+
+
+def test_mmevent_callback_members():
+    """Test that the bindings for MMEventCallback are complete."""
+    members = public_members(
+        str(MMDEVICE_CALLBACK_H),
+        "MMEventCallback",
+        extra_args=[
+            "-Isrc/mmCoreAndDevices",
+            "-DSWIGPYTHON",  # SWIG defines this for Python bindings
+        ],
+    )
+    assert members, "No public members found in MMEventCallback"
+
+    binding_members = extract_class_members(BINDINGS, "MMEventCallback")
+    assert binding_members, "No .def calls found in MMEventCallback bindings"
+
+    if missing := (set(members) - set(binding_members)):
+        assert not missing, (
+            f"Missing MMEventCallback bindings for: {', '.join(missing)}"
+        )
+
+    # Also check trampoline class completeness
+    virtual_methods = extract_virtual_methods(
+        str(MMDEVICE_CALLBACK_H),
+        "MMEventCallback",
+        extra_args=["-Isrc/mmCoreAndDevices", "-DSWIGPYTHON"],
+    )
+
+    override_methods, trampoline_count = extract_trampoline_methods(
+        BINDINGS, "PyMMEventCallback"
+    )
+
+    # Ensure we have the right types
+    assert isinstance(override_methods, set), "override_methods should be a set"
+    assert isinstance(trampoline_count, int), "trampoline_count should be an int"
+
+    # Check that all virtual methods have corresponding override methods
+    if missing_overrides := (virtual_methods - override_methods):
+        assert not missing_overrides, (
+            f"Missing trampoline override methods: {', '.join(missing_overrides)}"
+        )
+
+    # Check that the trampoline count matches the number of virtual methods
+    assert trampoline_count == len(virtual_methods), (
+        f"NB_TRAMPOLINE count ({trampoline_count}) doesn't match "
+        f"virtual method count ({len(virtual_methods)})"
+    )
+
+
+def test_configuration_members():
+    """Test that the bindings for Configuration are complete."""
+    members = public_members(
+        str(ROOT / "src/mmCoreAndDevices/MMCore/Configuration.h"),
+        "Configuration",
+        extra_args=[
+            "-Isrc/mmCoreAndDevices",
+            "-DSWIGPYTHON",
+        ],
+    )
+    assert members, "No public members found in Configuration"
+
+    binding_members = extract_class_members(BINDINGS, "Configuration")
+    assert binding_members, "No .def calls found in Configuration bindings"
+
+    if missing := (set(members) - set(binding_members)):
+        assert not missing, f"Missing Configuration bindings for: {', '.join(missing)}"
+
+
+def test_property_setting_members():
+    """Test that the bindings for PropertySetting are complete."""
+    members = public_members(
+        str(ROOT / "src/mmCoreAndDevices/MMCore/Configuration.h"),
+        "PropertySetting",
+        extra_args=[
+            "-Isrc/mmCoreAndDevices",
+            "-DSWIGPYTHON",
+        ],
+    )
+    assert members, "No public members found in PropertySetting"
+
+    binding_members = extract_class_members(BINDINGS, "PropertySetting")
+    assert binding_members, "No .def calls found in PropertySetting bindings"
+
+    if missing := (set(members) - set(binding_members)):
+        assert not missing, (
+            f"Missing PropertySetting bindings for: {', '.join(missing)}"
+        )
 
 
 def test_constants_and_enums_complete():

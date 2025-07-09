@@ -217,7 +217,7 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
 class PyMMEventCallback : public MMEventCallback {
   public:
     NB_TRAMPOLINE(MMEventCallback,
-                  11); // Total number of overridable virtual methods.
+                  14); // Total number of overridable virtual methods.
 
     void onPropertiesChanged() override { NB_OVERRIDE(onPropertiesChanged); }
 
@@ -259,6 +259,18 @@ class PyMMEventCallback : public MMEventCallback {
 
     void onSLMExposureChanged(const char *name, double newExposure) override {
         NB_OVERRIDE(onSLMExposureChanged, name, newExposure);
+    }
+
+    void onImageSnapped(const char *cameraLabel) override {
+        NB_OVERRIDE(onImageSnapped, cameraLabel);
+    }
+
+    void onSequenceAcquisitionStarted(const char *cameraLabel) override {
+        NB_OVERRIDE(onSequenceAcquisitionStarted, cameraLabel);
+    }
+
+    void onSequenceAcquisitionStopped(const char *cameraLabel) override {
+        NB_OVERRIDE(onSequenceAcquisitionStopped, cameraLabel);
     }
 };
 
@@ -777,7 +789,25 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
             [&](MMEventCallback &self, const std::string &name, double xpos, double ypos) {
                 self.onXYStagePositionChanged(const_cast<char *>(name.c_str()), xpos, ypos);
             },
-            "name"_a, "xpos"_a, "ypos"_a);
+            "name"_a, "xpos"_a, "ypos"_a)
+        .def(
+            "onImageSnapped",
+            [&](MMEventCallback &self, const std::string &cameraLabel) {
+                self.onImageSnapped(const_cast<char *>(cameraLabel.c_str()));
+            },
+            "cameraLabel"_a, "Called when an image is snapped")
+        .def(
+            "onSequenceAcquisitionStarted",
+            [&](MMEventCallback &self, const std::string &cameraLabel) {
+                self.onSequenceAcquisitionStarted(const_cast<char *>(cameraLabel.c_str()));
+            },
+            "cameraLabel"_a, "Called when sequence acquisition starts")
+        .def(
+            "onSequenceAcquisitionStopped",
+            [&](MMEventCallback &self, const std::string &cameraLabel) {
+                self.onSequenceAcquisitionStopped(const_cast<char *>(cameraLabel.c_str()));
+            },
+            "cameraLabel"_a, "Called when sequence acquisition stops");
 
     //////////////////// Exceptions ////////////////////
 
