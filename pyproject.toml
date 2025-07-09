@@ -94,7 +94,7 @@ target-version = "py39"
 fix = true
 unsafe-fixes = true
 src = ["tests"]
-exclude = ["src"]
+exclude = ["src/pymmcore_nano/_pymmcore_nano.pyi"]
 
 [tool.ruff.lint]
 pydocstyle = { convention = "numpy" }
