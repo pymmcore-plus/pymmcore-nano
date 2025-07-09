@@ -1,8 +1,7 @@
 """Tests for MMCore feature management functionality."""
 
-import pytest
-
 import pymmcore_nano as pmn
+import pytest
 
 
 def test_core_features_available():

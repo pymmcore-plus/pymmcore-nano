@@ -1,7 +1,8 @@
 """Tests focused on AutoFocus Device functionality to increase MMCore.cpp coverage."""
 
-import pymmcore_nano as pmn
 import time
+
+import pymmcore_nano as pmn
 
 
 def test_autofocus_device_assignment(demo_core: pmn.CMMCore) -> None:

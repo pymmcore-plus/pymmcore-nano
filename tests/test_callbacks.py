@@ -1,6 +1,7 @@
-from unittest.mock import Mock, call
-import pymmcore_nano as pmn
 from pathlib import Path
+from unittest.mock import Mock, call
+
+import pymmcore_nano as pmn
 
 
 def test_callback(core: pmn.CMMCore, demo_config: Path):

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import TYPE_CHECKING
 
 from clang.cindex import AccessSpecifier, Cursor, CursorKind, Index
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 ROOT = Path(__file__).parent.parent
 MMCORE_H = ROOT / "src/mmCoreAndDevices/MMCore/MMCore.h"
@@ -147,7 +150,7 @@ def extract_header_constants(header: str | Path) -> dict[str, set[str]]:
     string_constants: set[str] = set()
 
     # Parse #define statements from the source
-    with open(header, "r") as f:
+    with open(header) as f:
         content = f.read()
 
     # Extract #define constants

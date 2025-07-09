@@ -1,12 +1,12 @@
 import atexit
-from collections.abc import Iterator
 import os
-from pathlib import Path
-import sys
-from typing import Iterable
-import pytest
-import pymmcore_nano as pmn
 import shutil
+import sys
+from collections.abc import Iterable, Iterator
+from pathlib import Path
+
+import pymmcore_nano as pmn
+import pytest
 
 BUILDDIR = Path(__file__).parent.parent / "builddir"
 BUILT_ADAPTERS = BUILDDIR / "src" / "mmcoreAndDevices" / "DeviceAdapters"
@@ -17,9 +17,7 @@ def adapter_paths() -> Iterable[list[str]]:
     lib_ext = {"linux": "so", "darwin": "dylib", "win32": "dll"}[sys.platform]
     adapter_path = Path(__file__).parent / "adapters" / sys.platform
     # find all built libraries in the builddir
-    if BUILT_ADAPTERS.is_dir() and (
-        libs := [x for x in BUILT_ADAPTERS.rglob(f"*.{lib_ext}")]
-    ):
+    if BUILT_ADAPTERS.is_dir() and (libs := list(BUILT_ADAPTERS.rglob(f"*.{lib_ext}"))):
         adapter_path.mkdir(exist_ok=True, parents=True)
         # NOTE: on windows this WILL leave .dll files in the adapter_path
         # after the test is over, since they are locked by the python process.

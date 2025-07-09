@@ -1,7 +1,7 @@
 """Tests focused on State Device functionality to increase MMCore.cpp coverage."""
 
-import pytest
 import pymmcore_nano as pmn
+import pytest
 
 
 def test_state_device_basic_operations(demo_core: pmn.CMMCore) -> None:
@@ -55,7 +55,7 @@ def test_state_device_label_mapping(demo_core: pmn.CMMCore) -> None:
 
     state_labels = demo_core.getStateLabels(device)
 
-    for i, label in enumerate(state_labels):
+    for _i, label in enumerate(state_labels):
         # Test getStateFromLabel
         state_from_label = demo_core.getStateFromLabel(device, label)
 

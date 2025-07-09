@@ -1,5 +1,3 @@
-"""Tests focused on Configuration and Device Management to increase MMCore.cpp coverage."""
-
 import pymmcore_nano as pmn
 
 
@@ -242,5 +240,6 @@ def test_core_properties(demo_core: pmn.CMMCore) -> None:
                 try:
                     demo_core.setProperty(core_device, prop_name, prop_value)
                 except pmn.CMMError:
-                    # Some core properties still can't be set even if they're not read-only
+                    # Some core properties still can't be set even
+                    # if they're not read-only
                     pass

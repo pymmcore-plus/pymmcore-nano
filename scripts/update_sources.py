@@ -33,6 +33,7 @@ def sync_directories(src: Path, dest: Path) -> None:
 
 
 def main(branch: str = "main") -> None:
+    """Main function to sync source files from mmCoreAndDevices repository."""
     existing_meson_files = Path(TARGET).rglob("meson.build")
     existing_meson_wraps = Path(TARGET).rglob("*.wrap")
 

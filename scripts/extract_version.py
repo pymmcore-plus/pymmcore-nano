@@ -21,7 +21,10 @@ def extract_version():
     pmn = re.search(r"PYMMCORE_NANO_VERSION = \"(.+)\"", content)
 
     if major and minor and patch and device and pmn:
-        return f"{major.group(1)}.{minor.group(1)}.{patch.group(1)}.{device.group(1)}.{pmn.group(1)}"
+        return (
+            f"{major.group(1)}.{minor.group(1)}.{patch.group(1)}."
+            f"{device.group(1)}.{pmn.group(1)}"
+        )
     else:
         raise ValueError("Version numbers not found in the file.")
 
