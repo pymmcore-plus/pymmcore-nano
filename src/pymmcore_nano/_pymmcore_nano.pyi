@@ -271,7 +271,6 @@ class Configuration:
 
     A configuration is a collection of device property settings.
     """
-
     def __init__(self) -> None: ...
     def addSetting(self, setting: PropertySetting) -> None: ...
     def deleteSetting(self, device: str, property: str) -> None: ...
@@ -290,134 +289,134 @@ class PropertySetting:
     def __init__(
         self, deviceLabel: str, prop: str, value: str, readOnly: bool = False
     ) -> None:
-        """Constructor specifying the entire contents."""
+        """Constructor specifying the entire contents"""
     @overload
     def __init__(self) -> None:
-        """Default constructor."""
+        """Default constructor"""
     def getDeviceLabel(self) -> str:
-        """Returns the device label."""
+        """Returns the device label"""
     def getPropertyName(self) -> str:
-        """Returns the property name."""
+        """Returns the property name"""
     def getReadOnly(self) -> bool:
-        """Returns the read-only status."""
+        """Returns the read-only status"""
     def getPropertyValue(self) -> str:
-        """Returns the property value."""
+        """Returns the property value"""
     def getKey(self) -> str:
-        """Returns the unique key."""
+        """Returns the unique key"""
     def getVerbose(self) -> str:
-        """Returns a verbose description."""
+        """Returns a verbose description"""
     def isEqualTo(self, other: PropertySetting) -> bool:
-        """Checks if this property setting is equal to another."""
+        """Checks if this property setting is equal to another"""
     @staticmethod
     def generateKey(device: str, prop: str) -> str:
-        """Generates a unique key based on device and property."""
+        """Generates a unique key based on device and property"""
 
 class Metadata:
     @overload
     def __init__(self) -> None:
-        """Empty constructor."""
+        """Empty constructor"""
     @overload
     def __init__(self, arg: Metadata) -> None:
-        """Copy constructor."""
+        """Copy constructor"""
     def Clear(self) -> None:
-        """Clears all tags."""
+        """Clears all tags"""
     def GetKeys(self) -> list[str]:
-        """Returns all tag keys."""
+        """Returns all tag keys"""
     def HasTag(self, key: str) -> bool:
-        """Checks if a tag exists for the given key."""
+        """Checks if a tag exists for the given key"""
     def GetSingleTag(self, key: str) -> MetadataSingleTag:
-        """Gets a single tag by key."""
+        """Gets a single tag by key"""
     def GetArrayTag(self, key: str) -> MetadataArrayTag:
-        """Gets an array tag by key."""
+        """Gets an array tag by key"""
     def SetTag(self, tag: MetadataTag) -> None:
-        """Sets a tag."""
+        """Sets a tag"""
     def RemoveTag(self, key: str) -> None:
-        """Removes a tag by key."""
+        """Removes a tag by key"""
     def Merge(self, newTags: Metadata) -> None:
-        """Merges new tags into the metadata."""
+        """Merges new tags into the metadata"""
     def Serialize(self) -> str:
-        """Serializes the metadata."""
+        """Serializes the metadata"""
     def Restore(self, stream: str) -> bool:
-        """Restores metadata from a serialized string."""
+        """Restores metadata from a serialized string"""
     def Dump(self) -> str:
-        """Dumps metadata in human-readable format."""
+        """Dumps metadata in human-readable format"""
     def PutTag(self, key: str, deviceLabel: str, value: str) -> None:
-        """Adds a MetadataSingleTag."""
+        """Adds a MetadataSingleTag"""
     def PutImageTag(self, key: str, value: str) -> None:
-        """Adds an image tag."""
+        """Adds an image tag"""
     def __getitem__(self, arg: str, /) -> str: ...
     def __setitem__(self, arg0: str, arg1: str, /) -> None: ...
     def __delitem__(self, arg: str, /) -> None: ...
 
 class MetadataTag:
     def GetDevice(self) -> str:
-        """Returns the device label."""
+        """Returns the device label"""
     def GetName(self) -> str:
-        """Returns the name of the tag."""
+        """Returns the name of the tag"""
     def GetQualifiedName(self) -> str:
-        """Returns the qualified name."""
+        """Returns the qualified name"""
     def IsReadOnly(self) -> bool:
-        """Checks if the tag is read-only."""
+        """Checks if the tag is read-only"""
     def SetDevice(self, device: str) -> None:
-        """Sets the device label."""
+        """Sets the device label"""
     def SetName(self, name: str) -> None:
-        """Sets the name of the tag."""
+        """Sets the name of the tag"""
     def SetReadOnly(self, readOnly: bool) -> None:
-        """Sets the read-only status."""
+        """Sets the read-only status"""
     def ToSingleTag(self) -> MetadataSingleTag:
-        """Converts to MetadataSingleTag if applicable."""
+        """Converts to MetadataSingleTag if applicable"""
     def ToArrayTag(self) -> MetadataArrayTag:
-        """Converts to MetadataArrayTag if applicable."""
+        """Converts to MetadataArrayTag if applicable"""
     def Clone(self) -> MetadataTag:
-        """Creates a clone of the MetadataTag."""
+        """Creates a clone of the MetadataTag"""
     def Serialize(self) -> str:
-        """Serializes the MetadataTag to a string."""
+        """Serializes the MetadataTag to a string"""
     def Restore(self, stream: str) -> bool:
-        """Restores from a serialized string."""
+        """Restores from a serialized string"""
 
 class MetadataSingleTag(MetadataTag):
     @overload
     def __init__(self) -> None:
-        """Default constructor."""
+        """Default constructor"""
     @overload
     def __init__(self, name: str, device: str, readOnly: bool) -> None:
-        """Parameterized constructor."""
+        """Parameterized constructor"""
     def GetValue(self) -> str:
-        """Returns the value."""
+        """Returns the value"""
     def SetValue(self, val: str) -> None:
-        """Sets the value."""
+        """Sets the value"""
     def ToSingleTag(self) -> MetadataSingleTag:
-        """Returns this object as MetadataSingleTag."""
+        """Returns this object as MetadataSingleTag"""
     def Clone(self) -> MetadataTag:
-        """Clones this tag."""
+        """Clones this tag"""
     def Serialize(self) -> str:
-        """Serializes this tag to a string."""
+        """Serializes this tag to a string"""
     def Restore(self, stream: str) -> bool:
-        """Restores from a serialized string."""
+        """Restores from a serialized string"""
 
 class MetadataArrayTag(MetadataTag):
     @overload
     def __init__(self) -> None:
-        """Default constructor."""
+        """Default constructor"""
     @overload
     def __init__(self, name: str, device: str, readOnly: bool) -> None:
-        """Parameterized constructor."""
+        """Parameterized constructor"""
     def ToArrayTag(self) -> MetadataArrayTag:
-        """Returns this object as MetadataArrayTag."""
+        """Returns this object as MetadataArrayTag"""
     def AddValue(self, val: str) -> None:
-        """Adds a value to the array."""
+        """Adds a value to the array"""
     def SetValue(self, val: str, idx: int) -> None:
-        """Sets a value at a specific index."""
+        """Sets a value at a specific index"""
     def GetValue(self, idx: int) -> str:
-        """Gets a value at a specific index."""
+        """Gets a value at a specific index"""
     def GetSize(self) -> int:
-        """Returns the size of the array."""
+        """Returns the size of the array"""
     def Clone(self) -> MetadataTag:
-        """Clones this tag."""
+        """Clones this tag"""
     def Serialize(self) -> str:
-        """Serializes this tag to a string."""
+        """Serializes this tag to a string"""
     def Restore(self, stream: str) -> bool:
-        """Restores from a serialized string."""
+        """Restores from a serialized string"""
 
 class MMEventCallback:
     """
@@ -425,34 +424,33 @@ class MMEventCallback:
 
     Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore.registerCallback].
     """
-
     def __init__(self) -> None: ...
     def onPropertiesChanged(self) -> None:
-        """Called when properties are changed."""
+        """Called when properties are changed"""
     def onPropertyChanged(self, name: str, propName: str, propValue: str) -> None:
-        """Called when a specific property is changed."""
+        """Called when a specific property is changed"""
     def onChannelGroupChanged(self, newChannelGroupName: str) -> None:
-        """Called when the channel group changes."""
+        """Called when the channel group changes"""
     def onConfigGroupChanged(self, groupName: str, newConfigName: str) -> None:
-        """Called when a configuration group changes."""
+        """Called when a configuration group changes"""
     def onSystemConfigurationLoaded(self) -> None:
-        """Called when the system configuration is loaded."""
+        """Called when the system configuration is loaded"""
     def onPixelSizeChanged(self, newPixelSizeUm: float) -> None:
-        """Called when the pixel size changes."""
+        """Called when the pixel size changes"""
     def onPixelSizeAffineChanged(
         self, v0: float, v1: float, v2: float, v3: float, v4: float, v5: float
     ) -> None:
-        """Called when the pixel size affine transformation changes."""
+        """Called when the pixel size affine transformation changes"""
     def onSLMExposureChanged(self, name: str, newExposure: float) -> None: ...
     def onExposureChanged(self, name: str, newExposure: float) -> None: ...
     def onStagePositionChanged(self, name: str, pos: float) -> None: ...
     def onXYStagePositionChanged(self, name: str, xpos: float, ypos: float) -> None: ...
     def onImageSnapped(self, cameraLabel: str) -> None:
-        """Called when an image is snapped."""
+        """Called when an image is snapped"""
     def onSequenceAcquisitionStarted(self, cameraLabel: str) -> None:
-        """Called when sequence acquisition starts."""
+        """Called when sequence acquisition starts"""
     def onSequenceAcquisitionStopped(self, cameraLabel: str) -> None:
-        """Called when sequence acquisition stops."""
+        """Called when sequence acquisition stops"""
 
 class CMMError(RuntimeError):
     pass
@@ -471,7 +469,6 @@ class CMMCore:
     Additionally, provides some facilities (such as configuration groups) for application
     programming.
     """
-
     def __init__(self) -> None: ...
     def loadSystemConfiguration(self, fileName: object) -> None:
         """Loads a system configuration from a file."""
@@ -761,48 +758,72 @@ class CMMCore:
     def getLastImageMD(
         self,
     ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
-        """Get the last image in the circular buffer, return as tuple of image and metadata."""
+        """
+        Get the last image in the circular buffer, return as tuple of image and metadata
+        """
     @overload
-    def getLastImageMD(self, md: Metadata) -> Annotated[ArrayLike, {"writable": False}]:
-        """Get the last image in the circular buffer, store metadata in the provided object."""
+    def getLastImageMD(
+        self, md: Metadata
+    ) -> Annotated[ArrayLike, {"writable": False}]:
+        """
+        Get the last image in the circular buffer, store metadata in the provided object
+        """
     @overload
     def getLastImageMD(
         self, channel: int, slice: int
     ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
-        """Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata."""
+        """
+        Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata
+        """
     @overload
     def getLastImageMD(
         self, channel: int, slice: int, md: Metadata
     ) -> Annotated[ArrayLike, {"writable": False}]:
-        """Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object."""
+        """
+        Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
+        """
     @overload
     def popNextImageMD(
         self,
     ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
-        """Get the last image in the circular buffer, return as tuple of image and metadata."""
+        """
+        Get the last image in the circular buffer, return as tuple of image and metadata
+        """
     @overload
-    def popNextImageMD(self, md: Metadata) -> Annotated[ArrayLike, {"writable": False}]:
-        """Get the last image in the circular buffer, store metadata in the provided object."""
+    def popNextImageMD(
+        self, md: Metadata
+    ) -> Annotated[ArrayLike, {"writable": False}]:
+        """
+        Get the last image in the circular buffer, store metadata in the provided object
+        """
     @overload
     def popNextImageMD(
         self, channel: int, slice: int
     ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
-        """Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata."""
+        """
+        Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata
+        """
     @overload
     def popNextImageMD(
         self, channel: int, slice: int, md: Metadata
     ) -> Annotated[ArrayLike, {"writable": False}]:
-        """Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object."""
+        """
+        Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
+        """
     @overload
     def getNBeforeLastImageMD(
         self, n: int
     ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
-        """Get the nth image before the last image in the circular buffer and return it as a tuple of image and metadata."""
+        """
+        Get the nth image before the last image in the circular buffer and return it as a tuple of image and metadata
+        """
     @overload
     def getNBeforeLastImageMD(
         self, n: int, md: Metadata
     ) -> Annotated[ArrayLike, {"writable": False}]:
-        """Get the nth image before the last image in the circular buffer and store the metadata in the provided object."""
+        """
+        Get the nth image before the last image in the circular buffer and store the metadata in the provided object
+        """
     def getRemainingImageCount(self) -> int: ...
     def getBufferTotalCapacity(self) -> int: ...
     def getBufferFreeCapacity(self) -> int: ...
