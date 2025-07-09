@@ -1650,6 +1650,5 @@ MMCore will send notifications on internal events using this interface
              "peripheralLabel"_a RGIL)
         .def("getLoadedPeripheralDevices", &CMMCore::getLoadedPeripheralDevices, "hubLabel"_a RGIL)
 
-
         ;
 }
