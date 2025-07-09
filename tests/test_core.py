@@ -389,3 +389,13 @@ def test_camera_roi_change(demo_core: pmn.CMMCore) -> None:
     assert demo_core.getROI() == (0, 0, 512, 512)
     assert not demo_core.isMultiROIEnabled()
     assert not demo_core.isMultiROISupported()
+
+
+def test_feature():
+    """Test the StrictInitializationChecks feature."""
+    feature_name = "StrictInitializationChecks"
+    assert not pmn.CMMCore.isFeatureEnabled(feature_name)
+    pmn.CMMCore.enableFeature(feature_name, True)
+    assert pmn.CMMCore.isFeatureEnabled(feature_name)
+    pmn.CMMCore.enableFeature(feature_name, False)
+    assert not pmn.CMMCore.isFeatureEnabled(feature_name)
