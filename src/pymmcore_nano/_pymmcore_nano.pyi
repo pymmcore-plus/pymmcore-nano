@@ -176,48 +176,6 @@ class DeviceType(enum.IntEnum):
     PressurePumpDevice = 17
     VolumetricPumpDevice = 18
 
-class PropertyType(enum.IntEnum):
-    Undef = 0
-    String = 1
-    Float = 2
-    Integer = 3
-
-class ActionType(enum.IntEnum):
-    NoAction = 0
-    BeforeGet = 1
-    AfterSet = 2
-    IsSequenceable = 3
-    AfterLoadSequence = 4
-    StartSequence = 5
-    StopSequence = 6
-
-class PortType(enum.IntEnum):
-    InvalidPort = 0
-    SerialPort = 1
-    USBPort = 2
-    HIDPort = 3
-
-class FocusDirection(enum.IntEnum):
-    FocusDirectionUnknown = 0
-    FocusDirectionTowardSample = 1
-    FocusDirectionAwayFromSample = 2
-
-class DeviceNotification(enum.IntEnum):
-    Attention = 0
-    Done = 1
-    StatusChanged = 2
-
-class DeviceDetectionStatus(enum.IntEnum):
-    Unimplemented = -2
-    Misconfigured = -1
-    CanNotCommunicate = 0
-    CanCommunicate = 1
-
-class DeviceInitializationState(enum.IntEnum):
-    Uninitialized = 0
-    InitializedSuccessfully = 1
-    InitializationFailed = 2
-
 UnknownType: int = 0
 AnyType: int = 1
 CameraDevice: int = 2
@@ -235,10 +193,29 @@ MagnifierDevice: int = 13
 SLMDevice: int = 14
 HubDevice: int = 15
 GalvoDevice: int = 16
+PressurePumpDevice: int = 17
+VolumetricPumpDevice: int = 18
+
+class PropertyType(enum.IntEnum):
+    Undef = 0
+    String = 1
+    Float = 2
+    Integer = 3
+
 Undef: int = 0
 String: int = 1
 Float: int = 2
 Integer: int = 3
+
+class ActionType(enum.IntEnum):
+    NoAction = 0
+    BeforeGet = 1
+    AfterSet = 2
+    IsSequenceable = 3
+    AfterLoadSequence = 4
+    StartSequence = 5
+    StopSequence = 6
+
 NoAction: int = 0
 BeforeGet: int = 1
 AfterSet: int = 2
@@ -246,20 +223,52 @@ IsSequenceable: int = 3
 AfterLoadSequence: int = 4
 StartSequence: int = 5
 StopSequence: int = 6
+
+class PortType(enum.IntEnum):
+    InvalidPort = 0
+    SerialPort = 1
+    USBPort = 2
+    HIDPort = 3
+
 InvalidPort: int = 0
 SerialPort: int = 1
 USBPort: int = 2
 HIDPort: int = 3
+
+class FocusDirection(enum.IntEnum):
+    FocusDirectionUnknown = 0
+    FocusDirectionTowardSample = 1
+    FocusDirectionAwayFromSample = 2
+
 FocusDirectionUnknown: int = 0
 FocusDirectionTowardSample: int = 1
 FocusDirectionAwayFromSample: int = 2
+
+class DeviceNotification(enum.IntEnum):
+    Attention = 0
+    Done = 1
+    StatusChanged = 2
+
 Attention: int = 0
 Done: int = 1
 StatusChanged: int = 2
+
+class DeviceDetectionStatus(enum.IntEnum):
+    Unimplemented = -2
+    Misconfigured = -1
+    CanNotCommunicate = 0
+    CanCommunicate = 1
+
 Unimplemented: int = -2
 Misconfigured: int = -1
 CanNotCommunicate: int = 0
 CanCommunicate: int = 1
+
+class DeviceInitializationState(enum.IntEnum):
+    Uninitialized = 0
+    InitializedSuccessfully = 1
+    InitializationFailed = 2
+
 Uninitialized: int = 0
 InitializedSuccessfully: int = 1
 InitializationFailed: int = 2
