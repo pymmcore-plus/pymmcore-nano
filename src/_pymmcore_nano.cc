@@ -14,7 +14,7 @@ namespace nb = nanobind;
 
 using namespace nb::literals;
 
-const std::string PYMMCORE_NANO_VERSION = "1";
+const std::string PYMMCORE_NANO_VERSION = "2";
 
 ///////////////// GIL_MACROS ///////////////////
 
@@ -301,6 +301,11 @@ NB_MODULE(_pymmcore_nano, m) {
                             std::to_string(CMMCore::getMMDeviceDeviceInterfaceVersion()) + "." +
                             PYMMCORE_NANO_VERSION;
 
+#ifdef MATCH_SWIG
+    m.attr("_MATCH_SWIG") = 1;
+#else
+    m.attr("_MATCH_SWIG") = 0;
+#endif
     m.attr("MM_CODE_OK") = MM_CODE_OK;
     m.attr("MM_CODE_ERR") = MM_CODE_ERR;
     m.attr("DEVICE_OK") = DEVICE_OK;
@@ -449,136 +454,112 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_CFGGroup_System_Shutdown") = MM::g_CFGGroup_System_Shutdown;
     m.attr("g_CFGGroup_PixelSizeUm") = MM::g_CFGGroup_PixelSizeUm;
 
-    /////////////////// Enums ///////////////////
+/////////////////// Enums ///////////////////
 
-    nb::enum_<MM::DeviceType>(m, "DeviceType", nb::is_arithmetic())
-        .value("UnknownType", MM::DeviceType::UnknownType)
-        .value("AnyType", MM::DeviceType::AnyType)
-        .value("CameraDevice", MM::DeviceType::CameraDevice)
-        .value("ShutterDevice", MM::DeviceType::ShutterDevice)
-        .value("StateDevice", MM::DeviceType::StateDevice)
-        .value("StageDevice", MM::DeviceType::StageDevice)
-        .value("XYStageDevice", MM::DeviceType::XYStageDevice)
-        .value("SerialDevice", MM::DeviceType::SerialDevice)
-        .value("GenericDevice", MM::DeviceType::GenericDevice)
-        .value("AutoFocusDevice", MM::DeviceType::AutoFocusDevice)
-        .value("CoreDevice", MM::DeviceType::CoreDevice)
-        .value("ImageProcessorDevice", MM::DeviceType::ImageProcessorDevice)
-        .value("SignalIODevice", MM::DeviceType::SignalIODevice)
-        .value("MagnifierDevice", MM::DeviceType::MagnifierDevice)
-        .value("SLMDevice", MM::DeviceType::SLMDevice)
-        .value("HubDevice", MM::DeviceType::HubDevice)
-        .value("GalvoDevice", MM::DeviceType::GalvoDevice)
-        .value("PressurePumpDevice", MM::DeviceType::PressurePumpDevice)
-        .value("VolumetricPumpDevice", MM::DeviceType::VolumetricPumpDevice);
-
-    nb::enum_<MM::PropertyType>(m, "PropertyType", nb::is_arithmetic())
-        .value("Undef", MM::PropertyType::Undef)
-        .value("String", MM::PropertyType::String)
-        .value("Float", MM::PropertyType::Float)
-        .value("Integer", MM::PropertyType::Integer);
-
-    nb::enum_<MM::ActionType>(m, "ActionType", nb::is_arithmetic())
-        .value("NoAction", MM::ActionType::NoAction)
-        .value("BeforeGet", MM::ActionType::BeforeGet)
-        .value("AfterSet", MM::ActionType::AfterSet)
-        .value("IsSequenceable", MM::ActionType::IsSequenceable)
-        .value("AfterLoadSequence", MM::ActionType::AfterLoadSequence)
-        .value("StartSequence", MM::ActionType::StartSequence)
-        .value("StopSequence", MM::ActionType::StopSequence);
-
-    nb::enum_<MM::PortType>(m, "PortType", nb::is_arithmetic())
-        .value("InvalidPort", MM::PortType::InvalidPort)
-        .value("SerialPort", MM::PortType::SerialPort)
-        .value("USBPort", MM::PortType::USBPort)
-        .value("HIDPort", MM::PortType::HIDPort);
-
-    nb::enum_<MM::FocusDirection>(m, "FocusDirection", nb::is_arithmetic())
-        .value("FocusDirectionUnknown", MM::FocusDirection::FocusDirectionUnknown)
-        .value("FocusDirectionTowardSample", MM::FocusDirection::FocusDirectionTowardSample)
-        .value("FocusDirectionAwayFromSample",
-               MM::FocusDirection::FocusDirectionAwayFromSample);
-
-    nb::enum_<MM::DeviceNotification>(m, "DeviceNotification", nb::is_arithmetic())
-        .value("Attention", MM::DeviceNotification::Attention)
-        .value("Done", MM::DeviceNotification::Done)
-        .value("StatusChanged", MM::DeviceNotification::StatusChanged);
-
-    nb::enum_<MM::DeviceDetectionStatus>(m, "DeviceDetectionStatus", nb::is_arithmetic())
-        .value("Unimplemented", MM::DeviceDetectionStatus::Unimplemented)
-        .value("Misconfigured", MM::DeviceDetectionStatus::Misconfigured)
-        .value("CanNotCommunicate", MM::DeviceDetectionStatus::CanNotCommunicate)
-        .value("CanCommunicate", MM::DeviceDetectionStatus::CanCommunicate);
-
-    nb::enum_<DeviceInitializationState>(m, "DeviceInitializationState", nb::is_arithmetic())
-        .value("Uninitialized", DeviceInitializationState::Uninitialized)
-        .value("InitializedSuccessfully", DeviceInitializationState::InitializedSuccessfully)
-        .value("InitializationFailed", DeviceInitializationState::InitializationFailed);
-
-// the SWIG wrapper doesn't create enums, it puts them all in the top level
-// so for backwards compatibility we define them here as well
+// Helper macro for SWIG compatibility attributes
 #ifdef MATCH_SWIG
-
-    m.attr("UnknownType") = static_cast<int>(MM::DeviceType::UnknownType);
-    m.attr("AnyType") = static_cast<int>(MM::DeviceType::AnyType);
-    m.attr("CameraDevice") = static_cast<int>(MM::DeviceType::CameraDevice);
-    m.attr("ShutterDevice") = static_cast<int>(MM::DeviceType::ShutterDevice);
-    m.attr("StateDevice") = static_cast<int>(MM::DeviceType::StateDevice);
-    m.attr("StageDevice") = static_cast<int>(MM::DeviceType::StageDevice);
-    m.attr("XYStageDevice") = static_cast<int>(MM::DeviceType::XYStageDevice);
-    m.attr("SerialDevice") = static_cast<int>(MM::DeviceType::SerialDevice);
-    m.attr("GenericDevice") = static_cast<int>(MM::DeviceType::GenericDevice);
-    m.attr("AutoFocusDevice") = static_cast<int>(MM::DeviceType::AutoFocusDevice);
-    m.attr("CoreDevice") = static_cast<int>(MM::DeviceType::CoreDevice);
-    m.attr("ImageProcessorDevice") = static_cast<int>(MM::DeviceType::ImageProcessorDevice);
-    m.attr("SignalIODevice") = static_cast<int>(MM::DeviceType::SignalIODevice);
-    m.attr("MagnifierDevice") = static_cast<int>(MM::DeviceType::MagnifierDevice);
-    m.attr("SLMDevice") = static_cast<int>(MM::DeviceType::SLMDevice);
-    m.attr("HubDevice") = static_cast<int>(MM::DeviceType::HubDevice);
-    m.attr("GalvoDevice") = static_cast<int>(MM::DeviceType::GalvoDevice);
-
-    m.attr("Undef") = static_cast<int>(MM::PropertyType::Undef);
-    m.attr("String") = static_cast<int>(MM::PropertyType::String);
-    m.attr("Float") = static_cast<int>(MM::PropertyType::Float);
-    m.attr("Integer") = static_cast<int>(MM::PropertyType::Integer);
-
-    m.attr("NoAction") = static_cast<int>(MM::ActionType::NoAction);
-    m.attr("BeforeGet") = static_cast<int>(MM::ActionType::BeforeGet);
-    m.attr("AfterSet") = static_cast<int>(MM::ActionType::AfterSet);
-    m.attr("IsSequenceable") = static_cast<int>(MM::ActionType::IsSequenceable);
-    m.attr("AfterLoadSequence") = static_cast<int>(MM::ActionType::AfterLoadSequence);
-    m.attr("StartSequence") = static_cast<int>(MM::ActionType::StartSequence);
-    m.attr("StopSequence") = static_cast<int>(MM::ActionType::StopSequence);
-
-    m.attr("InvalidPort") = static_cast<int>(MM::PortType::InvalidPort);
-    m.attr("SerialPort") = static_cast<int>(MM::PortType::SerialPort);
-    m.attr("USBPort") = static_cast<int>(MM::PortType::USBPort);
-    m.attr("HIDPort") = static_cast<int>(MM::PortType::HIDPort);
-
-    m.attr("FocusDirectionUnknown") =
-        static_cast<int>(MM::FocusDirection::FocusDirectionUnknown);
-    m.attr("FocusDirectionTowardSample") =
-        static_cast<int>(MM::FocusDirection::FocusDirectionTowardSample);
-    m.attr("FocusDirectionAwayFromSample") =
-        static_cast<int>(MM::FocusDirection::FocusDirectionAwayFromSample);
-
-    m.attr("Attention") = static_cast<int>(MM::DeviceNotification::Attention);
-    m.attr("Done") = static_cast<int>(MM::DeviceNotification::Done);
-    m.attr("StatusChanged") = static_cast<int>(MM::DeviceNotification::StatusChanged);
-
-    m.attr("Unimplemented") = static_cast<int>(MM::DeviceDetectionStatus::Unimplemented);
-    m.attr("Misconfigured") = static_cast<int>(MM::DeviceDetectionStatus::Misconfigured);
-    m.attr("CanNotCommunicate") =
-        static_cast<int>(MM::DeviceDetectionStatus::CanNotCommunicate);
-    m.attr("CanCommunicate") = static_cast<int>(MM::DeviceDetectionStatus::CanCommunicate);
-
-    m.attr("Uninitialized") = static_cast<int>(DeviceInitializationState::Uninitialized);
-    m.attr("InitializedSuccessfully") =
-        static_cast<int>(DeviceInitializationState::InitializedSuccessfully);
-    m.attr("InitializationFailed") =
-        static_cast<int>(DeviceInitializationState::InitializationFailed);
-
+#define SWIG_COMPAT_ATTR(name, value) m.attr(name) = static_cast<int>(value);
+#else
+#define SWIG_COMPAT_ATTR(name, value)
 #endif
+
+// Macro that binds an enum value and optionally creates module attribute for SWIG compatibility
+#define BIND_ENUM_VALUE(enum_obj, name, enum_value)                                            \
+    enum_obj.value(name, enum_value);                                                          \
+    SWIG_COMPAT_ATTR(name, enum_value)
+
+    // DeviceType enum
+    auto device_type_enum = nb::enum_<MM::DeviceType>(m, "DeviceType", nb::is_arithmetic());
+    BIND_ENUM_VALUE(device_type_enum, "UnknownType", MM::DeviceType::UnknownType)
+    BIND_ENUM_VALUE(device_type_enum, "AnyType", MM::DeviceType::AnyType)
+    BIND_ENUM_VALUE(device_type_enum, "CameraDevice", MM::DeviceType::CameraDevice)
+    BIND_ENUM_VALUE(device_type_enum, "ShutterDevice", MM::DeviceType::ShutterDevice)
+    BIND_ENUM_VALUE(device_type_enum, "StateDevice", MM::DeviceType::StateDevice)
+    BIND_ENUM_VALUE(device_type_enum, "StageDevice", MM::DeviceType::StageDevice)
+    BIND_ENUM_VALUE(device_type_enum, "XYStageDevice", MM::DeviceType::XYStageDevice)
+    BIND_ENUM_VALUE(device_type_enum, "SerialDevice", MM::DeviceType::SerialDevice)
+    BIND_ENUM_VALUE(device_type_enum, "GenericDevice", MM::DeviceType::GenericDevice)
+    BIND_ENUM_VALUE(device_type_enum, "AutoFocusDevice", MM::DeviceType::AutoFocusDevice)
+    BIND_ENUM_VALUE(device_type_enum, "CoreDevice", MM::DeviceType::CoreDevice)
+    BIND_ENUM_VALUE(device_type_enum, "ImageProcessorDevice",
+                    MM::DeviceType::ImageProcessorDevice)
+    BIND_ENUM_VALUE(device_type_enum, "SignalIODevice", MM::DeviceType::SignalIODevice)
+    BIND_ENUM_VALUE(device_type_enum, "MagnifierDevice", MM::DeviceType::MagnifierDevice)
+    BIND_ENUM_VALUE(device_type_enum, "SLMDevice", MM::DeviceType::SLMDevice)
+    BIND_ENUM_VALUE(device_type_enum, "HubDevice", MM::DeviceType::HubDevice)
+    BIND_ENUM_VALUE(device_type_enum, "GalvoDevice", MM::DeviceType::GalvoDevice)
+    BIND_ENUM_VALUE(device_type_enum, "PressurePumpDevice", MM::DeviceType::PressurePumpDevice)
+    BIND_ENUM_VALUE(device_type_enum, "VolumetricPumpDevice",
+                    MM::DeviceType::VolumetricPumpDevice)
+
+    // PropertyType enum
+    auto property_type_enum =
+        nb::enum_<MM::PropertyType>(m, "PropertyType", nb::is_arithmetic());
+    BIND_ENUM_VALUE(property_type_enum, "Undef", MM::PropertyType::Undef)
+    BIND_ENUM_VALUE(property_type_enum, "String", MM::PropertyType::String)
+    BIND_ENUM_VALUE(property_type_enum, "Float", MM::PropertyType::Float)
+    BIND_ENUM_VALUE(property_type_enum, "Integer", MM::PropertyType::Integer)
+
+    // ActionType enum
+    auto action_type_enum = nb::enum_<MM::ActionType>(m, "ActionType", nb::is_arithmetic());
+    BIND_ENUM_VALUE(action_type_enum, "NoAction", MM::ActionType::NoAction)
+    BIND_ENUM_VALUE(action_type_enum, "BeforeGet", MM::ActionType::BeforeGet)
+    BIND_ENUM_VALUE(action_type_enum, "AfterSet", MM::ActionType::AfterSet)
+    BIND_ENUM_VALUE(action_type_enum, "IsSequenceable", MM::ActionType::IsSequenceable)
+    BIND_ENUM_VALUE(action_type_enum, "AfterLoadSequence", MM::ActionType::AfterLoadSequence)
+    BIND_ENUM_VALUE(action_type_enum, "StartSequence", MM::ActionType::StartSequence)
+    BIND_ENUM_VALUE(action_type_enum, "StopSequence", MM::ActionType::StopSequence)
+
+    // PortType enum
+    auto port_type_enum = nb::enum_<MM::PortType>(m, "PortType", nb::is_arithmetic());
+    BIND_ENUM_VALUE(port_type_enum, "InvalidPort", MM::PortType::InvalidPort)
+    BIND_ENUM_VALUE(port_type_enum, "SerialPort", MM::PortType::SerialPort)
+    BIND_ENUM_VALUE(port_type_enum, "USBPort", MM::PortType::USBPort)
+    BIND_ENUM_VALUE(port_type_enum, "HIDPort", MM::PortType::HIDPort)
+
+    // FocusDirection enum
+    auto focus_direction_enum =
+        nb::enum_<MM::FocusDirection>(m, "FocusDirection", nb::is_arithmetic());
+    BIND_ENUM_VALUE(focus_direction_enum, "FocusDirectionUnknown",
+                    MM::FocusDirection::FocusDirectionUnknown)
+    BIND_ENUM_VALUE(focus_direction_enum, "FocusDirectionTowardSample",
+                    MM::FocusDirection::FocusDirectionTowardSample)
+    BIND_ENUM_VALUE(focus_direction_enum, "FocusDirectionAwayFromSample",
+                    MM::FocusDirection::FocusDirectionAwayFromSample)
+
+    // DeviceNotification enum
+    auto device_notification_enum =
+        nb::enum_<MM::DeviceNotification>(m, "DeviceNotification", nb::is_arithmetic());
+    BIND_ENUM_VALUE(device_notification_enum, "Attention", MM::DeviceNotification::Attention)
+    BIND_ENUM_VALUE(device_notification_enum, "Done", MM::DeviceNotification::Done)
+    BIND_ENUM_VALUE(device_notification_enum, "StatusChanged",
+                    MM::DeviceNotification::StatusChanged)
+
+    // DeviceDetectionStatus enum
+    auto device_detection_status_enum =
+        nb::enum_<MM::DeviceDetectionStatus>(m, "DeviceDetectionStatus", nb::is_arithmetic());
+    BIND_ENUM_VALUE(device_detection_status_enum, "Unimplemented",
+                    MM::DeviceDetectionStatus::Unimplemented)
+    BIND_ENUM_VALUE(device_detection_status_enum, "Misconfigured",
+                    MM::DeviceDetectionStatus::Misconfigured)
+    BIND_ENUM_VALUE(device_detection_status_enum, "CanNotCommunicate",
+                    MM::DeviceDetectionStatus::CanNotCommunicate)
+    BIND_ENUM_VALUE(device_detection_status_enum, "CanCommunicate",
+                    MM::DeviceDetectionStatus::CanCommunicate)
+
+    // DeviceInitializationState enum
+    auto device_initialization_state_enum = nb::enum_<DeviceInitializationState>(
+        m, "DeviceInitializationState", nb::is_arithmetic());
+    BIND_ENUM_VALUE(device_initialization_state_enum, "Uninitialized",
+                    DeviceInitializationState::Uninitialized)
+    BIND_ENUM_VALUE(device_initialization_state_enum, "InitializedSuccessfully",
+                    DeviceInitializationState::InitializedSuccessfully)
+    BIND_ENUM_VALUE(device_initialization_state_enum, "InitializationFailed",
+                    DeviceInitializationState::InitializationFailed)
+
+// Clean up the macros
+#undef BIND_ENUM_VALUE
+#undef SWIG_COMPAT_ATTR
 
     //////////////////// Supporting classes ////////////////////
 
