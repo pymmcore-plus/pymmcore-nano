@@ -1,165 +1,63 @@
 """Tests focused on AutoFocus Device functionality to increase MMCore.cpp coverage."""
 
-import time
-
 import pymmcore_nano as pmn
 
-
-def test_autofocus_device_assignment(demo_core: pmn.CMMCore) -> None:
-    """Test autofocus device assignment functions."""
-    # Test getting current autofocus assignment
-    current_af = demo_core.getAutoFocusDevice()
-    assert current_af == "Autofocus"
-
-    # Test setting autofocus device assignment
-    demo_core.setAutoFocusDevice("Autofocus")
-    assert demo_core.getAutoFocusDevice() == "Autofocus"
+AF_DEVICE = "Autofocus"
+STAGE_DEVICE = "Z"
 
 
 def test_autofocus_basic_operations(demo_core: pmn.CMMCore) -> None:
     """Test basic autofocus operations."""
-    device = "Autofocus"
 
-    # Test device type
-    dev_type = demo_core.getDeviceType(device)
-    assert dev_type == pmn.DeviceType.AutoFocusDevice
+    assert demo_core.getAutoFocusDevice() == AF_DEVICE
+    assert isinstance(demo_core.isContinuousFocusDrive(STAGE_DEVICE), bool)
 
-    # Test device busy status
-    is_busy = demo_core.deviceBusy(device)
-    assert isinstance(is_busy, bool)
+    demo_core.setAutoFocusDevice(AF_DEVICE)
+    assert demo_core.getAutoFocusDevice() == AF_DEVICE
 
-    # Test waiting for device
-    demo_core.waitForDevice(device)
-    assert not demo_core.deviceBusy(device)
+    assert demo_core.getDeviceType(AF_DEVICE) == pmn.DeviceType.AutoFocusDevice
+    assert isinstance(demo_core.deviceBusy(AF_DEVICE), bool)
+    demo_core.waitForDevice(AF_DEVICE)
+    assert not demo_core.deviceBusy(AF_DEVICE)
 
-
-def test_focus_score_operations(demo_core: pmn.CMMCore) -> None:
-    """Test focus score related operations."""
-    # Test getting current focus score
-    current_score = demo_core.getCurrentFocusScore()
-    assert isinstance(current_score, float)
-
-    # Test getting last focus score
-    last_score = demo_core.getLastFocusScore()
-    assert isinstance(last_score, float)
+    assert isinstance(demo_core.getCurrentFocusScore(), float)
+    assert isinstance(demo_core.getLastFocusScore(), float)
 
 
 def test_continuous_focus_operations(demo_core: pmn.CMMCore) -> None:
     """Test continuous focus operations."""
-    # Test getting continuous focus enabled state
+
     initial_state = demo_core.isContinuousFocusEnabled()
-    assert isinstance(initial_state, bool)
+    assert initial_state is False
 
-    # Test enabling continuous focus
     demo_core.enableContinuousFocus(True)
-    # Note: demo device might not actually support continuous focus
-    # so we just test that the call doesn't crash
-
-    # Test disabling continuous focus
+    assert demo_core.isContinuousFocusEnabled() is True
     demo_core.enableContinuousFocus(False)
+    assert demo_core.isContinuousFocusEnabled() is False
 
-    # Test getting continuous focus locked state
-    locked_state = demo_core.isContinuousFocusLocked()
-    assert isinstance(locked_state, bool)
+    assert demo_core.isContinuousFocusLocked() is False
 
+    assert round(demo_core.getAutoFocusOffset(), 4) == 0
 
-def test_autofocus_offset_operations(demo_core: pmn.CMMCore) -> None:
-    """Test autofocus offset operations."""
-    # Test getting current offset
-    initial_offset = demo_core.getAutoFocusOffset()
-    assert isinstance(initial_offset, float)
-
-    # Test setting autofocus offset
-    test_offset = 5.0
+    test_offset = 100.0
     demo_core.setAutoFocusOffset(test_offset)
-
-    # Verify offset was set
-    current_offset = demo_core.getAutoFocusOffset()
-    # Demo device might not actually store the offset, so just check type
-    assert isinstance(current_offset, float)
-
-    # Restore original offset
-    demo_core.setAutoFocusOffset(initial_offset)
-
-
-def test_focus_drive_detection(demo_core: pmn.CMMCore) -> None:
-    """Test continuous focus drive detection."""
-    stage = "Z"
-
-    # Test if stage can be used as continuous focus drive
-    is_drive = demo_core.isContinuousFocusDrive(stage)
-    assert isinstance(is_drive, bool)
-
-
-def test_autofocus_execution(demo_core: pmn.CMMCore) -> None:
-    """Test autofocus execution functions."""
-    # These might take some time or not be fully implemented in demo device
-
-    # Test full focus - this might be a no-op in demo device
-    try:
-        demo_core.fullFocus()
-        # Wait a bit for operation to complete
-        time.sleep(0.1)
-        demo_core.waitForDevice("Autofocus")
-    except pmn.CMMError:
-        # Demo device might not support full focus
-        pass
-
-    # Test incremental focus - this might be a no-op in demo device
-    try:
-        demo_core.incrementalFocus()
-        # Wait a bit for operation to complete
-        time.sleep(0.1)
-        demo_core.waitForDevice("Autofocus")
-    except pmn.CMMError:
-        # Demo device might not support incremental focus
-        pass
+    demo_core.fullFocus()
+    demo_core.incrementalFocus()
+    demo_core.waitForDevice(AF_DEVICE)
+    assert demo_core.getAutoFocusOffset() == test_offset
 
 
 def test_autofocus_device_properties(demo_core: pmn.CMMCore) -> None:
     """Test autofocus device properties."""
-    device = "Autofocus"
 
-    # Test getting property names
-    prop_names = demo_core.getDevicePropertyNames(device)
-    assert isinstance(prop_names, list)
+    for prop_name in demo_core.getDevicePropertyNames(AF_DEVICE):
+        assert demo_core.hasProperty(AF_DEVICE, prop_name)
 
-    # Test getting and setting properties if any exist
-    for prop_name in prop_names:
-        # Test if property exists
-        assert demo_core.hasProperty(device, prop_name)
-
-        # Test getting property value
-        prop_value = demo_core.getProperty(device, prop_name)
+        prop_value = demo_core.getProperty(AF_DEVICE, prop_name)
         assert isinstance(prop_value, str)
 
-        # Test if property is read-only
-        is_readonly = demo_core.isPropertyReadOnly(device, prop_name)
+        is_readonly = demo_core.isPropertyReadOnly(AF_DEVICE, prop_name)
         assert isinstance(is_readonly, bool)
 
-        # If not read-only, test setting the same value back
         if not is_readonly:
-            demo_core.setProperty(device, prop_name, prop_value)
-
-
-def test_autofocus_combined_with_stage(demo_core: pmn.CMMCore) -> None:
-    """Test autofocus operations combined with stage movement."""
-    stage = "Z"
-
-    # Move stage to a known position
-    initial_pos = demo_core.getPosition(stage)
-    demo_core.setPosition(stage, 100.0)
-
-    # Get focus scores at different positions
-    score1 = demo_core.getCurrentFocusScore()
-
-    # Move stage slightly
-    demo_core.setPosition(stage, 105.0)
-    score2 = demo_core.getCurrentFocusScore()
-
-    # Both scores should be valid numbers
-    assert isinstance(score1, float)
-    assert isinstance(score2, float)
-
-    # Restore original position
-    demo_core.setPosition(stage, initial_pos)
+            demo_core.setProperty(AF_DEVICE, prop_name, prop_value)
