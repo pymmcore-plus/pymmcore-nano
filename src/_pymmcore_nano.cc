@@ -14,7 +14,7 @@ namespace nb = nanobind;
 
 using namespace nb::literals;
 
-const std::string PYMMCORE_NANO_VERSION = "1";
+const std::string PYMMCORE_NANO_VERSION = "2";
 
 ///////////////// GIL_MACROS ///////////////////
 
@@ -301,7 +301,11 @@ NB_MODULE(_pymmcore_nano, m) {
                             std::to_string(CMMCore::getMMDeviceDeviceInterfaceVersion()) + "." +
                             PYMMCORE_NANO_VERSION;
 
-    m.attr("_MATCH_SWIG") = MATCH_SWIG;
+#ifdef MATCH_SWIG
+    m.attr("_MATCH_SWIG") = 1;
+#else
+    m.attr("_MATCH_SWIG") = 0;
+#endif
     m.attr("MM_CODE_OK") = MM_CODE_OK;
     m.attr("MM_CODE_ERR") = MM_CODE_ERR;
     m.attr("DEVICE_OK") = DEVICE_OK;
