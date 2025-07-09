@@ -217,7 +217,7 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
 class PyMMEventCallback : public MMEventCallback {
   public:
     NB_TRAMPOLINE(MMEventCallback,
-                  11); // Total number of overridable virtual methods.
+                  14); // Total number of overridable virtual methods.
 
     void onPropertiesChanged() override { NB_OVERRIDE(onPropertiesChanged); }
 
@@ -259,6 +259,18 @@ class PyMMEventCallback : public MMEventCallback {
 
     void onSLMExposureChanged(const char *name, double newExposure) override {
         NB_OVERRIDE(onSLMExposureChanged, name, newExposure);
+    }
+
+    void onImageSnapped(const char *cameraLabel) override {
+        NB_OVERRIDE(onImageSnapped, cameraLabel);
+    }
+
+    void onSequenceAcquisitionStarted(const char *cameraLabel) override {
+        NB_OVERRIDE(onSequenceAcquisitionStarted, cameraLabel);
+    }
+
+    void onSequenceAcquisitionStopped(const char *cameraLabel) override {
+        NB_OVERRIDE(onSequenceAcquisitionStopped, cameraLabel);
     }
 };
 
@@ -334,6 +346,7 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("DEVICE_SEQUENCE_TOO_LARGE") = DEVICE_SEQUENCE_TOO_LARGE;
     m.attr("DEVICE_OUT_OF_MEMORY") = DEVICE_OUT_OF_MEMORY;
     m.attr("DEVICE_NOT_YET_IMPLEMENTED") = DEVICE_NOT_YET_IMPLEMENTED;
+    m.attr("DEVICE_PUMP_IS_RUNNING") = DEVICE_PUMP_IS_RUNNING;
 
     m.attr("g_Keyword_Name") = MM::g_Keyword_Name;
     m.attr("g_Keyword_Description") = MM::g_Keyword_Description;
@@ -381,6 +394,8 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_Keyword_CoreImageProcessor") = MM::g_Keyword_CoreImageProcessor;
     m.attr("g_Keyword_CoreSLM") = MM::g_Keyword_CoreSLM;
     m.attr("g_Keyword_CoreGalvo") = MM::g_Keyword_CoreGalvo;
+    m.attr("g_Keyword_CorePressurePump") = MM::g_Keyword_CorePressurePump;
+    m.attr("g_Keyword_CoreVolumetricPump") = MM::g_Keyword_CoreVolumetricPump;
     m.attr("g_Keyword_CoreTimeoutMs") = MM::g_Keyword_CoreTimeoutMs;
     m.attr("g_Keyword_Channel") = MM::g_Keyword_Channel;
     m.attr("g_Keyword_Version") = MM::g_Keyword_Version;
@@ -391,6 +406,18 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_Keyword_Transpose_Correction") = MM::g_Keyword_Transpose_Correction;
     m.attr("g_Keyword_Closed_Position") = MM::g_Keyword_Closed_Position;
     m.attr("g_Keyword_HubID") = MM::g_Keyword_HubID;
+    m.attr("g_Keyword_PixelType_GRAY8") = MM::g_Keyword_PixelType_GRAY8;
+    m.attr("g_Keyword_PixelType_GRAY16") = MM::g_Keyword_PixelType_GRAY16;
+    m.attr("g_Keyword_PixelType_GRAY32") = MM::g_Keyword_PixelType_GRAY32;
+    m.attr("g_Keyword_PixelType_RGB32") = MM::g_Keyword_PixelType_RGB32;
+    m.attr("g_Keyword_PixelType_RGB64") = MM::g_Keyword_PixelType_RGB64;
+    m.attr("g_Keyword_PixelType_Unknown") = MM::g_Keyword_PixelType_Unknown;
+    m.attr("g_Keyword_Current_Volume") = MM::g_Keyword_Current_Volume;
+    m.attr("g_Keyword_Min_Volume") = MM::g_Keyword_Min_Volume;
+    m.attr("g_Keyword_Max_Volume") = MM::g_Keyword_Max_Volume;
+    m.attr("g_Keyword_Flowrate") = MM::g_Keyword_Flowrate;
+    m.attr("g_Keyword_Pressure_Imposed") = MM::g_Keyword_Pressure_Imposed;
+    m.attr("g_Keyword_Pressure_Measured") = MM::g_Keyword_Pressure_Measured;
     m.attr("g_Keyword_Metadata_CameraLabel") = MM::g_Keyword_Metadata_CameraLabel;
     m.attr("g_Keyword_Metadata_Exposure") = MM::g_Keyword_Metadata_Exposure;
     m.attr("g_Keyword_Metadata_Height") = MM::g_Keyword_Metadata_Height;
@@ -412,6 +439,9 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_CFGCommand_ConfigPixelSize") = MM::g_CFGCommand_ConfigPixelSize;
     m.attr("g_CFGCommand_PixelSize_um") = MM::g_CFGCommand_PixelSize_um;
     m.attr("g_CFGCommand_PixelSizeAffine") = MM::g_CFGCommand_PixelSizeAffine;
+    m.attr("g_CFGCommand_PixelSizedxdz") = MM::g_CFGCommand_PixelSizedxdz;
+    m.attr("g_CFGCommand_PixelSizedydz") = MM::g_CFGCommand_PixelSizedydz;
+    m.attr("g_CFGCommand_PixelSizeOptimalZUm") = MM::g_CFGCommand_PixelSizeOptimalZUm;
     m.attr("g_CFGCommand_ParentID") = MM::g_CFGCommand_ParentID;
     m.attr("g_CFGCommand_FocusDirection") = MM::g_CFGCommand_FocusDirection;
     m.attr("g_CFGGroup_System") = MM::g_CFGGroup_System;
@@ -438,7 +468,9 @@ NB_MODULE(_pymmcore_nano, m) {
         .value("MagnifierDevice", MM::DeviceType::MagnifierDevice)
         .value("SLMDevice", MM::DeviceType::SLMDevice)
         .value("HubDevice", MM::DeviceType::HubDevice)
-        .value("GalvoDevice", MM::DeviceType::GalvoDevice);
+        .value("GalvoDevice", MM::DeviceType::GalvoDevice)
+        .value("PressurePumpDevice", MM::DeviceType::PressurePumpDevice)
+        .value("VolumetricPumpDevice", MM::DeviceType::VolumetricPumpDevice);
 
     nb::enum_<MM::PropertyType>(m, "PropertyType", nb::is_arithmetic())
         .value("Undef", MM::PropertyType::Undef)
@@ -757,7 +789,25 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
             [&](MMEventCallback &self, const std::string &name, double xpos, double ypos) {
                 self.onXYStagePositionChanged(const_cast<char *>(name.c_str()), xpos, ypos);
             },
-            "name"_a, "xpos"_a, "ypos"_a);
+            "name"_a, "xpos"_a, "ypos"_a)
+        .def(
+            "onImageSnapped",
+            [&](MMEventCallback &self, const std::string &cameraLabel) {
+                self.onImageSnapped(const_cast<char *>(cameraLabel.c_str()));
+            },
+            "cameraLabel"_a, "Called when an image is snapped")
+        .def(
+            "onSequenceAcquisitionStarted",
+            [&](MMEventCallback &self, const std::string &cameraLabel) {
+                self.onSequenceAcquisitionStarted(const_cast<char *>(cameraLabel.c_str()));
+            },
+            "cameraLabel"_a, "Called when sequence acquisition starts")
+        .def(
+            "onSequenceAcquisitionStopped",
+            [&](MMEventCallback &self, const std::string &cameraLabel) {
+                self.onSequenceAcquisitionStopped(const_cast<char *>(cameraLabel.c_str()));
+            },
+            "cameraLabel"_a, "Called when sequence acquisition stops");
 
     //////////////////// Exceptions ////////////////////
 
@@ -794,6 +844,11 @@ programming.
         .def("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a RGIL)
         .def_static("enableFeature", &CMMCore::enableFeature, "name"_a, "enable"_a RGIL)
         .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a RGIL)
+        .def_static("getMMCoreVersionMajor", &CMMCore::getMMCoreVersionMajor RGIL)
+        .def_static("getMMCoreVersionMinor", &CMMCore::getMMCoreVersionMinor RGIL)
+        .def_static("getMMCoreVersionPatch", &CMMCore::getMMCoreVersionPatch RGIL)
+        .def_static("getMMDeviceModuleInterfaceVersion", &CMMCore::getMMDeviceModuleInterfaceVersion RGIL)
+        .def_static("getMMDeviceDeviceInterfaceVersion", &CMMCore::getMMDeviceDeviceInterfaceVersion RGIL)
         .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a RGIL)
         .def("unloadDevice", &CMMCore::unloadDevice, "label"_a RGIL)
         .def("unloadAllDevices", &CMMCore::unloadAllDevices)

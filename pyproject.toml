@@ -33,16 +33,11 @@ classifiers = [
 dependencies = ["numpy>=1.25"]
 
 [dependency-groups]
-build = [
-    "meson-python",
-    "nanobind",
-    "ninja",
-    "ruff",
-    "typing_extensions",
-]
+build = ["meson-python", "nanobind", "ninja", "ruff", "typing_extensions"]
 dev = [
-    {include-group = "build"},
+    { include-group = "build" },
     "clang-format>=19.1.7",
+    "libclang>=18.1.1",
     "gcovr",
     "ipython",
     "mypy",
@@ -81,7 +76,7 @@ build-verbosity = 1
 # is specific to glibc and not available in musl-libc
 skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "pp*"]
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
-test-requires = "pytest"
+test-requires = ["pytest", 'libclang>=18.1.1']
 test-command = 'pytest "{project}/tests" -v'
 test-skip = ["*-macosx*", "*linux*"]                           # until we build device adapters locally
 
