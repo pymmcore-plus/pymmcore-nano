@@ -1,8 +1,7 @@
 from enum import IntEnum
 
-import pytest
-
 import pymmcore_nano as pmn
+import pytest
 
 
 @pytest.mark.skipif(

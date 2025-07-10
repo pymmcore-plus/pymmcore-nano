@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import pymmcore_nano as pmn
 import numpy as np
 import numpy.testing as npt
+import pymmcore_nano as pmn
+import pytest
 
 
 def test_image_ramps(demo_core: pmn.CMMCore):

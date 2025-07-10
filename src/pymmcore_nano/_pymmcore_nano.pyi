@@ -1,6 +1,7 @@
-from collections.abc import Sequence
 import enum
+from collections.abc import Sequence
 from typing import Annotated, overload
+
 from numpy.typing import ArrayLike
 
 DEVICE_INTERFACE_VERSION: int = 73
@@ -721,9 +722,9 @@ class CMMCore:
     def getExposure(self, label: str) -> float: ...
     def snapImage(self) -> None: ...
     @overload
-    def getImage(self) -> Annotated[ArrayLike, dict(writable=False)]: ...
+    def getImage(self) -> Annotated[ArrayLike, {"writable": False}]: ...
     @overload
-    def getImage(self, arg: int, /) -> Annotated[ArrayLike, dict(writable=False)]: ...
+    def getImage(self, arg: int, /) -> Annotated[ArrayLike, {"writable": False}]: ...
     def getImageWidth(self) -> int: ...
     def getImageHeight(self) -> int: ...
     def getBytesPerPixel(self) -> int: ...
@@ -760,75 +761,75 @@ class CMMCore:
     def isSequenceRunning(self) -> bool: ...
     @overload
     def isSequenceRunning(self, cameraLabel: str) -> bool: ...
-    def getLastImage(self) -> Annotated[ArrayLike, dict(writable=False)]: ...
-    def popNextImage(self) -> Annotated[ArrayLike, dict(writable=False)]: ...
+    def getLastImage(self) -> Annotated[ArrayLike, {"writable": False}]: ...
+    def popNextImage(self) -> Annotated[ArrayLike, {"writable": False}]: ...
     @overload
     def getLastImageMD(
         self,
-    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+    ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
         """
         Get the last image in the circular buffer, return as tuple of image and metadata
         """
     @overload
     def getLastImageMD(
         self, md: Metadata
-    ) -> Annotated[ArrayLike, dict(writable=False)]:
+    ) -> Annotated[ArrayLike, {"writable": False}]:
         """
         Get the last image in the circular buffer, store metadata in the provided object
         """
     @overload
     def getLastImageMD(
         self, channel: int, slice: int
-    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+    ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
         """
         Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata
         """
     @overload
     def getLastImageMD(
         self, channel: int, slice: int, md: Metadata
-    ) -> Annotated[ArrayLike, dict(writable=False)]:
+    ) -> Annotated[ArrayLike, {"writable": False}]:
         """
         Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
         """
     @overload
     def popNextImageMD(
         self,
-    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+    ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
         """
         Get the last image in the circular buffer, return as tuple of image and metadata
         """
     @overload
     def popNextImageMD(
         self, md: Metadata
-    ) -> Annotated[ArrayLike, dict(writable=False)]:
+    ) -> Annotated[ArrayLike, {"writable": False}]:
         """
         Get the last image in the circular buffer, store metadata in the provided object
         """
     @overload
     def popNextImageMD(
         self, channel: int, slice: int
-    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+    ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
         """
         Get the last image in the circular buffer for a specific channel and slice, returnas tuple of image and metadata
         """
     @overload
     def popNextImageMD(
         self, channel: int, slice: int, md: Metadata
-    ) -> Annotated[ArrayLike, dict(writable=False)]:
+    ) -> Annotated[ArrayLike, {"writable": False}]:
         """
         Get the last image in the circular buffer for a specific channel and slice, store metadata in the provided object
         """
     @overload
     def getNBeforeLastImageMD(
         self, n: int
-    ) -> tuple[Annotated[ArrayLike, dict(writable=False)], Metadata]:
+    ) -> tuple[Annotated[ArrayLike, {"writable": False}], Metadata]:
         """
         Get the nth image before the last image in the circular buffer and return it as a tuple of image and metadata
         """
     @overload
     def getNBeforeLastImageMD(
         self, n: int, md: Metadata
-    ) -> Annotated[ArrayLike, dict(writable=False)]:
+    ) -> Annotated[ArrayLike, {"writable": False}]:
         """
         Get the nth image before the last image in the circular buffer and store the metadata in the provided object
         """
@@ -964,7 +965,7 @@ class CMMCore:
     def writeToSerialPort(self, portLabel: str, data: Sequence[str]) -> None: ...
     def readFromSerialPort(self, portLabel: str) -> list[str]: ...
     def setSLMImage(
-        self, slmLabel: str, pixels: Annotated[ArrayLike, dict(dtype="uint8")]
+        self, slmLabel: str, pixels: Annotated[ArrayLike, {"dtype": "uint8"}]
     ) -> None: ...
     @overload
     def setSLMPixelsTo(self, slmLabel: str, intensity: int) -> None: ...
@@ -983,7 +984,7 @@ class CMMCore:
     def startSLMSequence(self, slmLabel: str) -> None: ...
     def stopSLMSequence(self, slmLabel: str) -> None: ...
     def loadSLMSequence(
-        self, slmLabel: str, pixels: Sequence[Annotated[ArrayLike, dict(dtype="uint8")]]
+        self, slmLabel: str, pixels: Sequence[Annotated[ArrayLike, {"dtype": "uint8"}]]
     ) -> None: ...
     def pointGalvoAndFire(
         self, galvoLabel: str, x: float, y: float, pulseTime_us: float

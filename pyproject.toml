@@ -42,7 +42,7 @@ dev = [
     "ipython",
     "mypy",
     "pdbpp; sys_platform != 'win32'",
-    "pre-commit",
+    "pre-commit-uv",
     "pytest-cov",
     "pytest",
     "rich",
@@ -85,3 +85,40 @@ test-skip = ["*-macosx*", "*linux*"]                           # until we build 
 archs = ["x86_64", "arm64"]
 # Needed for full C++17 support on macOS
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.14" }
+
+
+# https://docs.astral.sh/ruff/rules/
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+fix = true
+unsafe-fixes = true
+src = ["tests"]
+exclude = ["src/pymmcore_nano/_pymmcore_nano.pyi"]
+
+[tool.ruff.lint]
+pydocstyle = { convention = "numpy" }
+select = [
+    "E",   # style errors
+    "F",   # flakes
+    "W",   # warnings
+    "I",   # isort
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "RUF", # ruff-specific rules
+    "TID", # tidy
+    "TC",  # typecheck
+    "SLF", # private-access
+]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D401", # First line should be in imperative mood (remove to opt in)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D", "SLF"]
+"examples/*.py" = ["D"]
+"_cli.py" = ["B008"]
+"docs/*.py" = ["A", "D"]

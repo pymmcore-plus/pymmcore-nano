@@ -1,11 +1,15 @@
 from __future__ import annotations
+
 import enum
-from pathlib import Path
 import time
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
+
 import numpy as np
-import pytest
 import pymmcore_nano as pmn
+import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _wait_until(predicate: Callable[[], bool], timeout: float = 1.0, interval=0.05):
@@ -123,7 +127,7 @@ def test_device_loading(core: pmn.CMMCore) -> None:
 #    std::string getAPIVersionInfo() const;
 #    Configuration getSystemState();
 #    void setSystemState(const Configuration& conf);
-#    Configuration getConfigState(const char* group, const char* config) noexcept(false);
+#    Configuration getConfigState(const char* group, const char* config) noexcept(false)
 #    Configuration getConfigGroupState(const char* group) noexcept(false);
 #    void saveSystemState(const char* fileName) noexcept(false);
 #    void loadSystemState(const char* fileName) noexcept(false);
@@ -385,3 +389,13 @@ def test_camera_roi_change(demo_core: pmn.CMMCore) -> None:
     assert demo_core.getROI() == (0, 0, 512, 512)
     assert not demo_core.isMultiROIEnabled()
     assert not demo_core.isMultiROISupported()
+
+
+def test_feature():
+    """Test the StrictInitializationChecks feature."""
+    feature_name = "StrictInitializationChecks"
+    assert not pmn.CMMCore.isFeatureEnabled(feature_name)
+    pmn.CMMCore.enableFeature(feature_name, True)
+    assert pmn.CMMCore.isFeatureEnabled(feature_name)
+    pmn.CMMCore.enableFeature(feature_name, False)
+    assert not pmn.CMMCore.isFeatureEnabled(feature_name)
