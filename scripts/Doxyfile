@@ -1,0 +1,19 @@
+# Doxyfile 1.12.0
+
+PROJECT_NAME           = "pymmcore-nano"
+OUTPUT_DIRECTORY       = .
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_RTF           = NO
+CASE_SENSE_NAMES       = YES
+INPUT                  = ../src/mmCoreAndDevices/MMCore
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+XML_PROGRAMLISTING     = NO
+QUIET                  = YES
+WARNINGS               = NO
+WARN_IF_UNDOCUMENTED   = NO

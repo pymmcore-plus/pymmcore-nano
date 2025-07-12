@@ -30,35 +30,18 @@ def build_stub(module_path: Path, output_path: str):
     module = load_module_from_filepath(module_name, str(module_path))
     s = StubGen(module, include_docstrings=True, include_private=False)
     s.put(module)
-    dest = Path(output_path)
     stub_txt = s.get()
-
-    # HACKY FIXES FOR BAD TYPE HINTS ... try to fix my in _pymmcore_nano.cc instead
-    # fix a couple types caused by our own lambda functions
-    stub_txt = re.sub(r'"std::__1::tuple<([^>]+)>"', r"tuple[\1]", stub_txt)
-    stub_txt = re.sub("double", "float", stub_txt)
-
-    # fix nanobind CapsuleType until we do better with numpy arrays
-    stub_txt = "from typing import Any\n" + stub_txt
-    stub_txt = re.sub("types.CapsuleType", "Any", stub_txt)
 
     # remove extra newlines and let ruff-format add them back
     stub_txt = re.sub("\n\n", "\n", stub_txt)
+    # stub_txt = re.sub('"""\n        ', '"""', stub_txt)
 
+    dest = Path(output_path)
     dest.write_text(stub_txt)
     ruff = Path(sys.executable).parent / "ruff"
     _ruff = str(ruff) if ruff.exists() else "ruff"
     subprocess.run([_ruff, "format", output_path], check=True)
-    subprocess.run(
-        [
-            _ruff,
-            "check",
-            "--fix-only",
-            "--unsafe-fixes",
-            "--ignore=D",
-            output_path,
-        ]
-    )
+    subprocess.run([_ruff, "check", "--fix-only", "--unsafe-fixes", output_path])
 
 
 if __name__ == "__main__":

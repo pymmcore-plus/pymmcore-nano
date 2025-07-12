@@ -57,6 +57,10 @@ version:
 	meson rewrite kwargs set project / version $({{ python }} scripts/extract_version.py)
 	{{ python }} scripts/build_stubs.py
 
+# add docstrings from C++ to Python bindings
+add-docs:
+	uv run scripts/add_docstrings.py
+
 # run pre-commit checks
 check:
 	pre-commit run --all-files --hook-stage manual
