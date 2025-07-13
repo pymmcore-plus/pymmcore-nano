@@ -5,6 +5,7 @@ OUTPUT_DIRECTORY       = .
 GENERATE_LATEX         = NO
 GENERATE_MAN           = NO
 GENERATE_RTF           = NO
+GENERATE_HTML          = NO
 CASE_SENSE_NAMES       = YES
 INPUT                  = ../src/mmCoreAndDevices/MMCore
 RECURSIVE              = YES

@@ -481,7 +481,7 @@ class CMMCore:
     def __init__(self) -> None: ...
     def loadSystemConfiguration(self, fileName: object) -> None:
         """Loads a system configuration from a file."""
-    def saveSystemConfiguration(self, arg: str, /) -> None:
+    def saveSystemConfiguration(self, fileName: str) -> None:
         """
         Saves the current system configuration to a text file of the MM specific format. The configuration file records only the information essential to the hardware setup: devices, labels, pre-initialization properties, and configurations. The file format is the same as for the system state.
         """
@@ -500,81 +500,69 @@ class CMMCore:
     @staticmethod
     def getMMDeviceDeviceInterfaceVersion() -> int: ...
     def loadDevice(self, label: str, moduleName: str, deviceName: str) -> None:
-        """
-        Loads a device from the plugin library. label assigned name for the device during the core session moduleName the name of the device adapter module (short name, not full file name) deviceName the name of the device. The name must correspond to one of the names recognized by the specific plugin library.
-        """
-    def unloadDevice(self, arg: str, /) -> None:
+        """Loads a device from the plugin library."""
+    def unloadDevice(self, label: str) -> None:
         """Unloads the device from the core and adjusts all configuration data."""
     def unloadAllDevices(self) -> None: ...
     def initializeAllDevices(self) -> None:
         """
         Calls Initialize() method for each loaded device. Parallel implemnetation should be faster
         """
-    def initializeDevice(self, arg: str, /) -> None:
-        """
-        Initializes specific device.
-
-         label
-
-         the device label
-        """
-    def getDeviceInitializationState(self, arg: str, /) -> DeviceInitializationState:
+    def initializeDevice(self, label: str) -> None: ...
+    def getDeviceInitializationState(self, label: str) -> DeviceInitializationState:
         """Queries the initialization state of the given device."""
     def reset(self) -> None:
         """Unloads all devices from the core, clears all configuration data."""
-    def unloadLibrary(self, arg: str, /) -> None:
+    def unloadLibrary(self, moduleName: str) -> None:
         """Forcefully unload a library. Experimental. Don't use."""
     def updateCoreProperties(self) -> None:
         """
         Updates CoreProperties (currently all Core properties are devices types) with the loaded hardware. After this call, each of the Core-Device properties will be populated with the currently loaded devices of that type
         """
-    def getCoreErrorText(self, arg: int, /) -> str:
+    def getCoreErrorText(self, code: int) -> str:
         """Returns a pre-defined error test with the given error code"""
-    def getVersionInfo(self) -> str:
-        """Displays core version."""
+    def getVersionInfo(self) -> str: ...
     def getAPIVersionInfo(self) -> str:
         """Returns the module and device interface versions."""
     def getSystemState(self) -> Configuration:
         """
         Returns the entire system state, i.e. the collection of all property values from all devices.
         """
-    def setSystemState(self, arg: Configuration, /) -> None:
+    def setSystemState(self, conf: Configuration) -> None:
         """
         Sets all properties contained in the Configuration object. The procedure will attempt to set each property it encounters, but won't stop if any of the properties fail or if the requested device is not present. It will just quietly continue.
         """
-    def getConfigState(self, arg0: str, arg1: str, /) -> Configuration:
+    def getConfigState(self, group: str, config: str) -> Configuration:
         """
         Returns a partial state of the system, only for devices included in the specified configuration.
         """
-    def getConfigGroupState(self, group: str) -> Configuration:
-        """
-        Returns the partial state of the system, only for the devices included in the specified group. It will create a union of all devices referenced in a group.
-        """
+    def getConfigGroupState(self, group: str) -> Configuration: ...
     def saveSystemState(self, fileName: str) -> None:
         """
         Saves the current system state to a text file of the MM specific format. The file records only read-write properties. The file format is directly readable by the complementary loadSystemState() command.
         """
     def loadSystemState(self, fileName: str) -> None:
         """
-        Loads the system configuration from the text file conforming to the MM specific format. The configuration contains a list of commands to build the desired system state from read-write properties. Format specification: the same as in loadSystemConfiguration() command
+        Loads the system configuration from the text file conforming to the MM specific format. The configuration contains a list of commands to build the desired system state from read-write properties.
         """
     def registerCallback(self, cb: MMEventCallback | None) -> None:
         """
-        Register a callback (listener class). MMCore will send notifications on internal events using this interface. Pass nullptr to unregister. The caller is responsible for ensuring that the object pointed to by cb remains valid until it is unregistered. This function is not thread safe.
+        Register a callback (listener class).
+
+        MMCore will send notifications on internal events using this interface
         """
     def setPrimaryLogFile(self, filename: object, truncate: bool = False) -> None: ...
     def getPrimaryLogFile(self) -> str:
         """Return the name of the primary Core log file."""
     @overload
-    def logMessage(self, msg: str) -> None:
-        """Record text message in the log file."""
+    def logMessage(self, msg: str) -> None: ...
     @overload
     def logMessage(self, msg: str, debugOnly: bool) -> None: ...
-    def enableDebugLog(self, arg: bool, /) -> None:
+    def enableDebugLog(self, enable: bool) -> None:
         """Enable or disable logging of debug messages."""
     def debugLogEnabled(self) -> bool:
         """Indicates if logging of debug messages is enabled"""
-    def enableStderrLog(self, arg: bool, /) -> None:
+    def enableStderrLog(self, enable: bool) -> None:
         """Enables or disables log message display on the standard console."""
     def stderrLogEnabled(self) -> bool:
         """Indicates whether logging output goes to stdErr"""
@@ -586,135 +574,120 @@ class CMMCore:
         synchronous: bool = False,
     ) -> int: ...
     def stopSecondaryLogFile(self, handle: int) -> None:
-        """
-        Stop capturing logging output into an additional file. handle The secondary log handle returned by startSecondaryLogFile().
-        """
+        """Stop capturing logging output into an additional file."""
     def getDeviceAdapterSearchPaths(self) -> list[str]:
         """Return the current device adapter search paths."""
     def setDeviceAdapterSearchPaths(self, paths: Sequence[str]) -> None:
-        """
-        Set the device adapter search paths. Upon subsequent attempts to load device adapters, these paths (and only these paths) will be searched. Calling this function has no effect on device adapters that have already been loaded. If you want to simply add to the list of paths, you must first retrieve the current paths by calling getDeviceAdapterSearchPaths(). paths the device adapter search paths
-        """
+        """Set the device adapter search paths."""
     def getDeviceAdapterNames(self) -> list[str]:
         """Return the names of discoverable device adapters."""
-    def getAvailableDevices(self, arg: str, /) -> list[str]:
+    def getAvailableDevices(self, library: str) -> list[str]:
         """Get available devices from the specified device library."""
-    def getAvailableDeviceDescriptions(self, arg: str, /) -> list[str]:
+    def getAvailableDeviceDescriptions(self, library: str) -> list[str]:
         """Get descriptions for available devices from the specified library."""
-    def getAvailableDeviceTypes(self, arg: str, /) -> list[int]:
+    def getAvailableDeviceTypes(self, library: str) -> list[int]:
         """Get type information for available devices from the specified library."""
     def getLoadedDevices(self) -> list[str]:
         """Returns an array of labels for currently loaded devices."""
-    def getLoadedDevicesOfType(self, arg: DeviceType, /) -> list[str]:
+    def getLoadedDevicesOfType(self, devType: DeviceType) -> list[str]:
         """
         Returns an array of labels for currently loaded devices of specific type.
         """
-    def getDeviceType(self, arg: str, /) -> DeviceType:
-        """Returns device type."""
+    def getDeviceType(self, label: str) -> DeviceType: ...
     def getDeviceLibrary(self, label: str) -> str:
         """Returns device library (aka module, device adapter) name."""
     def getDeviceName(self, label: str) -> str: ...
-    def getDeviceDescription(self, arg: str, /) -> str:
+    def getDeviceDescription(self, label: str) -> str:
         """
         Returns description text for a given device label. "Description" is determined by the library and is immutable.
         """
-    def getDevicePropertyNames(self, arg: str, /) -> list[str]:
+    def getDevicePropertyNames(self, label: str) -> list[str]:
         """Returns all property names supported by the device."""
-    def hasProperty(self, arg0: str, arg1: str, /) -> bool:
+    def hasProperty(self, label: str, propName: str) -> bool:
         """
         Checks if device has a property with a specified name. The exception will be thrown in case device label is not defined.
         """
-    def getProperty(self, arg0: str, arg1: str, /) -> str:
+    def getProperty(self, label: str, propName: str) -> str:
         """Returns the property value for the specified device."""
     @overload
-    def setProperty(self, label: str, propName: str, propValue: str) -> None:
-        """
-        Changes the value of the device property. label the device label propName the property name propValue the new property value
-        """
+    def setProperty(self, label: str, propName: str, propValue: str) -> None: ...
     @overload
     def setProperty(self, label: str, propName: str, propValue: bool) -> None: ...
     @overload
     def setProperty(self, label: str, propName: str, propValue: int) -> None: ...
     @overload
     def setProperty(self, label: str, propName: str, propValue: float) -> None: ...
-    def getAllowedPropertyValues(self, arg0: str, arg1: str, /) -> list[str]:
+    def getAllowedPropertyValues(self, label: str, propName: str) -> list[str]:
         """
         Returns all valid values for the specified property. If the array is empty it means that there are no restrictions for values. However, even if all values are allowed it is not guaranteed that all of them will be actually accepted by the device at run time.
         """
-    def isPropertyReadOnly(self, arg0: str, arg1: str, /) -> bool:
+    def isPropertyReadOnly(self, label: str, propName: str) -> bool:
         """Tells us whether the property can be modified."""
-    def isPropertyPreInit(self, arg0: str, arg1: str, /) -> bool:
+    def isPropertyPreInit(self, label: str, propName: str) -> bool:
         """Tells us whether the property must be defined prior to initialization."""
-    def isPropertySequenceable(self, arg0: str, arg1: str, /) -> bool:
+    def isPropertySequenceable(self, label: str, propName: str) -> bool:
         """Queries device if the specified property can be used in a sequence"""
-    def hasPropertyLimits(self, arg0: str, arg1: str, /) -> bool:
+    def hasPropertyLimits(self, label: str, propName: str) -> bool:
         """Queries device if the specific property has limits."""
-    def getPropertyLowerLimit(self, arg0: str, arg1: str, /) -> float:
+    def getPropertyLowerLimit(self, label: str, propName: str) -> float:
         """
         Returns the property lower limit value, if the property has limits - 0 otherwise.
         """
-    def getPropertyUpperLimit(self, arg0: str, arg1: str, /) -> float:
+    def getPropertyUpperLimit(self, label: str, propName: str) -> float:
         """
         Returns the property upper limit value, if the property has limits - 0 otherwise.
         """
-    def getPropertyType(self, arg0: str, arg1: str, /) -> PropertyType:
+    def getPropertyType(self, label: str, propName: str) -> PropertyType:
         """Returns the intrinsic property type."""
-    def startPropertySequence(self, arg0: str, arg1: str, /) -> None:
+    def startPropertySequence(self, label: str, propName: str) -> None:
         """
         Starts an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable
         """
-    def stopPropertySequence(self, arg0: str, arg1: str, /) -> None:
+    def stopPropertySequence(self, label: str, propName: str) -> None:
         """
         Stops an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable
         """
-    def getPropertySequenceMaxLength(self, arg0: str, arg1: str, /) -> int:
+    def getPropertySequenceMaxLength(self, label: str, propName: str) -> int:
         """
         Queries device property for the maximum number of events that can be put in a sequence
         """
     def loadPropertySequence(
-        self, arg0: str, arg1: str, arg2: Sequence[str], /
+        self, label: str, propName: str, eventSequence: Sequence[str]
     ) -> None:
         """
         Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable
         """
-    def deviceBusy(self, arg: str, /) -> bool:
+    def deviceBusy(self, label: str) -> bool:
         """Checks the busy status of the specific device."""
-    def waitForDevice(self, label: str) -> None:
-        """
-        Waits (blocks the calling thread) until the specified device becomes device the device label
-        """
-    def waitForConfig(self, arg0: str, arg1: str, /) -> None:
+    def waitForDevice(self, label: str) -> None: ...
+    def waitForConfig(self, group: str, configName: str) -> None:
         """Blocks until all devices included in the configuration become ready."""
     def systemBusy(self) -> bool:
         """
-        Checks the busy status of the entire system. The system will report busy if any of the devices is busy. status (true on busy)
+        Checks the busy status of the entire system. The system will report busy if any of the devices is busy.
         """
     def waitForSystem(self) -> None:
         """Blocks until all devices in the system become ready (not-busy)."""
-    def deviceTypeBusy(self, arg: DeviceType, /) -> bool:
+    def deviceTypeBusy(self, devType: DeviceType) -> bool:
         """
         Checks the busy status for all devices of the specific type. The system will report busy if any of the devices of the specified type are busy.
         """
     def waitForDeviceType(self, devType: DeviceType) -> None:
-        """
-        Blocks until all devices of the specific type become ready (not-busy). devType a constant specifying the device type
-        """
-    def getDeviceDelayMs(self, arg: str, /) -> float:
+        """Blocks until all devices of the specific type become ready (not-busy)."""
+    def getDeviceDelayMs(self, label: str) -> float:
         """
         Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of "0" means that action is either blocking or that polling of device status is required. Some devices ignore this setting.
         """
-    def setDeviceDelayMs(self, arg0: str, arg1: float, /) -> None:
+    def setDeviceDelayMs(self, label: str, delayMs: float) -> None:
         """
         Overrides the built-in value for the action delay. Some devices ignore this setting.
         """
-    def usesDeviceDelay(self, arg: str, /) -> bool:
+    def usesDeviceDelay(self, label: str) -> bool:
         """Signals if the device will use the delay setting or not."""
     def setTimeoutMs(self, timeoutMs: int) -> None: ...
     def getTimeoutMs(self) -> int: ...
     def sleep(self, intervalMs: float) -> None:
-        """
-        Waits (blocks the calling thread) for specified time in milliseconds. intervalMs the time to sleep in milliseconds
-        """
+        """Waits (blocks the calling thread) for specified time in milliseconds."""
     def getCameraDevice(self) -> str:
         """Returns the label of the currently selected camera device."""
     def getShutterDevice(self) -> str:
@@ -733,23 +706,23 @@ class CMMCore:
         """Returns the label of the currently selected Galvo device."""
     def getChannelGroup(self) -> str:
         """Returns the group determining the channel selection."""
-    def setCameraDevice(self, arg: str, /) -> None:
+    def setCameraDevice(self, cameraLabel: str) -> None:
         """Sets the current camera device."""
-    def setShutterDevice(self, arg: str, /) -> None:
+    def setShutterDevice(self, shutterLabel: str) -> None:
         """Sets the current shutter device."""
-    def setFocusDevice(self, arg: str, /) -> None:
+    def setFocusDevice(self, focusLabel: str) -> None:
         """Sets the current focus device."""
-    def setXYStageDevice(self, arg: str, /) -> None:
+    def setXYStageDevice(self, xyStageLabel: str) -> None:
         """Sets the current XY device."""
-    def setAutoFocusDevice(self, arg: str, /) -> None:
+    def setAutoFocusDevice(self, focusLabel: str) -> None:
         """Sets the current auto-focus device."""
-    def setImageProcessorDevice(self, arg: str, /) -> None:
+    def setImageProcessorDevice(self, procLabel: str) -> None:
         """Sets the current image processor device."""
-    def setSLMDevice(self, arg: str, /) -> None:
+    def setSLMDevice(self, slmLabel: str) -> None:
         """Sets the current slm device."""
-    def setGalvoDevice(self, arg: str, /) -> None:
+    def setGalvoDevice(self, galvoLabel: str) -> None:
         """Sets the current galvo device."""
-    def setChannelGroup(self, arg: str, /) -> None:
+    def setChannelGroup(self, channelGroup: str) -> None:
         """Specifies the group determining the channel selection."""
     def getSystemStateCache(self) -> Configuration:
         """
@@ -757,21 +730,18 @@ class CMMCore:
         """
     def updateSystemStateCache(self) -> None:
         """Updates the state of the entire hardware."""
-    def getPropertyFromCache(self, arg0: str, arg1: str, /) -> str:
+    def getPropertyFromCache(self, deviceLabel: str, propName: str) -> str:
         """Returns the cached property value for the specified device."""
-    def getCurrentConfigFromCache(self, arg: str, /) -> str:
+    def getCurrentConfigFromCache(self, groupName: str) -> str:
         """
         Returns the configuration for a given group based on the data in the cache. An empty string is a valid return value, since the system state will not always correspond to any of the defined configurations. Also, in general it is possible that the system state fits multiple configurations. This method will return only the first matching configuration, if any.
         """
-    def getConfigGroupStateFromCache(self, arg: str, /) -> Configuration:
+    def getConfigGroupStateFromCache(self, group: str) -> Configuration:
         """
         Returns the partial state of the system cache, only for the devices included in the specified group. It will create a union of all devices referenced in a group.
         """
     @overload
-    def defineConfig(self, groupName: str, configName: str) -> None:
-        """
-        Defines a configuration. If the configuration group/name was not previously defined a new configuration will be automatically created; otherwise nothing happens. groupName the configuration group name configName the configuration preset name
-        """
+    def defineConfig(self, groupName: str, configName: str) -> None: ...
     @overload
     def defineConfig(
         self,
@@ -780,136 +750,100 @@ class CMMCore:
         deviceLabel: str,
         propName: str,
         value: str,
-    ) -> None:
-        """
-        Defines a single configuration entry (setting). If the configuration group/name was not previously defined a new configuration will be automatically created. If the name was previously defined the new setting will be added to its list of property settings. The new setting will override previously defined ones if it refers to the same property name. groupName the group name configName the configuration name deviceLabel the device label propName the property name value the property value
-        """
-    def defineConfigGroup(self, arg: str, /) -> None:
+    ) -> None: ...
+    def defineConfigGroup(self, groupName: str) -> None:
         """Creates an empty configuration group."""
-    def deleteConfigGroup(self, arg: str, /) -> None:
+    def deleteConfigGroup(self, groupName: str) -> None:
         """Deletes an entire configuration group."""
-    def renameConfigGroup(self, arg0: str, arg1: str, /) -> None:
+    def renameConfigGroup(self, oldGroupName: str, newGroupName: str) -> None:
         """Renames a configuration group."""
-    def isGroupDefined(self, arg: str, /) -> bool:
+    def isGroupDefined(self, groupName: str) -> bool:
         """Checks if the group already exists."""
-    def isConfigDefined(self, arg0: str, arg1: str, /) -> bool:
+    def isConfigDefined(self, groupName: str, configName: str) -> bool:
         """Checks if the configuration already exists within a group."""
-    def setConfig(self, arg0: str, arg1: str, /) -> None:
+    def setConfig(self, groupName: str, configName: str) -> None:
         """
         Applies a configuration to a group. The command will fail if the configuration was not previously defined.
         """
     @overload
-    def deleteConfig(self, groupName: str, configName: str) -> None:
-        """
-        Deletes a configuration from a group. The command will fail if the configuration was not previously defined.
-        """
+    def deleteConfig(self, groupName: str, configName: str) -> None: ...
     @overload
     def deleteConfig(
         self, groupName: str, configName: str, deviceLabel: str, propName: str
+    ) -> None: ...
+    def renameConfig(
+        self, groupName: str, oldConfigName: str, newConfigName: str
     ) -> None:
-        """
-        Deletes a property from a configuration in the specified group. The command will fail if the configuration was not previously defined.
-        """
-    def renameConfig(self, arg0: str, arg1: str, arg2: str, /) -> None:
         """
         Renames a configuration within a specified group. The command will fail if the configuration was not previously defined.
         """
     def getAvailableConfigGroups(self) -> list[str]:
         """Returns the names of all defined configuration groups"""
-    def getAvailableConfigs(self, arg: str, /) -> list[str]:
+    def getAvailableConfigs(self, configGroup: str) -> list[str]:
         """Returns all defined configuration names in a given group"""
-    def getCurrentConfig(self, arg: str, /) -> str:
+    def getCurrentConfig(self, groupName: str) -> str:
         """
         Returns the current configuration for a given group. An empty string is a valid return value, since the system state will not always correspond to any of the defined configurations. Also, in general it is possible that the system state fits multiple configurations. This method will return only the first matching configuration, if any.
         """
-    def getConfigData(self, arg0: str, arg1: str, /) -> Configuration:
+    def getConfigData(self, configGroup: str, configName: str) -> Configuration:
         """Returns the configuration object for a given group and name."""
     @overload
     def getCurrentPixelSizeConfig(self) -> str: ...
     @overload
     def getCurrentPixelSizeConfig(self, cached: bool) -> str: ...
     @overload
-    def getPixelSizeUm(self) -> float:
-        """
-        Returns the current pixel size in microns. This method is based on sensing the current pixel size configuration and adjusting for the binning.
-        """
+    def getPixelSizeUm(self) -> float: ...
     @overload
-    def getPixelSizeUm(self, cached: bool) -> float:
-        """
-        Returns the current pixel size in microns. This method is based on sensing the current pixel size configuration and adjusting for the binning. For legacy reasons, an exception is not thrown if there is an error. Instead, 0.0 is returned if any property values cannot be read, or if no pixel size preset matches the property values.
-        """
-    def getPixelSizeUmByID(self, arg: str, /) -> float:
+    def getPixelSizeUm(self, cached: bool) -> float: ...
+    def getPixelSizeUmByID(self, resolutionID: str) -> float:
         """Returns the pixel size in um for the requested pixel size group"""
     @overload
     def getPixelSizeAffine(self) -> list[float]: ...
     @overload
     def getPixelSizeAffine(self, cached: bool) -> list[float]: ...
-    def getPixelSizeAffineByID(self, arg: str, /) -> list[float]:
+    def getPixelSizeAffineByID(self, resolutionID: str) -> list[float]:
         """
         Returns the Affine Transform to related camera pixels with stage movement for the requested pixel size group The raw affine transform without correction for binning and magnification will be returned.
         """
     @overload
-    def getPixelSizedxdz(self) -> float:
-        """
-        Returns the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)
-        """
+    def getPixelSizedxdz(self) -> float: ...
     @overload
-    def getPixelSizedxdz(self, cached: bool) -> float:
-        """
-        Returns the angle between the camera's x axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name Angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)
-        """
+    def getPixelSizedxdz(self, cached: bool) -> float: ...
     @overload
-    def getPixelSizedxdz(self, resolutionID: str) -> float:
-        """
-        Returns the angle between the camera's x axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name Angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)
-        """
+    def getPixelSizedxdz(self, resolutionID: str) -> float: ...
     @overload
-    def getPixelSizedydz(self) -> float:
-        """
-        Returns the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)
-        """
+    def getPixelSizedydz(self) -> float: ...
     @overload
-    def getPixelSizedydz(self, cached: bool) -> float:
-        """
-        Returns the angle between the camera's y axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 @resolutionID Name of Pixel Size configuration for this dy /dz angle angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)
-        """
+    def getPixelSizedydz(self, cached: bool) -> float: ...
     @overload
-    def getPixelSizedydz(self, resolutionID: str) -> float:
-        """
-        Returns the angle between the camera's y axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 @resolutionID Name of Pixel Size configuration for this dy /dz angle angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)
-        """
+    def getPixelSizedydz(self, resolutionID: str) -> float: ...
     @overload
-    def getPixelSizeOptimalZUm(self) -> float:
-        """
-        Returns the optimal z step size in um There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration
-        """
+    def getPixelSizeOptimalZUm(self) -> float: ...
     @overload
-    def getPixelSizeOptimalZUm(self, cached: bool) -> float:
-        """
-        Returns the optimal z step size in um, optionally using cached pixel configuration There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration
-        """
+    def getPixelSizeOptimalZUm(self, cached: bool) -> float: ...
     @overload
-    def getPixelSizeOptimalZUm(self, resolutionID: str) -> float:
-        """
-        Returns the optimal z step size in um, optionally using cached pixel configuration There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration
-        """
+    def getPixelSizeOptimalZUm(self, resolutionID: str) -> float: ...
     def setPixelSizedxdz(self, resolutionID: str, dXdZ: float) -> None:
         """
-        Sets the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name dxdz Angle of the Z-stage axis with the camera axis (dimensionless)
+        Sets the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz).
+         This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration).
+         See: https://github.com/micro-manager/micro-manager/issues/1984
         """
     def setPixelSizedydz(self, resolutionID: str, dYdZ: float) -> None:
         """
-        Sets the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name dydz Angle of the Z-stage axis with the camera axis (dimensionless)
+        Sets the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz).
+         This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration).
+         See: https://github.com/micro-manager/micro-manager/issues/1984
         """
     def setPixelSizeOptimalZUm(self, resolutionID: str, optimalZ: float) -> None:
         """
-        Sets the opimal Z stepSize (in microns). There is no magic here, this number is provided by the person configuring the microscope, to be used by the person using the microscope. resolutionID The pixel size configuration group name optimalZ Optimal z step in microns
+        Sets the opimal Z stepSize (in microns). There is no magic here, this number is provided by the person configuring the microscope, to be used by the person using the microscope.
         """
     def getMagnificationFactor(self) -> float:
         """
         Returns the product of all Magnifiers in the system or 1.0 when none is found This is used internally by GetPixelSizeUm
         """
-    def setPixelSizeUm(self, arg0: str, arg1: float, /) -> None:
+    def setPixelSizeUm(self, resolutionID: str, pixSize: float) -> None:
         """
         Sets pixel size in microns for the specified resolution sensing configuration preset.
         """
@@ -920,41 +854,31 @@ class CMMCore:
     @overload
     def definePixelSizeConfig(
         self, resolutionID: str, deviceLabel: str, propName: str, value: str
-    ) -> None:
-        """
-        Defines a single pixel size entry (setting). The system will treat pixel size configurations very similar to configuration presets, i.e. it will try to detect if any of the pixel size presets matches the current state of the system. If the pixel size was previously defined the new setting will be added to its list of property settings. The new setting will override previously defined ones if it refers to the same property name. resolutionID identifier for one unique property setting deviceLabel device label propName property name value property value
-        """
+    ) -> None: ...
     @overload
-    def definePixelSizeConfig(self, resolutionID: str) -> None:
-        """Defines an empty pixel size entry."""
+    def definePixelSizeConfig(self, resolutionID: str) -> None: ...
     def getAvailablePixelSizeConfigs(self) -> list[str]:
         """Returns all defined resolution preset names"""
-    def isPixelSizeConfigDefined(self, arg: str, /) -> bool:
+    def isPixelSizeConfigDefined(self, resolutionID: str) -> bool:
         """Checks if the Pixel Size Resolution already exists"""
-    def setPixelSizeConfig(self, arg: str, /) -> None:
+    def setPixelSizeConfig(self, resolutionID: str) -> None:
         """
         Applies a Pixel Size Configuration. The command will fail if the configuration was not previously defined.
         """
-    def renamePixelSizeConfig(self, arg0: str, arg1: str, /) -> None:
+    def renamePixelSizeConfig(self, oldConfigName: str, newConfigName: str) -> None:
         """
         Renames a pixel size configuration. The command will fail if the configuration was not previously defined.
         """
-    def deletePixelSizeConfig(self, arg: str, /) -> None:
+    def deletePixelSizeConfig(self, configName: str) -> None:
         """
         Deletes a pixel size configuration. The command will fail if the configuration was not previously defined.
         """
-    def getPixelSizeConfigData(self, arg: str, /) -> Configuration:
+    def getPixelSizeConfigData(self, configName: str) -> Configuration:
         """Returns the configuration object for a give pixel size preset."""
     @overload
-    def setROI(self, x: int, y: int, xSize: int, ySize: int) -> None:
-        """
-        Set the hardwar region of interest for the current camera. A successful call to this method will clear any images in the sequence buffer, even if the ROI does not change. If multiple ROIs are set prior to this call, they will be replaced by the new single ROI. The coordinates are in units of binned pixels. That is, conceptually, binning is applied before the ROI. x coordinate of the top left corner y coordinate of the top left corner xSize number of horizontal pixels ySize number of horizontal pixels
-        """
+    def setROI(self, x: int, y: int, xSize: int, ySize: int) -> None: ...
     @overload
-    def setROI(self, label: str, x: int, y: int, xSize: int, ySize: int) -> None:
-        """
-        Set the hardware region of interest for a specified camera. A successful call to this method will clear any images in the sequence buffer, even if the ROI does not change. Warning: the clearing of the sequence buffer will interfere with any sequence acquisitions currently being performed on other cameras. If multiple ROIs are set prior to this call, they will be replaced by the new single ROI. The coordinates are in units of binned pixels. That is, conceptually, binning is applied before the ROI. label camera label x coordinate of the top left corner y coordinate of the top left corner xSize number of horizontal pixels ySize number of horizontal pixels
-        """
+    def setROI(self, label: str, x: int, y: int, xSize: int, ySize: int) -> None: ...
     @overload
     def getROI(self) -> tuple[int, int, int, int]: ...
     @overload
@@ -967,36 +891,23 @@ class CMMCore:
         """Queries the camera to determine if multiple ROIs are currently set."""
     def setMultiROI(
         self,
-        arg0: Sequence[int],
-        arg1: Sequence[int],
-        arg2: Sequence[int],
-        arg3: Sequence[int],
-        /,
+        xs: Sequence[int],
+        ys: Sequence[int],
+        widths: Sequence[int],
+        heights: Sequence[int],
     ) -> None:
         """
         Set multiple ROIs for the current camera device. Will fail if the camera does not support multiple ROIs, any widths or heights are non-positive, or if the vectors do not all have the same length.
         """
     def getMultiROI(self) -> tuple[list[int], list[int], list[int], list[int]]: ...
     @overload
-    def setExposure(self, exp: float) -> None:
-        """
-        Sets the exposure setting of the current camera in milliseconds. dExp the exposure in milliseconds
-        """
+    def setExposure(self, exp: float) -> None: ...
     @overload
-    def setExposure(self, cameraLabel: str, dExp: float) -> None:
-        """
-        Sets the exposure setting of the specified camera in milliseconds. label the camera device label dExp the exposure in milliseconds
-        """
+    def setExposure(self, cameraLabel: str, dExp: float) -> None: ...
     @overload
-    def getExposure(self) -> float:
-        """
-        Returns the current exposure setting of the camera in milliseconds. the exposure time in milliseconds
-        """
+    def getExposure(self) -> float: ...
     @overload
-    def getExposure(self, label: str) -> float:
-        """
-        Returns the current exposure setting of the specified camera in milliseconds. label the camera device label the exposure time in milliseconds
-        """
+    def getExposure(self, label: str) -> float: ...
     def snapImage(self) -> None:
         """
         Acquires a single image with current settings. Snap is not allowed while the acquisition thread is run
@@ -1004,18 +915,11 @@ class CMMCore:
     @overload
     def getImage(self) -> Annotated[ArrayLike, {"writable": False}]: ...
     @overload
-    def getImage(self, arg: int, /) -> Annotated[ArrayLike, {"writable": False}]:
-        """
-        Horizontal dimension of the image buffer in pixels. the width in pixels (an integer)
-        """
+    def getImage(self, arg: int, /) -> Annotated[ArrayLike, {"writable": False}]: ...
     def getImageWidth(self) -> int:
-        """
-        Horizontal dimension of the image buffer in pixels. the width in pixels (an integer)
-        """
+        """Horizontal dimension of the image buffer in pixels."""
     def getImageHeight(self) -> int:
-        """
-        Vertical dimension of the image buffer in pixels. the height in pixels (an integer)
-        """
+        """Vertical dimension of the image buffer in pixels."""
     def getBytesPerPixel(self) -> int:
         """
         How many bytes for each pixel. This value does not necessarily reflect the capabilities of the particular camera A/D converter.
@@ -1032,76 +936,50 @@ class CMMCore:
         """
         Returns the number of simultaneous channels the default camera is returning.
         """
-    def getCameraChannelName(self, arg: int, /) -> str:
+    def getCameraChannelName(self, channelNr: int) -> str:
         """
         Returns the name of the requested channel as known by the default camera
         """
     def getImageBufferSize(self) -> int:
         """Returns the size of the internal image buffer."""
-    def setAutoShutter(self, arg: bool, /) -> None:
+    def setAutoShutter(self, state: bool) -> None:
         """
         If this option is enabled Shutter automatically opens and closes when the image is acquired.
         """
     def getAutoShutter(self) -> bool:
         """Returns the current setting of the auto-shutter option."""
     @overload
-    def setShutterOpen(self, state: bool) -> None:
-        """
-        Opens or closes the currently selected (default) shutter. state the desired state of the shutter (true for open)
-        """
+    def setShutterOpen(self, state: bool) -> None: ...
     @overload
-    def setShutterOpen(self, shutterLabel: str, state: bool) -> None:
-        """
-        Opens or closes the specified shutter. state the desired state of the shutter (true for open)
-        """
+    def setShutterOpen(self, shutterLabel: str, state: bool) -> None: ...
     @overload
-    def getShutterOpen(self) -> bool:
-        """Returns the state of the currently selected (default) shutter."""
+    def getShutterOpen(self) -> bool: ...
     @overload
-    def getShutterOpen(self, shutterLabel: str) -> bool:
-        """
-        Returns the state of the specified shutter. shutterLabel the name of the shutter
-        """
+    def getShutterOpen(self, shutterLabel: str) -> bool: ...
     @overload
     def startSequenceAcquisition(
         self, numImages: int, intervalMs: float, stopOnOverflow: bool
-    ) -> None:
-        """
-        Starts streaming camera sequence acquisition. This command does not block the calling thread for the duration of the acquisition. numImages Number of images requested from the camera intervalMs The interval between images, currently only supported by Andor cameras stopOnOverflow whether or not the camera stops acquiring when the circular buffer is full
-        """
+    ) -> None: ...
     @overload
     def startSequenceAcquisition(
         self, cameraLabel: str, numImages: int, intervalMs: float, stopOnOverflow: bool
-    ) -> None:
-        """
-        Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the "default" camera is that it does not automatically initialize the circular buffer.
-        """
+    ) -> None: ...
     def prepareSequenceAcquisition(self, cameraLabel: str) -> None:
         """
         Prepare the camera for the sequence acquisition to save the time in the StartSequenceAcqusition() call which is supposed to come next.
         """
-    def startContinuousSequenceAcquisition(self, arg: float, /) -> None:
+    def startContinuousSequenceAcquisition(self, intervalMs: float) -> None:
         """
         Starts the continuous camera sequence acquisition. This command does not block the calling thread for the duration of the acquisition.
         """
     @overload
-    def stopSequenceAcquisition(self) -> None:
-        """Stops streaming camera sequence acquisition."""
+    def stopSequenceAcquisition(self) -> None: ...
     @overload
-    def stopSequenceAcquisition(self, cameraLabel: str) -> None:
-        """
-        Stops streaming camera sequence acquisition for a specified camera. label The camera name
-        """
+    def stopSequenceAcquisition(self, cameraLabel: str) -> None: ...
     @overload
-    def isSequenceRunning(self) -> bool:
-        """
-        Check if the current camera is acquiring the sequence Returns false when the sequence is done
-        """
+    def isSequenceRunning(self) -> bool: ...
     @overload
-    def isSequenceRunning(self, cameraLabel: str) -> bool:
-        """
-        Check if the specified camera is acquiring the sequence Returns false when the sequence is done
-        """
+    def isSequenceRunning(self, cameraLabel: str) -> bool: ...
     def getLastImage(self) -> Annotated[ArrayLike, {"writable": False}]: ...
     def popNextImage(self) -> Annotated[ArrayLike, {"writable": False}]: ...
     @overload
@@ -1184,7 +1062,7 @@ class CMMCore:
         """
     def isBufferOverflowed(self) -> bool:
         """Indicates whether the circular buffer is overflowed"""
-    def setCircularBufferMemoryFootprint(self, arg: int, /) -> None:
+    def setCircularBufferMemoryFootprint(self, sizeMB: int) -> None:
         """Reserve memory for the circular buffer."""
     def getCircularBufferMemoryFootprint(self) -> int:
         """Returns the size of the Circular Buffer in MB"""
@@ -1192,21 +1070,23 @@ class CMMCore:
         """Initialize circular buffer based on the current camera settings."""
     def clearCircularBuffer(self) -> None:
         """Removes all images from the circular buffer."""
-    def isExposureSequenceable(self, arg: str, /) -> bool:
+    def isExposureSequenceable(self, cameraLabel: str) -> bool:
         """Queries camera if exposure can be used in a sequence"""
-    def startExposureSequence(self, arg: str, /) -> None:
+    def startExposureSequence(self, cameraLabel: str) -> None:
         """
         Starts an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable
         """
-    def stopExposureSequence(self, arg: str, /) -> None:
+    def stopExposureSequence(self, cameraLabel: str) -> None:
         """
         Stops an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable
         """
-    def getExposureSequenceMaxLength(self, arg: str, /) -> int:
+    def getExposureSequenceMaxLength(self, cameraLabel: str) -> int:
         """
         Gets the maximum length of a camera's exposure sequence. This should only be called for cameras where exposure time is sequenceable
         """
-    def loadExposureSequence(self, arg0: str, arg1: Sequence[float], /) -> None:
+    def loadExposureSequence(
+        self, cameraLabel: str, exposureSequence_ms: Sequence[float]
+    ) -> None:
         """
         Transfer a sequence of exposure times to the camera. This should only be called for cameras where exposure time is sequenceable
         """
@@ -1218,7 +1098,7 @@ class CMMCore:
         """
         Returns the focus score from the default focusing device measured at the current Z position. Use this value to create profiles or just to verify that the image is in focus. The absolute range of returned scores depends on the actual focusing device.
         """
-    def enableContinuousFocus(self, arg: bool, /) -> None:
+    def enableContinuousFocus(self, enable: bool) -> None:
         """
         Enables or disables the operation of the continuous focusing hardware device.
         """
@@ -1234,120 +1114,83 @@ class CMMCore:
         """Performs focus acquisition and lock for the one-shot focusing device."""
     def incrementalFocus(self) -> None:
         """Performs incremental focus for the one-shot focusing device."""
-    def setAutoFocusOffset(self, arg: float, /) -> None:
+    def setAutoFocusOffset(self, offset: float) -> None:
         """Applies offset the one-shot focusing device."""
     def getAutoFocusOffset(self) -> float:
         """Measures offset for the one-shot focusing device."""
     def setState(self, stateDeviceLabel: str, state: int) -> None:
         """
-        Sets the state (position) on the specific device. The command will fail if the device does not support states. deviceLabel the device label state the new state
+        Sets the state (position) on the specific device. The command will fail if the device does not support states.
         """
     def getState(self, stateDeviceLabel: str) -> int:
         """
-        Returns the current state (position) on the specific device. The command will fail if the device does not support states. the current state deviceLabel the device label
+        Returns the current state (position) on the specific device. The command will fail if the device does not support states.
         """
     def getNumberOfStates(self, stateDeviceLabel: str) -> int:
-        """
-        Returns the total number of available positions (states). For legacy reasons, an exception is not thrown on error. Instead, -1 is returned if deviceLabel is not a valid state device.
-        """
+        """Returns the total number of available positions (states)."""
     def setStateLabel(self, stateDeviceLabel: str, stateLabel: str) -> None:
-        """
-        Sets device state using the previously assigned label (string). deviceLabel the device label stateLabel the state label
-        """
+        """Sets device state using the previously assigned label (string)."""
     def getStateLabel(self, stateDeviceLabel: str) -> str:
-        """
-        Returns the current state as the label (string).
-         the current state's label
-
-         deviceLabel
-
-         the device label
-        """
-    def defineStateLabel(self, arg0: str, arg1: int, arg2: str, /) -> None:
+        """Returns the current state as the label (string)."""
+    def defineStateLabel(
+        self, stateDeviceLabel: str, state: int, stateLabel: str
+    ) -> None:
         """Defines a label for the specific state/"""
-    def getStateLabels(self, arg: str, /) -> list[str]:
+    def getStateLabels(self, stateDeviceLabel: str) -> list[str]:
         """Return labels for all states"""
     def getStateFromLabel(self, stateDeviceLabel: str, stateLabel: str) -> int:
-        """
-        Obtain the state for a given label. the state (an integer) deviceLabel the device label stateLabel the label for which the state is being queried
-        """
+        """Obtain the state for a given label."""
     @overload
-    def setPosition(self, stageLabel: str, position: float) -> None:
-        """
-        Sets the position of the stage in microns. label the stage device label position the desired stage position, in microns
-        """
+    def setPosition(self, stageLabel: str, position: float) -> None: ...
     @overload
-    def setPosition(self, position: float) -> None:
-        """
-        Sets the position of the stage in microns. Uses the current Z positioner (focus) device. position the desired stage position, in microns
-        """
+    def setPosition(self, position: float) -> None: ...
     @overload
-    def getPosition(self, stageLabel: str) -> float:
-        """
-        Returns the current position of the stage in microns. the position in microns label the single-axis drive device label
-        """
+    def getPosition(self, stageLabel: str) -> float: ...
     @overload
-    def getPosition(self) -> float:
-        """
-        Returns the current position of the stage in microns. Uses the current Z positioner (focus) device. the position in microns
-        """
+    def getPosition(self) -> float: ...
     @overload
-    def setRelativePosition(self, stageLabel: str, d: float) -> None:
-        """
-        Sets the relative position of the stage in microns. label the single-axis drive device label d the amount to move the stage, in microns (positive or negative)
-        """
+    def setRelativePosition(self, stageLabel: str, d: float) -> None: ...
     @overload
-    def setRelativePosition(self, d: float) -> None:
-        """
-        Sets the relative position of the stage in microns. Uses the current Z positioner (focus) device. d the amount to move the stage, in microns (positive or negative)
-        """
+    def setRelativePosition(self, d: float) -> None: ...
     @overload
-    def setOrigin(self, stageLabel: str) -> None:
-        """
-        Zero the given focus/Z stage's coordinates at the current position. The current position becomes the new origin (Z = 0). Not to be confused with setAdapterOrigin(). label the stage device label
-        """
+    def setOrigin(self, stageLabel: str) -> None: ...
     @overload
-    def setOrigin(self) -> None:
-        """
-        Zero the current focus/Z stage's coordinates at the current position. The current position becomes the new origin (Z = 0). Not to be confused with setAdapterOrigin().
-        """
+    def setOrigin(self) -> None: ...
     @overload
-    def setAdapterOrigin(self, stageLabel: str, newZUm: float) -> None:
-        """
-        Enable software translation of coordinates for the given focus/Z stage. The current position of the stage becomes Z = newZUm. Only some stages support this functionality; it is recommended that setOrigin() be used instead where available. label the stage device label newZUm the new coordinate to assign to the current Z position
-        """
+    def setAdapterOrigin(self, stageLabel: str, newZUm: float) -> None: ...
     @overload
-    def setAdapterOrigin(self, newZUm: float) -> None:
-        """
-        Enable software translation of coordinates for the current focus/Z stage. The current position of the stage becomes Z = newZUm. Only some stages support this functionality; it is recommended that setOrigin() be used instead where available. newZUm the new coordinate to assign to the current Z position
-        """
+    def setAdapterOrigin(self, newZUm: float) -> None: ...
     def setFocusDirection(self, stageLabel: str, sign: int) -> None:
         """
-        Set the focus direction of a stage. The sign should be +1 (or any positive value), zero, or -1 (or any negative value), and is interpreted in the same way as the return value of getFocusDirection(). Once this method is called, getFocusDirection() for the stage will always return the set value. For legacy reasons, an exception is not thrown if there is an error. Instead, nothing is done if stageLabel is not a valid focus stage.
+        Set the focus direction of a stage.
+        The sign should be +1 (or any positive value), zero, or -1 (or any negative value), and is interpreted in the same way as the return value of getFocusDirection().
         """
     def getFocusDirection(self, stageLabel: str) -> int:
         """
-        Get the focus direction of a stage. Returns +1 if increasing position brings objective closer to sample, -1 if increasing position moves objective away from sample, or 0 if unknown. (Make sure to check for zero!) The returned value is determined by the most recent call to setFocusDirection() for the stage, or defaults to what the stage device adapter declares (often 0, for unknown). An exception is thrown if the direction has not been set and the device encounters an error when determining the default direction.
+        Get the focus direction of a stage.
+        Returns +1 if increasing position brings objective closer to sample, -1 if increasing position moves objective away from sample, or 0 if unknown. (Make sure to check for zero!)
         """
-    def isStageSequenceable(self, arg: str, /) -> bool:
+    def isStageSequenceable(self, stageLabel: str) -> bool:
         """Queries stage if it can be used in a sequence"""
-    def isStageLinearSequenceable(self, arg: str, /) -> bool:
+    def isStageLinearSequenceable(self, stageLabel: str) -> bool:
         """
         Queries if the stage can be used in a linear sequence A linear sequence is defined by a stepsize and number of slices
         """
-    def startStageSequence(self, arg: str, /) -> None:
+    def startStageSequence(self, stageLabel: str) -> None:
         """
         Starts an ongoing sequence of triggered events in a stage This should only be called for stages
         """
-    def stopStageSequence(self, arg: str, /) -> None:
+    def stopStageSequence(self, stageLabel: str) -> None:
         """
         Stops an ongoing sequence of triggered events in a stage This should only be called for stages that are sequenceable
         """
     def getStageSequenceMaxLength(self, stageLabel: str) -> int:
         """
-        Gets the maximum length of a stage's position sequence. This should only be called for stages that are sequenceable label the stage device label the maximum length (integer)
+        Gets the maximum length of a stage's position sequence. This should only be called for stages that are sequenceable
         """
-    def loadStageSequence(self, arg0: str, arg1: Sequence[float], /) -> None:
+    def loadStageSequence(
+        self, stageLabel: str, positionSequence: Sequence[float]
+    ) -> None:
         """
         Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable
         """
@@ -1355,260 +1198,205 @@ class CMMCore:
         self, stageLabel: str, dZ_um: float, nSlices: int
     ) -> None:
         """
-        Loads a linear sequence (defined by stepsize and nr. of steps) into the device. Why was it not called loadStageLinearSequence??? label Name of the stage device dZ_um Step size between slices in microns nSlices Number of slices fo ethis sequence Presumably the sequence will repeat after this number of TTLs was received
+        Loads a linear sequence (defined by stepsize and nr. of steps) into the device. Why was it not called loadStageLinearSequence???
         """
     @overload
-    def setXYPosition(self, xyStageLabel: str, x: float, y: float) -> None:
-        """
-        Sets the position of the XY stage in microns. label the XY stage device label x the X axis position in microns y the Y axis position in microns
-        """
+    def setXYPosition(self, xyStageLabel: str, x: float, y: float) -> None: ...
     @overload
-    def setXYPosition(self, x: float, y: float) -> None:
-        """
-        Sets the position of the XY stage in microns. Uses the current XY stage device. x the X axis position in microns y the Y axis position in microns
-        """
+    def setXYPosition(self, x: float, y: float) -> None: ...
     @overload
-    def setRelativeXYPosition(self, xyStageLabel: str, dx: float, dy: float) -> None:
-        """
-        Sets the relative position of the XY stage in microns. label the xy stage device label dx the distance to move in X (positive or negative) dy the distance to move in Y (positive or negative)
-        """
+    def setRelativeXYPosition(
+        self, xyStageLabel: str, dx: float, dy: float
+    ) -> None: ...
     @overload
-    def setRelativeXYPosition(self, dx: float, dy: float) -> None:
-        """
-        Sets the relative position of the XY stage in microns. Uses the current XY stage device. dx the distance to move in X (positive or negative) dy the distance to move in Y (positive or negative)
-        """
+    def setRelativeXYPosition(self, dx: float, dy: float) -> None: ...
     @overload
     def getXYPosition(self, xyStageLabel: str) -> tuple[float, float]: ...
     @overload
     def getXYPosition(self) -> tuple[float, float]: ...
     @overload
-    def getXPosition(self, xyStageLabel: str) -> float:
-        """
-        Obtains the current position of the X axis of the XY stage in microns. the x position label the stage device label
-        """
+    def getXPosition(self, xyStageLabel: str) -> float: ...
     @overload
-    def getXPosition(self) -> float:
-        """
-        Obtains the current position of the X axis of the XY stage in microns. Uses the current XY stage device. the x position label the stage device label
-        """
+    def getXPosition(self) -> float: ...
     @overload
-    def getYPosition(self, xyStageLabel: str) -> float:
-        """
-        Obtains the current position of the Y axis of the XY stage in microns. the y position label the stage device label
-        """
+    def getYPosition(self, xyStageLabel: str) -> float: ...
     @overload
-    def getYPosition(self) -> float:
-        """
-        Obtains the current position of the Y axis of the XY stage in microns. Uses the current XY stage device. the y position label the stage device label
-        """
+    def getYPosition(self) -> float: ...
     def stop(self, xyOrZStageLabel: str) -> None:
-        """
-        Stop the XY or focus/Z stage motors Not all stages support this operation; check before use. label the stage device label (either XY or focus/Z stage)
-        """
+        """Stop the XY or focus/Z stage motors"""
     def home(self, xyOrZStageLabel: str) -> None:
-        """
-        Perform a hardware homing operation for an XY or focus/Z stage. Not all stages support this operation. The user should be warned before calling this method, as it can cause large stage movements, potentially resulting in collision (e.g. with an expensive objective lens). label the stage device label (either XY or focus/Z stage)
-        """
+        """Perform a hardware homing operation for an XY or focus/Z stage."""
     @overload
-    def setOriginXY(self, xyStageLabel: str) -> None:
-        """
-        Zero the given XY stage's coordinates at the current position. The current position becomes the new origin. Not to be confused with setAdapterOriginXY(). label the stage device label
-        """
+    def setOriginXY(self, xyStageLabel: str) -> None: ...
     @overload
-    def setOriginXY(self) -> None:
-        """
-        Zero the current XY stage's coordinates at the current position. The current position becomes the new origin. Not to be confused with setAdapterOriginXY().
-        """
+    def setOriginXY(self) -> None: ...
     @overload
-    def setOriginX(self, xyStageLabel: str) -> None:
-        """
-        Zero the given XY stage's X coordinate at the current position. The current position becomes the new X = 0. label the xy stage device label
-        """
+    def setOriginX(self, xyStageLabel: str) -> None: ...
     @overload
-    def setOriginX(self) -> None:
-        """
-        Zero the given XY stage's X coordinate at the current position. The current position becomes the new X = 0.
-        """
+    def setOriginX(self) -> None: ...
     @overload
-    def setOriginY(self, xyStageLabel: str) -> None:
-        """
-        Zero the given XY stage's Y coordinate at the current position. The current position becomes the new Y = 0. label the xy stage device label
-        """
+    def setOriginY(self, xyStageLabel: str) -> None: ...
     @overload
-    def setOriginY(self) -> None:
-        """
-        Zero the given XY stage's Y coordinate at the current position. The current position becomes the new Y = 0.
-        """
+    def setOriginY(self) -> None: ...
     @overload
     def setAdapterOriginXY(
         self, xyStageLabel: str, newXUm: float, newYUm: float
-    ) -> None:
-        """
-        Enable software translation of coordinates for the given XY stage. The current position of the stage becomes (newXUm, newYUm). It is recommended that setOriginXY() be used instead where available. label the XY stage device label newXUm the new coordinate to assign to the current X position newYUm the new coordinate to assign to the current Y position
-        """
+    ) -> None: ...
     @overload
-    def setAdapterOriginXY(self, newXUm: float, newYUm: float) -> None:
-        """
-        Enable software translation of coordinates for the current XY stage. The current position of the stage becomes (newXUm, newYUm). It is recommended that setOriginXY() be used instead where available. newXUm the new coordinate to assign to the current X position newYUm the new coordinate to assign to the current Y position
-        """
-    def isXYStageSequenceable(self, arg: str, /) -> bool:
+    def setAdapterOriginXY(self, newXUm: float, newYUm: float) -> None: ...
+    def isXYStageSequenceable(self, xyStageLabel: str) -> bool:
         """Queries XY stage if it can be used in a sequence"""
-    def startXYStageSequence(self, arg: str, /) -> None:
+    def startXYStageSequence(self, xyStageLabel: str) -> None:
         """
         Starts an ongoing sequence of triggered events in an XY stage This should only be called for stages
         """
-    def stopXYStageSequence(self, arg: str, /) -> None:
+    def stopXYStageSequence(self, xyStageLabel: str) -> None:
         """
         Stops an ongoing sequence of triggered events in an XY stage This should only be called for stages that are sequenceable
         """
-    def getXYStageSequenceMaxLength(self, arg: str, /) -> int:
+    def getXYStageSequenceMaxLength(self, xyStageLabel: str) -> int:
         """
         Gets the maximum length of an XY stage's position sequence. This should only be called for XY stages that are sequenceable
         """
     def loadXYStageSequence(
-        self, arg0: str, arg1: Sequence[float], arg2: Sequence[float], /
+        self, xyStageLabel: str, xSequence: Sequence[float], ySequence: Sequence[float]
     ) -> None:
         """
         Transfer a sequence of stage positions to the xy stage. xSequence and ySequence must have the same length. This should only be called for XY stages that are sequenceable
         """
     def setSerialProperties(
         self,
-        arg0: str,
-        arg1: str,
-        arg2: str,
-        arg3: str,
-        arg4: str,
-        arg5: str,
-        arg6: str,
-        /,
+        portName: str,
+        answerTimeout: str,
+        baudRate: str,
+        delayBetweenCharsMs: str,
+        handshaking: str,
+        parity: str,
+        stopBits: str,
     ) -> None:
         """Sets all com port properties in a single call"""
-    def setSerialPortCommand(self, arg0: str, arg1: str, arg2: str, /) -> None:
+    def setSerialPortCommand(self, portLabel: str, command: str, term: str) -> None:
         """
         Send string to the serial device and return an answer. This command blocks until it receives an answer from the device terminated by the specified sequence.
         """
-    def getSerialPortAnswer(self, arg0: str, arg1: str, /) -> str:
+    def getSerialPortAnswer(self, portLabel: str, term: str) -> str:
         """
         Continuously read from the serial port until the terminating sequence is encountered.
         """
-    def writeToSerialPort(self, arg0: str, arg1: Sequence[str], /) -> None:
+    def writeToSerialPort(self, portLabel: str, data: Sequence[str]) -> None:
         """
         Sends an array of characters to the serial port and returns immediately.
         """
-    def readFromSerialPort(self, arg: str, /) -> list[str]:
+    def readFromSerialPort(self, portLabel: str) -> list[str]:
         """Reads the contents of the Rx buffer."""
     def setSLMImage(
         self, slmLabel: str, pixels: Annotated[ArrayLike, {"dtype": "uint8"}]
     ) -> None: ...
     @overload
-    def setSLMPixelsTo(self, slmLabel: str, intensity: int) -> None:
-        """Set all SLM pixels to a single 8-bit intensity."""
+    def setSLMPixelsTo(self, slmLabel: str, intensity: int) -> None: ...
     @overload
-    def setSLMPixelsTo(self, slmLabel: str, red: int, green: int, blue: int) -> None:
-        """Set all SLM pixels to an RGB color."""
-    def displaySLMImage(self, arg: str, /) -> None:
+    def setSLMPixelsTo(
+        self, slmLabel: str, red: int, green: int, blue: int
+    ) -> None: ...
+    def displaySLMImage(self, slmLabel: str) -> None:
         """Display the waiting image on the SLM."""
     def setSLMExposure(self, slmLabel: str, exposure_ms: float) -> None:
         """
         For SLM devices with build-in light source (such as projectors) this will set the exposure time, but not (yet) start the illumination
         """
-    def getSLMExposure(self, arg: str, /) -> float:
+    def getSLMExposure(self, slmLabel: str) -> float:
         """
         Returns the exposure time that will be used by the SLM for illumination
         """
     def getSLMWidth(self, slmLabel: str) -> int:
-        """Returns the width (in "pixels") of the SLM deviceLabel name of the SLM"""
+        """Returns the width (in "pixels") of the SLM"""
     def getSLMHeight(self, slmLabel: str) -> int:
-        """
-        Returns the height (in "pixels") of the SLM deviceLabel name of the SLM
-        """
+        """Returns the height (in "pixels") of the SLM"""
     def getSLMNumberOfComponents(self, slmLabel: str) -> int:
         """
-        Returns the number of components (usually these depict colors) of the SLM For instance, an RGB projector will return 3, but a grey scale SLM returns 1 deviceLabel name of the SLM
+        Returns the number of components (usually these depict colors) of the SLM For instance, an RGB projector will return 3, but a grey scale SLM returns 1
         """
-    def getSLMBytesPerPixel(self, arg: str, /) -> int:
+    def getSLMBytesPerPixel(self, slmLabel: str) -> int:
         """Returns the number of bytes per SLM pixel"""
-    def getSLMSequenceMaxLength(self, arg: str, /) -> int:
+    def getSLMSequenceMaxLength(self, slmLabel: str) -> int:
         """
         For SLMs that support sequences, returns the maximum length of the sequence that can be uploaded to the device
         """
-    def startSLMSequence(self, arg: str, /) -> None:
+    def startSLMSequence(self, slmLabel: str) -> None:
         """Starts the sequence previously uploaded to the SLM"""
-    def stopSLMSequence(self, arg: str, /) -> None:
+    def stopSLMSequence(self, slmLabel: str) -> None:
         """Stops the SLM sequence if previously started"""
     def loadSLMSequence(
         self, slmLabel: str, pixels: Sequence[Annotated[ArrayLike, {"dtype": "uint8"}]]
     ) -> None: ...
     def pointGalvoAndFire(
-        self, arg0: str, arg1: float, arg2: float, arg3: float, /
+        self, galvoLabel: str, x: float, y: float, pulseTime_us: float
     ) -> None:
         """
         Set the Galvo to an x,y position and fire the laser for a predetermined duration.
         """
     def setGalvoSpotInterval(self, galvoLabel: str, pulseTime_us: float) -> None: ...
-    def setGalvoPosition(self, arg0: str, arg1: float, arg2: float, /) -> None:
+    def setGalvoPosition(self, galvoLabel: str, x: float, y: float) -> None:
         """Set the Galvo to an x,y position"""
     def getGalvoPosition(self, arg: str, /) -> tuple[float, float]: ...
-    def setGalvoIlluminationState(self, arg0: str, arg1: bool, /) -> None:
+    def setGalvoIlluminationState(self, galvoLabel: str, on: bool) -> None:
         """Set the galvo's illumination state to on or off"""
-    def getGalvoXRange(self, arg: str, /) -> float:
+    def getGalvoXRange(self, galvoLabel: str) -> float:
         """Get the Galvo x range"""
-    def getGalvoXMinimum(self, arg: str, /) -> float:
+    def getGalvoXMinimum(self, galvoLabel: str) -> float:
         """Get the Galvo x minimum"""
-    def getGalvoYRange(self, arg: str, /) -> float:
+    def getGalvoYRange(self, galvoLabel: str) -> float:
         """Get the Galvo y range"""
-    def getGalvoYMinimum(self, arg: str, /) -> float:
+    def getGalvoYMinimum(self, galvoLabel: str) -> float:
         """Get the Galvo y minimum"""
     def addGalvoPolygonVertex(
         self, galvoLabel: str, polygonIndex: int, x: float, y: float
     ) -> None:
         """Add a vertex to a galvo polygon."""
-    def deleteGalvoPolygons(self, arg: str, /) -> None:
+    def deleteGalvoPolygons(self, galvoLabel: str) -> None:
         """Remove all added polygons"""
-    def loadGalvoPolygons(self, arg: str, /) -> None:
+    def loadGalvoPolygons(self, galvoLabel: str) -> None:
         """Load a set of galvo polygons to the device"""
-    def setGalvoPolygonRepetitions(self, arg0: str, arg1: int, /) -> None:
+    def setGalvoPolygonRepetitions(self, galvoLabel: str, repetitions: int) -> None:
         """Set the number of times to loop galvo polygons"""
-    def runGalvoPolygons(self, arg: str, /) -> None:
+    def runGalvoPolygons(self, galvoLabel: str) -> None:
         """Run a loop of galvo polygons"""
-    def runGalvoSequence(self, arg: str, /) -> None:
+    def runGalvoSequence(self, galvoLabel: str) -> None:
         """Run a sequence of galvo positions"""
     def getGalvoChannel(self, galvoLabel: str) -> str:
         """
         Get the name of the active galvo channel (for a multi-laser galvo device).
         """
-    def pressurePumpStop(self, arg: str, /) -> None:
+    def pressurePumpStop(self, pumpLabel: str) -> None:
         """Stops the pressure pump"""
-    def pressurePumpCalibrate(self, arg: str, /) -> None:
-        """Calibrates the pump"""
-    def pressurePumpRequiresCalibration(self, arg: str, /) -> bool:
+    def pressurePumpCalibrate(self, pumpLabel: str) -> None: ...
+    def pressurePumpRequiresCalibration(self, pumpLabel: str) -> bool:
         """Returns boolean whether the pump is operational before calibration"""
-    def setPumpPressureKPa(self, arg0: str, arg1: float, /) -> None:
+    def setPumpPressureKPa(self, pumpLabel: str, pressure: float) -> None:
         """Sets the pressure of the pump in kPa"""
-    def getPumpPressureKPa(self, arg: str, /) -> float:
+    def getPumpPressureKPa(self, pumpLabel: str) -> float:
         """Gets the pressure of the pump in kPa"""
-    def volumetricPumpStop(self, arg: str, /) -> None:
+    def volumetricPumpStop(self, pumpLabel: str) -> None:
         """Stops the volumetric pump"""
-    def volumetricPumpHome(self, arg: str, /) -> None:
-        """Homes the pump"""
+    def volumetricPumpHome(self, pumpLabel: str) -> None: ...
     def volumetricPumpRequiresHoming(self, pumpLabel: str) -> bool: ...
-    def invertPumpDirection(self, arg0: str, arg1: bool, /) -> None:
+    def invertPumpDirection(self, pumpLabel: str, invert: bool) -> None:
         """Sets whether the pump direction needs to be inverted"""
-    def isPumpDirectionInverted(self, arg: str, /) -> bool:
+    def isPumpDirectionInverted(self, pumpLabel: str) -> bool:
         """Gets whether the pump direction needs to be inverted"""
-    def setPumpVolume(self, arg0: str, arg1: float, /) -> None:
+    def setPumpVolume(self, pumpLabel: str, volume: float) -> None:
         """
         Sets the volume of fluid in the pump in uL. Note it does not withdraw upto this amount. It is merely to inform MM of the volume in a prefilled pump.
         """
-    def getPumpVolume(self, arg: str, /) -> float:
+    def getPumpVolume(self, pumpLabel: str) -> float:
         """Get the fluid volume in the pump in uL"""
-    def setPumpMaxVolume(self, arg0: str, arg1: float, /) -> None:
+    def setPumpMaxVolume(self, pumpLabel: str, volume: float) -> None:
         """Sets the max volume of the pump in uL"""
-    def getPumpMaxVolume(self, arg: str, /) -> float:
+    def getPumpMaxVolume(self, pumpLabel: str) -> float:
         """Gets the max volume of the pump in uL"""
-    def setPumpFlowrate(self, arg0: str, arg1: float, /) -> None:
+    def setPumpFlowrate(self, pumpLabel: str, volume: float) -> None:
         """Sets the flowrate of the pump in uL per second"""
-    def getPumpFlowrate(self, arg: str, /) -> float:
+    def getPumpFlowrate(self, pumpLabel: str) -> float:
         """Gets the flowrate of the pump in uL per second"""
     def pumpStart(self, pumpLabel: str) -> None:
         """
@@ -1620,17 +1408,16 @@ class CMMCore:
         """Dispenses the provided volume (in uL) at the set flowrate"""
     def supportsDeviceDetection(self, deviceLabel: str) -> bool:
         """
-        Return whether or not the device supports automatic device detection (i.e. whether or not detectDevice() may be safely called). For legacy reasons, an exception is not thrown if there is an error. Instead, false is returned if label is not a valid device.
+        Return whether or not the device supports automatic device detection (i.e. whether or not detectDevice() may be safely called).
         """
-    def detectDevice(self, arg: str, /) -> DeviceDetectionStatus:
+    def detectDevice(self, deviceLabel: str) -> DeviceDetectionStatus:
         """
         Tries to communicate to a device through a given serial port Used to automate discovery of correct serial port Also configures the serial port correctly
         """
-    def getParentLabel(self, arg: str, /) -> str:
-        """Returns parent device."""
-    def setParentLabel(self, arg0: str, arg1: str, /) -> None:
+    def getParentLabel(self, peripheralLabel: str) -> str: ...
+    def setParentLabel(self, deviceLabel: str, parentHubLabel: str) -> None:
         """Sets parent device label"""
-    def getInstalledDevices(self, arg: str, /) -> list[str]:
+    def getInstalledDevices(self, hubLabel: str) -> list[str]:
         """
         Performs auto-detection and loading of child devices that are attached to a Hub device. For example, if a motorized microscope is represented by a Hub device, it is capable of discovering what specific child devices are currently attached. In that case this call might report that Z-stage, filter changer and objective turret are currently installed and return three device names in the string list.
         """

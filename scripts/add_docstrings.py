@@ -13,6 +13,7 @@ filesystem.  All the workers are side-effect-free → trivial to test.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import subprocess
@@ -36,6 +37,21 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# PATTERNS
+
+# one big DOTALL regex that matches a complete .def( ... ) call
+DEF_RE = re.compile(
+    r"""
+    (\.def\s*\(\s*"[^"]+"\s*,\s*)   # prefix: .def("method_name",
+    (.*?)                           # body: everything else
+    (\)\s*)                         # closing paren (can be multiline)
+    """,
+    re.VERBOSE | re.MULTILINE | re.DOTALL,
+)
+CMMCORE_METHOD = re.compile(r"&CMMCore::(\w+)")
+OVERLOAD_CAST = re.compile(r"overload_cast<([^>]*)>", re.DOTALL)
+DEF_DOC = re.compile(r',\s*"([^"]*(?:\\.[^"]*)*)"\s*RGIL', re.DOTALL)
+
 # --------------------------------------------------------------------------- #
 #  helpers
 # --------------------------------------------------------------------------- #
@@ -46,11 +62,11 @@ def run_doxygen() -> None:
     if not DOXYFILE_PATH.exists():
         sys.exit(f"Doxyfile not found at {DOXYFILE_PATH}")
 
-    log.info("Running doxygen ...")
+    log.info("🚀 Running doxygen ...")
     subprocess.run(["doxygen", str(DOXYFILE_PATH)], check=True, cwd=SCRIPTS_DIR)
     if not any(XML_DIR.glob("*.xml")):
         sys.exit("Doxygen succeeded but produced no XML?")
-    log.info("Doxygen XML written to %s", XML_DIR)
+    log.info("✅ Doxygen XML written to %s", XML_DIR)
 
 
 def _count_args(arglist: str) -> int:
@@ -78,10 +94,12 @@ def _count_args(arglist: str) -> int:
 
 
 def collect_docstrings() -> dict[str, dict[int, str]]:
-    """
-    Parse the Doxygen XML and return a mapping
+    """Parse the Doxygen XML and return a mapping:
 
-        { "CMMCore::method": { 0: "...", 2: "..." }, ... }
+    keys are CMMCore method names, values are dicts mapping
+    parameter counts to docstrings.
+
+    { "CMMCore::method": { 0: "...", 2: "..." }, ... }
     """
     docs: dict[str, dict[int, str]] = {}
     for xml_file in XML_DIR.glob("*.xml"):
@@ -132,34 +150,21 @@ def collect_docstrings() -> dict[str, dict[int, str]]:
                 continue
 
             docs.setdefault(f"CMMCore::{meth}", {})[n_params] = doc
-    log.info("Collected %d documented CMMCore methods", sum(map(len, docs.values())))
+    log.info("✅ Collected %d documented CMMCore methods", sum(map(len, docs.values())))
     return docs
-
-
-# one big DOTALL regex that matches a complete .def( ... ) call
-DEF_RE = re.compile(
-    r"""
-    (\.def\s*\(\s*"[^"]+"\s*,\s*)   # prefix: .def("method_name",
-    (.*?)                           # body: everything else
-    (\)\s*)                         # closing paren (can be multiline)
-    """,
-    re.VERBOSE | re.MULTILINE | re.DOTALL,
-)
 
 
 def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
     """Return rewritten .def block with an inserted / updated docstring."""
     prefix, body, suffix = m.groups()
 
-    cpp_name_match = re.search(r"&CMMCore::(\w+)", body)
-    if not cpp_name_match:
+    if not (cpp_name_match := CMMCORE_METHOD.search(body)):
         return m.group(0)  # leave untouched
 
     cpp_name = f"CMMCore::{cpp_name_match.group(1)}"
 
-    if "nb::overload_cast<" in body:
+    if m_args := OVERLOAD_CAST.search(body):
         # grab whatever sits between the angle-brackets of overload_cast<…>
-        m_args = re.search(r"overload_cast<([^>]*)>", body, re.DOTALL)
         arglist = m_args.group(1) if m_args else ""
         n_params = _count_args(arglist)
     else:
@@ -183,21 +188,18 @@ def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
         return m.group(0)
 
     # escape quotes/newlines via JSON trick
-    import json
-
     doc_escaped = json.dumps(doc)[1:-1]
 
-    # already has a docstring?
-    if re.search(r',\s*".*?"\s*RGIL', body, re.DOTALL):
+    # Check if we already have this exact docstring to avoid unnecessary changes
+    # Look for the last string before RGIL, which should be the docstring
+    if doc_match := DEF_DOC.search(body):
+        if doc_match.group(1) == doc_escaped:
+            # Already has the correct docstring, no change needed
+            return m.group(0)
+
         # use a function replacement so backslashes in *doc_escaped* are emitted
         # verbatim (re.sub string replacements treat backslashes as escapes)
-        body = re.sub(
-            r',\s*".*?"\s*RGIL',
-            lambda _m: f', "{doc_escaped}" RGIL',
-            body,
-            count=1,
-            flags=re.DOTALL,
-        )
+        body = DEF_DOC.sub(lambda _m: f', "{doc_escaped}" RGIL', body, count=1)
     else:
         body = body.replace(" RGIL", f', "{doc_escaped}" RGIL', 1)
 
@@ -205,14 +207,37 @@ def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
     return prefix + body + suffix
 
 
-def update_bindings(docs: dict[str, dict[int, str]]) -> None:
+def update_bindings(docs: dict[str, dict[int, str]]) -> bool:
+    """Update the bindings file with docstrings from the collected docs.
+
+    Returns True if the file was modified, False otherwise.
+    """
     text = BINDINGS_FILE.read_text()
     new_text = DEF_RE.sub(lambda m: _patch_def(m, docs), text)
+
     if new_text == text:
-        log.info("No changes needed in %s", BINDINGS_FILE)
-        return
-    BINDINGS_FILE.write_text(new_text)
-    log.info("Updated %s", BINDINGS_FILE)
+        log.info("🆗 No changes needed in %s", BINDINGS_FILE)
+        return False
+
+    # Only run clang-format if we made actual content changes
+    # try to run clang-format on the new text... to prevent unnecessary diffs
+    formatted_text = new_text
+    formatted_text = subprocess.run(
+        ["clang-format", "--style=file"],
+        input=new_text.encode("utf-8"),
+        capture_output=True,
+        check=True,
+        cwd=REPO_ROOT,  # Make sure we're in the right directory for .clang-format
+    ).stdout.decode("utf-8")
+
+    # If clang-format made the text identical to original, don't write
+    if formatted_text == text:
+        log.info("🆗 No effective changes after formatting in %s", BINDINGS_FILE)
+        return False
+
+    BINDINGS_FILE.write_text(formatted_text)
+    log.info("✨ Updated %s", BINDINGS_FILE)
+    return True
 
 
 # --------------------------------------------------------------------------- #
@@ -227,11 +252,14 @@ def main() -> None:
         sys.exit(f"Doxygen failed: {e}")
 
     docs = collect_docstrings()
+
     if not docs:
-        log.warning("No docstrings collected - nothing to patch.")
+        log.warning("❌ No docstrings collected - nothing to patch.")
         return
 
-    update_bindings(docs)
+    if update_bindings(docs):
+        if "--check" in sys.argv:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
