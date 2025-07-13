@@ -54,7 +54,7 @@ test-cov:
 clean-cov:
 	find {{ builddir }} -name "*.gcda" -exec rm -f {} \;
 
-# update version in meson.buildz
+# update version in meson.build
 version:
 	meson rewrite kwargs set project / version $({{ python }} scripts/extract_version.py)
 	{{ python }} scripts/build_stubs.py

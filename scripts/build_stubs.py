@@ -34,7 +34,6 @@ def build_stub(module_path: Path, output_path: str):
 
     # remove extra newlines and let ruff-format add them back
     stub_txt = re.sub("\n\n", "\n", stub_txt)
-    # stub_txt = re.sub('"""\n        ', '"""', stub_txt)
 
     dest = Path(output_path)
     dest.write_text(stub_txt)
