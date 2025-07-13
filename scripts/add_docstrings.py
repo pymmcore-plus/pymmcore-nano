@@ -91,29 +91,47 @@ def collect_docstrings() -> dict[str, dict[int, str]]:
         for member in root.findall(".//memberdef[@kind='function']"):
             # definition looks like "std::string CMMCore::getVersionInfo() const"
             definition = member.findtext("definition", default="")
-            m = re.search(r"(\w+)::(\w+)", definition)
+            m = re.search(r"CMMCore::(\w+)", definition)
             if not m:
-                continue
-            class_, meth = m.groups()
-            if class_ != "CMMCore":
                 continue  # we only care about CMMCore methods
+            meth = m.group(1)
 
             argstring = member.findtext("argsstring", default="")
-            n_params = _count_args(argstring.strip("()"))
-
-            # short + long docs
+            # Extract just the content between the first ( and matching )
+            paren_start = argstring.find("(")
+            if paren_start != -1:
+                paren_end = argstring.find(")", paren_start)
+                if paren_end != -1:
+                    args_content = argstring[paren_start + 1 : paren_end]
+                    n_params = _count_args(args_content)
+                else:
+                    n_params = 0
+            else:
+                n_params = 0  # short + long docs
             brief = member.find("briefdescription")
             full = member.find("detaileddescription")
             text_parts = []
             if brief is not None:
                 text_parts.append(" ".join(brief.itertext()).strip())
             if full is not None:
-                text_parts.append(" ".join(full.itertext()).strip())
+                # Use a more targeted approach: only take first paragraph
+                first_para = full.find("para")
+                if first_para is not None:
+                    # Get only direct text content, not from nested elements
+                    para_text = first_para.text or ""
+                    for child in first_para:
+                        if child.tag not in ["parameterlist", "simplesect"]:
+                            para_text += " ".join(child.itertext())
+                        if child.tail:
+                            para_text += child.tail
+                    para_text = para_text.strip()
+                    if para_text and len(para_text.split()) > 3:
+                        text_parts.append(para_text)
             doc = "\n\n".join(filter(None, text_parts)).strip()
             if not doc:
                 continue
 
-            docs.setdefault(f"{class_}::{meth}", {})[n_params] = doc
+            docs.setdefault(f"CMMCore::{meth}", {})[n_params] = doc
     log.info("Collected %d documented CMMCore methods", sum(map(len, docs.values())))
     return docs
 
@@ -121,22 +139,17 @@ def collect_docstrings() -> dict[str, dict[int, str]]:
 # one big DOTALL regex that matches a complete .def( ... ) call
 DEF_RE = re.compile(
     r"""
-    (?P<prefix>        # everything before the argument list
-        \.def\s*        # ".def"
-        \(\s*"[^"]+"\s*,\s*   # ("py_name",
-    )
-    (?P<body>          # everything up to the final ')'
-        .*?
-    )
-    \)                 # the matching parenthesis
+    (\.def\s*\(\s*"[^"]+"\s*,\s*)   # prefix: .def("method_name",
+    (.*?)                           # body: everything else
+    (\)\s*)                         # closing paren (can be multiline)
     """,
-    re.DOTALL | re.VERBOSE,
+    re.VERBOSE | re.MULTILINE | re.DOTALL,
 )
 
 
 def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
     """Return rewritten .def block with an inserted / updated docstring."""
-    prefix, body = m.group("prefix"), m.group("body")
+    prefix, body, suffix = m.groups()
 
     cpp_name_match = re.search(r"&CMMCore::(\w+)", body)
     if not cpp_name_match:
@@ -153,15 +166,18 @@ def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
         # fall back to plain "&CMMCore::Foo" syntax
         paren = re.search(r"&CMMCore::\w+\s*\(", body)
         if paren:
-            start = paren.end()           # position right after the '('
+            start = paren.end()  # position right after the '('
             end = start + body[start:].find(")")
             n_params = _count_args(body[start:end])
         else:
-            n_params = 0  # safety fallback
+            # For multiline methods or methods without parentheses in body,
+            # fall back to counting '_a patterns
+            n_params = body.count('"_a')
 
     doc = (
         docs.get(cpp_name, {}).get(n_params)
         or docs.get(cpp_name, {}).get(0)  # fall back to "only doc"
+        or next(iter(docs.get(cpp_name, {}).values()), None)  # any available doc
     )
     if not doc:
         return m.group(0)
@@ -186,7 +202,7 @@ def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
         body = body.replace(" RGIL", f', "{doc_escaped}" RGIL', 1)
 
     log.debug("patched %-30s  (%d params)", cpp_name, n_params)
-    return prefix + body + ")"  # re-append the closing paren removed by regex
+    return prefix + body + suffix
 
 
 def update_bindings(docs: dict[str, dict[int, str]]) -> None:

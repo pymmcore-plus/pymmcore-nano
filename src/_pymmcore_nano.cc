@@ -806,7 +806,8 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
 
     //////////////////// MMCore ////////////////////
 
-    nb::class_<CMMCore>(m, "CMMCore", R"doc(
+    nb::
+        class_<CMMCore>(m, "CMMCore", R"doc(
 The main MMCore object.
 
 
@@ -814,841 +815,1139 @@ Manages multiple device adapters. Provides a device-independent interface for ha
 Additionally, provides some facilities (such as configuration groups) for application
 programming.
 )doc")
-        .def(nb::init<>())
-        .def(
-            "loadSystemConfiguration",
-            // accept any object that can be cast to a string (e.g. Path)
-            [](CMMCore &self, nb::object fileName) {
-                self.loadSystemConfiguration(nb::str(fileName).c_str());
-            },
-            "fileName"_a, "Loads a system configuration from a file.")
-        .def("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a , "Saves the current system configuration to a text file of the MM specific format. The configuration file records only the information essential to the hardware setup: devices, labels, pre-initialization properties, and configurations. The file format is the same as for the system state." RGIL)
-        .def_static("enableFeature", &CMMCore::enableFeature, "name"_a, "enable"_a RGIL)
-        .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a RGIL)
-        .def_static("getMMCoreVersionMajor", &CMMCore::getMMCoreVersionMajor RGIL)
-        .def_static("getMMCoreVersionMinor", &CMMCore::getMMCoreVersionMinor RGIL)
-        .def_static("getMMCoreVersionPatch", &CMMCore::getMMCoreVersionPatch RGIL)
-        .def_static("getMMDeviceModuleInterfaceVersion", &CMMCore::getMMDeviceModuleInterfaceVersion RGIL)
-        .def_static("getMMDeviceDeviceInterfaceVersion", &CMMCore::getMMDeviceDeviceInterfaceVersion RGIL)
-        .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a , "Loads a device from the plugin library. label assigned name for the device during the core session moduleName the name of the device adapter module (short name, not full file name) deviceName the name of the device. The name must correspond to one of the names recognized by the specific plugin library." RGIL)
-        .def("unloadDevice", &CMMCore::unloadDevice, "label"_a , "Unloads the device from the core and adjusts all configuration data." RGIL)
-        .def("unloadAllDevices", &CMMCore::unloadAllDevices)
-        .def("initializeAllDevices", &CMMCore::initializeAllDevices , "Calls Initialize() method for each loaded device. Parallel implemnetation should be faster" RGIL)
-        .def("initializeDevice", &CMMCore::initializeDevice, "label"_a , "Initializes specific device. label the device label" RGIL)
-        .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a , "Queries the initialization state of the given device. label the device label" RGIL)
-        .def("reset", &CMMCore::reset , "Unloads all devices from the core, clears all configuration data." RGIL)
-        .def("unloadLibrary", &CMMCore::unloadLibrary, "moduleName"_a , "Forcefully unload a library. Experimental. Don't use." RGIL)
-        .def("updateCoreProperties", &CMMCore::updateCoreProperties , "Updates CoreProperties (currently all Core properties are devices types) with the loaded hardware. After this call, each of the Core-Device properties will be populated with the currently loaded devices of that type" RGIL)
-        .def("getCoreErrorText", &CMMCore::getCoreErrorText, "code"_a RGIL)
-        .def("getVersionInfo", &CMMCore::getVersionInfo RGIL)
-        .def("getAPIVersionInfo", &CMMCore::getAPIVersionInfo RGIL)
-        .def("getSystemState", &CMMCore::getSystemState , "Returns the entire system state, i.e. the collection of all property values from all devices. \n For legacy reasons, this function does not throw an exception if there is an error. If there is an error, properties may be missing from the return value. \n Configuration  object containing a collection of device-property-value triplets" RGIL)
-        .def("setSystemState", &CMMCore::setSystemState, "conf"_a , "Sets all properties contained in the Configuration object. The procedure will attempt to set each property it encounters, but won't stop if any of the properties fail or if the requested device is not present. It will just quietly continue. conf the configuration object representing the desired system state" RGIL)
-        .def("getConfigState", &CMMCore::getConfigState, "group"_a, "config"_a , "Returns a partial state of the system, only for devices included in the specified configuration." RGIL)
-        .def("getConfigGroupState",
-             nb::overload_cast<const char *>(&CMMCore::getConfigGroupState),
-             "group"_a , "Returns the partial state of the system, only for the devices included in the specified group. It will create a union of all devices referenced in a group." RGIL)
-        .def("saveSystemState", &CMMCore::saveSystemState, "fileName"_a , "Saves the current system state to a text file of the MM specific format. The file records only read-write properties. The file format is directly readable by the complementary loadSystemState() command." RGIL)
-        .def("loadSystemState", &CMMCore::loadSystemState, "fileName"_a , "Loads the system configuration from the text file conforming to the MM specific format. The configuration contains a list of commands to build the desired system state from read-write properties. Format specification: the same as in loadSystemConfiguration() command" RGIL)
-        .def("registerCallback", &CMMCore::registerCallback, R"doc(Register a callback (listener class).
+            .def(nb::init<>())
+            .def(
+                "loadSystemConfiguration",
+                // accept any object that can be cast to a string (e.g. Path)
+                [](CMMCore &self, nb::object fileName) {
+                    self.loadSystemConfiguration(nb::str(fileName).c_str());
+                },
+                "fileName"_a, "Loads a system configuration from a file.")
+            .def(
+                "saveSystemConfiguration", &CMMCore::saveSystemConfiguration,
+                "Saves the current system configuration to a text file of the MM specific format. The configuration file records only the information essential to the hardware setup: devices, labels, pre-initialization properties, and configurations. The file format is the same as for the system state." RGIL)
+            .def_static("enableFeature", &CMMCore::enableFeature, "name"_a, "enable"_a RGIL)
+            .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a RGIL)
+            .def_static("getMMCoreVersionMajor", &CMMCore::getMMCoreVersionMajor RGIL)
+            .def_static("getMMCoreVersionMinor", &CMMCore::getMMCoreVersionMinor RGIL)
+            .def_static("getMMCoreVersionPatch", &CMMCore::getMMCoreVersionPatch RGIL)
+            .def_static("getMMDeviceModuleInterfaceVersion",
+                        &CMMCore::getMMDeviceModuleInterfaceVersion RGIL)
+            .def_static("getMMDeviceDeviceInterfaceVersion",
+                        &CMMCore::getMMDeviceDeviceInterfaceVersion RGIL)
+            .def(
+                "loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a,
+                "Loads a device from the plugin library. label assigned name for the device during the core session moduleName the name of the device adapter module (short name, not full file name) deviceName the name of the device. The name must correspond to one of the names recognized by the specific plugin library." RGIL)
+            .def("unloadDevice", &CMMCore::unloadDevice,
+                 "Unloads the device from the core and adjusts all configuration data." RGIL)
+            .def("unloadAllDevices", &CMMCore::unloadAllDevices)
+            .def(
+                "initializeAllDevices", &CMMCore::initializeAllDevices,
+                "Calls Initialize() method for each loaded device. Parallel implemnetation should be faster" RGIL)
+            .def("initializeDevice", &CMMCore::initializeDevice,
+                 "Initializes specific device. \n \n \n label \n \n \n the device label" RGIL)
+            .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState,
+                 "Queries the initialization state of the given device." RGIL)
+            .def("reset", &CMMCore::reset,
+                 "Unloads all devices from the core, clears all configuration data." RGIL)
+            .def("unloadLibrary", &CMMCore::unloadLibrary,
+                 "Forcefully unload a library. Experimental. Don't use." RGIL)
+            .def(
+                "updateCoreProperties", &CMMCore::updateCoreProperties,
+                "Updates CoreProperties (currently all Core properties are devices types) with the loaded hardware. After this call, each of the Core-Device properties will be populated with the currently loaded devices of that type" RGIL)
+            .def("getCoreErrorText", &CMMCore::getCoreErrorText,
+                 "Returns a pre-defined error test with the given error code" RGIL)
+            .def("getVersionInfo", &CMMCore::getVersionInfo, "Displays core version." RGIL)
+            .def("getAPIVersionInfo", &CMMCore::getAPIVersionInfo,
+                 "Returns the module and device interface versions." RGIL)
+            .def(
+                "getSystemState", &CMMCore::getSystemState,
+                "Returns the entire system state, i.e. the collection of all property values from all devices." RGIL)
+            .def(
+                "setSystemState", &CMMCore::setSystemState,
+                "Sets all properties contained in the Configuration object. The procedure will attempt to set each property it encounters, but won't stop if any of the properties fail or if the requested device is not present. It will just quietly continue." RGIL)
+            .def(
+                "getConfigState", &CMMCore::getConfigState,
+                "Returns a partial state of the system, only for devices included in the specified configuration." RGIL)
+            .def(
+                "getConfigGroupState",
+                nb::overload_cast<const char *>(&CMMCore::getConfigGroupState), "group"_a,
+                "Returns the partial state of the system, only for the devices included in the specified group. It will create a union of all devices referenced in a group." RGIL)
+            .def(
+                "saveSystemState", &CMMCore::saveSystemState, "fileName"_a,
+                "Saves the current system state to a text file of the MM specific format. The file records only read-write properties. The file format is directly readable by the complementary loadSystemState() command." RGIL)
+            .def(
+                "loadSystemState", &CMMCore::loadSystemState, "fileName"_a,
+                "Loads the system configuration from the text file conforming to the MM specific format. The configuration contains a list of commands to build the desired system state from read-write properties. Format specification: the same as in loadSystemConfiguration() command" RGIL)
+            .def(
+                "registerCallback", &CMMCore::registerCallback,
+                R"doc(Register a callback (listener class).
 
 
 MMCore will send notifications on internal events using this interface
-          )doc", nb::arg("cb").none() , "Register a callback (listener class). MMCore will send notifications on internal events using this interface. Pass nullptr to unregister. The caller is responsible for ensuring that the object pointed to by cb remains valid until it is unregistered. This function is not thread safe." RGIL)
-        .def(
-            "setPrimaryLogFile",
-            // accept any object that can be cast to a string (e.g. Path)
-            [](CMMCore &self, nb::object filename, bool truncate) {
-                // convert to string
-                self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);
-            },
-            "filename"_a,
-            "truncate"_a = false )
+          )doc",
+                nb::arg("cb").none(), "Register a callback (listener class). MMCore will send notifications on internal events using this interface. Pass nullptr to unregister. The caller is responsible for ensuring that the object pointed to by cb remains valid until it is unregistered. This function is not thread safe." RGIL)
+            .def(
+                "setPrimaryLogFile",
+                // accept any object that can be cast to a string (e.g. Path)
+                [](CMMCore &self, nb::object filename, bool truncate) {
+                    // convert to string
+                    self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);
+                },
+                "filename"_a, "truncate"_a = false)
 
-        .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile RGIL)
-        .def("logMessage", nb::overload_cast<const char *>(&CMMCore::logMessage), "msg"_a , "Record text message in the log file." RGIL)
-        .def("logMessage",
-             nb::overload_cast<const char *, bool>(&CMMCore::logMessage),
-             "msg"_a,
-             "debugOnly"_a , "Record text message in the log file." RGIL)
+            .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile,
+                 "Return the name of the primary Core log file." RGIL)
+            .def("logMessage", nb::overload_cast<const char *>(&CMMCore::logMessage), "msg"_a,
+                 "Record text message in the log file." RGIL)
+            .def("logMessage", nb::overload_cast<const char *, bool>(&CMMCore::logMessage),
+                 "msg"_a, "debugOnly"_a, "Record text message in the log file." RGIL)
 
-        .def("enableDebugLog", &CMMCore::enableDebugLog, "enable"_a , "Enable or disable logging of debug messages. enable if set to true, debug messages will be recorded in the log file" RGIL)
-        .def("debugLogEnabled", &CMMCore::debugLogEnabled , "Indicates if logging of debug messages is enabled" RGIL)
-        .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a , "Enables or disables log message display on the standard console. enable if set to true, log file messages will be echoed on the stderr." RGIL)
-        .def("stderrLogEnabled", &CMMCore::stderrLogEnabled , "Indicates whether logging output goes to stdErr" RGIL)
-        .def(
-            "startSecondaryLogFile",
-            // accept any object that can be cast to a string (e.g. Path)
-            [](CMMCore &self,
-               nb::object filename,
-               bool enableDebug,
-               bool truncate,
-               bool synchronous) {
-                return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug,
-                                                  truncate, synchronous);
-            },
-            "filename"_a,
-            "enableDebug"_a,
-            "truncate"_a = true,
-            "synchronous"_a = false )
-        .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a , "Stop capturing logging output into an additional file. handle The secondary log handle returned by startSecondaryLogFile()." RGIL)
+            .def("enableDebugLog", &CMMCore::enableDebugLog,
+                 "Enable or disable logging of debug messages." RGIL)
+            .def("debugLogEnabled", &CMMCore::debugLogEnabled,
+                 "Indicates if logging of debug messages is enabled" RGIL)
+            .def("enableStderrLog", &CMMCore::enableStderrLog,
+                 "Enables or disables log message display on the standard console." RGIL)
+            .def("stderrLogEnabled", &CMMCore::stderrLogEnabled,
+                 "Indicates whether logging output goes to stdErr" RGIL)
+            .def(
+                "startSecondaryLogFile",
+                // accept any object that can be cast to a string (e.g. Path)
+                [](CMMCore &self, nb::object filename, bool enableDebug, bool truncate,
+                   bool synchronous) {
+                    return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug,
+                                                      truncate, synchronous);
+                },
+                "filename"_a, "enableDebug"_a, "truncate"_a = true, "synchronous"_a = false)
+            .def(
+                "stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a,
+                "Stop capturing logging output into an additional file. handle The secondary log handle returned by startSecondaryLogFile()." RGIL)
 
-        .def("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths RGIL)
-        .def("setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a , "Set the device adapter search paths. Upon subsequent attempts to load device adapters, these paths (and only these paths) will be searched. Calling this function has no effect on device adapters that have already been loaded. If you want to simply add to the list of paths, you must first retrieve the current paths by calling getDeviceAdapterSearchPaths(). paths the device adapter search paths" RGIL)
-        .def("getDeviceAdapterNames", &CMMCore::getDeviceAdapterNames RGIL)
-        .def("getAvailableDevices", &CMMCore::getAvailableDevices, "library"_a RGIL)
-        .def("getAvailableDeviceDescriptions",
-             &CMMCore::getAvailableDeviceDescriptions,
-             "library"_a RGIL)
-        .def("getAvailableDeviceTypes", &CMMCore::getAvailableDeviceTypes, "library"_a RGIL)
-        .def("getLoadedDevices", &CMMCore::getLoadedDevices RGIL)
-        .def("getLoadedDevicesOfType", &CMMCore::getLoadedDevicesOfType, "devType"_a RGIL)
-        .def("getDeviceType", &CMMCore::getDeviceType, "label"_a RGIL)
-        .def("getDeviceLibrary", &CMMCore::getDeviceLibrary, "label"_a RGIL)
-        .def("getDeviceName",
-             nb::overload_cast<const char *>(&CMMCore::getDeviceName),
-             "label"_a RGIL)
-        .def("getDeviceDescription", &CMMCore::getDeviceDescription, "label"_a RGIL)
-        .def("getDevicePropertyNames", &CMMCore::getDevicePropertyNames, "label"_a RGIL)
-        .def("hasProperty", &CMMCore::hasProperty, "label"_a, "propName"_a , "Checks if device has a property with a specified name. The exception will be thrown in case device label is not defined." RGIL)
-        .def("getProperty", &CMMCore::getProperty, "label"_a, "propName"_a RGIL)
-        .def("setProperty",
-             nb::overload_cast<const char *, const char *, const char *>(&CMMCore::setProperty),
-             "label"_a,
-             "propName"_a,
-             "propValue"_a , "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
-        .def("setProperty",
-             nb::overload_cast<const char *, const char *, bool>(&CMMCore::setProperty),
-             "label"_a,
-             "propName"_a,
-             "propValue"_a , "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
-        .def("setProperty",
-             nb::overload_cast<const char *, const char *, long>(&CMMCore::setProperty),
-             "label"_a,
-             "propName"_a,
-             "propValue"_a , "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
-        .def("setProperty",
-             nb::overload_cast<const char *, const char *, float>(&CMMCore::setProperty),
-             "label"_a,
-             "propName"_a,
-             "propValue"_a , "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
-        .def("getAllowedPropertyValues",
-             &CMMCore::getAllowedPropertyValues,
-             "label"_a,
-             "propName"_a RGIL)
-        .def("isPropertyReadOnly", &CMMCore::isPropertyReadOnly, "label"_a, "propName"_a , "Tells us whether the property can be modified. true for a read-only property label the device label propName the property name" RGIL)
-        .def("isPropertyPreInit", &CMMCore::isPropertyPreInit, "label"_a, "propName"_a , "Tells us whether the property must be defined prior to initialization. true for pre-init property label the device label propName the property name" RGIL)
-        .def(
-            "isPropertySequenceable", &CMMCore::isPropertySequenceable, "label"_a, "propName"_a RGIL)
-        .def("hasPropertyLimits", &CMMCore::hasPropertyLimits, "label"_a, "propName"_a , "Queries device if the specific property has limits. label the device name propName the property label" RGIL)
-        .def("getPropertyLowerLimit", &CMMCore::getPropertyLowerLimit, "label"_a, "propName"_a , "Returns the property lower limit value, if the property has limits - 0 otherwise." RGIL)
-        .def("getPropertyUpperLimit", &CMMCore::getPropertyUpperLimit, "label"_a, "propName"_a , "Returns the property upper limit value, if the property has limits - 0 otherwise." RGIL)
-        .def("getPropertyType", &CMMCore::getPropertyType, "label"_a, "propName"_a RGIL)
-        .def("startPropertySequence", &CMMCore::startPropertySequence, "label"_a, "propName"_a , "Starts an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable label the device name propName the property label" RGIL)
-        .def("stopPropertySequence", &CMMCore::stopPropertySequence, "label"_a, "propName"_a , "Stops an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable label the device label propName the property name" RGIL)
-        .def("getPropertySequenceMaxLength",
-             &CMMCore::getPropertySequenceMaxLength,
-             "label"_a,
-             "propName"_a , "Queries device property for the maximum number of events that can be put in a sequence label the device name propName the property label" RGIL)
-        .def("loadPropertySequence",
-             &CMMCore::loadPropertySequence,
-             "label"_a,
-             "propName"_a,
-             "eventSequence"_a , "Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable label the device name propName the property label eventSequence the sequence of events/states that the device will execute in response to external triggers" RGIL)
-        .def("deviceBusy", &CMMCore::deviceBusy, "label"_a , "Checks the busy status of the specific device. label the device label true if the device is busy" RGIL)
-        .def("waitForDevice",
-             nb::overload_cast<const char *>(&CMMCore::waitForDevice),
-             "label"_a , "Waits (blocks the calling thread) until the specified device becomes device the device label" RGIL)
-        .def("waitForConfig", &CMMCore::waitForConfig, "group"_a, "configName"_a , "Blocks until all devices included in the configuration become ready. group the configuration group config the configuration preset" RGIL)
-        .def("systemBusy", &CMMCore::systemBusy , "Checks the busy status of the entire system. The system will report busy if any of the devices is busy. status (true on busy)" RGIL)
-        .def("waitForSystem", &CMMCore::waitForSystem , "Blocks until all devices in the system become ready (not-busy)." RGIL)
-        .def("deviceTypeBusy", &CMMCore::deviceTypeBusy, "devType"_a , "Checks the busy status for all devices of the specific type. The system will report busy if any of the devices of the specified type are busy. true on busy devType a constant specifying the device type" RGIL)
-        .def("waitForDeviceType", &CMMCore::waitForDeviceType, "devType"_a , "Blocks until all devices of the specific type become ready (not-busy). devType a constant specifying the device type" RGIL)
-        .def("getDeviceDelayMs", &CMMCore::getDeviceDelayMs, "label"_a , "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label" , "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label", "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting. the delay time in milliseconds label the device label" RGIL)
-        .def("setDeviceDelayMs", &CMMCore::setDeviceDelayMs, "label"_a, "delayMs"_a , "Overrides the built-in value for the action delay. Some devices ignore this setting. label the device label delayMs the desired delay in milliseconds" RGIL)
-        .def("usesDeviceDelay", &CMMCore::usesDeviceDelay, "label"_a , "Signals if the device will use the delay setting or not. label the device label true if the device uses a delay" RGIL)
-        .def("setTimeoutMs", &CMMCore::setTimeoutMs, "timeoutMs"_a RGIL)
-        .def("getTimeoutMs", &CMMCore::getTimeoutMs RGIL)
-        .def("sleep", &CMMCore::sleep, "intervalMs"_a , "Waits (blocks the calling thread) for specified time in milliseconds. intervalMs the time to sleep in milliseconds" RGIL)
+            .def("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths,
+                 "Return the current device adapter search paths." RGIL)
+            .def(
+                "setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a,
+                "Set the device adapter search paths. Upon subsequent attempts to load device adapters, these paths (and only these paths) will be searched. Calling this function has no effect on device adapters that have already been loaded. If you want to simply add to the list of paths, you must first retrieve the current paths by calling getDeviceAdapterSearchPaths(). paths the device adapter search paths" RGIL)
+            .def("getDeviceAdapterNames", &CMMCore::getDeviceAdapterNames,
+                 "Return the names of discoverable device adapters." RGIL)
+            .def("getAvailableDevices", &CMMCore::getAvailableDevices,
+                 "Get available devices from the specified device library." RGIL)
+            .def("getAvailableDeviceDescriptions", &CMMCore::getAvailableDeviceDescriptions,
+                 "Get descriptions for available devices from the specified library." RGIL)
+            .def("getAvailableDeviceTypes", &CMMCore::getAvailableDeviceTypes,
+                 "Get type information for available devices from the specified library." RGIL)
+            .def("getLoadedDevices", &CMMCore::getLoadedDevices,
+                 "Returns an array of labels for currently loaded devices." RGIL)
+            .def(
+                "getLoadedDevicesOfType", &CMMCore::getLoadedDevicesOfType,
+                "Returns an array of labels for currently loaded devices of specific type." RGIL)
+            .def("getDeviceType", &CMMCore::getDeviceType, "Returns device type." RGIL)
+            .def("getDeviceLibrary", &CMMCore::getDeviceLibrary, "label"_a,
+                 "Returns device library (aka module, device adapter) name." RGIL)
+            .def("getDeviceName", nb::overload_cast<const char *>(&CMMCore::getDeviceName),
+                 "label"_a RGIL)
+            .def(
+                "getDeviceDescription", &CMMCore::getDeviceDescription,
+                "Returns description text for a given device label. \"Description\" is determined by the library and is immutable." RGIL)
+            .def("getDevicePropertyNames", &CMMCore::getDevicePropertyNames,
+                 "Returns all property names supported by the device." RGIL)
+            .def(
+                "hasProperty", &CMMCore::hasProperty,
+                "Checks if device has a property with a specified name. The exception will be thrown in case device label is not defined." RGIL)
+            .def("getProperty", &CMMCore::getProperty,
+                 "Returns the property value for the specified device." RGIL)
+            .def(
+                "setProperty",
+                nb::overload_cast<const char *, const char *, const char *>(
+                    &CMMCore::setProperty),
+                "label"_a, "propName"_a, "propValue"_a,
+                "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
+            .def(
+                "setProperty",
+                nb::overload_cast<const char *, const char *, bool>(&CMMCore::setProperty),
+                "label"_a, "propName"_a, "propValue"_a,
+                "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
+            .def(
+                "setProperty",
+                nb::overload_cast<const char *, const char *, long>(&CMMCore::setProperty),
+                "label"_a, "propName"_a, "propValue"_a,
+                "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
+            .def(
+                "setProperty",
+                nb::overload_cast<const char *, const char *, float>(&CMMCore::setProperty),
+                "label"_a, "propName"_a, "propValue"_a,
+                "Changes the value of the device property. label the device label propName the property name propValue the new property value" RGIL)
+            .def(
+                "getAllowedPropertyValues", &CMMCore::getAllowedPropertyValues,
+                "Returns all valid values for the specified property. If the array is empty it means that there are no restrictions for values. However, even if all values are allowed it is not guaranteed that all of them will be actually accepted by the device at run time." RGIL)
+            .def("isPropertyReadOnly", &CMMCore::isPropertyReadOnly,
+                 "Tells us whether the property can be modified." RGIL)
+            .def("isPropertyPreInit", &CMMCore::isPropertyPreInit,
+                 "Tells us whether the property must be defined prior to initialization." RGIL)
+            .def("isPropertySequenceable", &CMMCore::isPropertySequenceable,
+                 "Queries device if the specified property can be used in a sequence" RGIL)
+            .def("hasPropertyLimits", &CMMCore::hasPropertyLimits,
+                 "Queries device if the specific property has limits." RGIL)
+            .def(
+                "getPropertyLowerLimit", &CMMCore::getPropertyLowerLimit,
+                "Returns the property lower limit value, if the property has limits - 0 otherwise." RGIL)
+            .def(
+                "getPropertyUpperLimit", &CMMCore::getPropertyUpperLimit,
+                "Returns the property upper limit value, if the property has limits - 0 otherwise." RGIL)
+            .def("getPropertyType", &CMMCore::getPropertyType,
+                 "Returns the intrinsic property type." RGIL)
+            .def(
+                "startPropertySequence", &CMMCore::startPropertySequence,
+                "Starts an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable" RGIL)
+            .def(
+                "stopPropertySequence", &CMMCore::stopPropertySequence,
+                "Stops an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable" RGIL)
+            .def(
+                "getPropertySequenceMaxLength", &CMMCore::getPropertySequenceMaxLength,
+                "Queries device property for the maximum number of events that can be put in a sequence" RGIL)
+            .def(
+                "loadPropertySequence", &CMMCore::loadPropertySequence,
+                "Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable" RGIL)
+            .def("deviceBusy", &CMMCore::deviceBusy,
+                 "Checks the busy status of the specific device." RGIL)
+            .def(
+                "waitForDevice", nb::overload_cast<const char *>(&CMMCore::waitForDevice),
+                "label"_a,
+                "Waits (blocks the calling thread) until the specified device becomes device the device label" RGIL)
+            .def("waitForConfig", &CMMCore::waitForConfig,
+                 "Blocks until all devices included in the configuration become ready." RGIL)
+            .def(
+                "systemBusy", &CMMCore::systemBusy,
+                "Checks the busy status of the entire system. The system will report busy if any of the devices is busy. status (true on busy)" RGIL)
+            .def("waitForSystem", &CMMCore::waitForSystem,
+                 "Blocks until all devices in the system become ready (not-busy)." RGIL)
+            .def(
+                "deviceTypeBusy", &CMMCore::deviceTypeBusy,
+                "Checks the busy status for all devices of the specific type. The system will report busy if any of the devices of the specified type are busy." RGIL)
+            .def(
+                "waitForDeviceType", &CMMCore::waitForDeviceType, "devType"_a,
+                "Blocks until all devices of the specific type become ready (not-busy). devType a constant specifying the device type" RGIL)
+            .def(
+                "getDeviceDelayMs", &CMMCore::getDeviceDelayMs,
+                "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting." RGIL)
+            .def(
+                "setDeviceDelayMs", &CMMCore::setDeviceDelayMs,
+                "Overrides the built-in value for the action delay. Some devices ignore this setting." RGIL)
+            .def("usesDeviceDelay", &CMMCore::usesDeviceDelay,
+                 "Signals if the device will use the delay setting or not." RGIL)
+            .def("setTimeoutMs", &CMMCore::setTimeoutMs, "timeoutMs"_a RGIL)
+            .def("getTimeoutMs", &CMMCore::getTimeoutMs RGIL)
+            .def(
+                "sleep", &CMMCore::sleep, "intervalMs"_a,
+                "Waits (blocks the calling thread) for specified time in milliseconds. intervalMs the time to sleep in milliseconds" RGIL)
 
-        .def("getCameraDevice", &CMMCore::getCameraDevice RGIL)
-        .def("getShutterDevice", &CMMCore::getShutterDevice RGIL)
-        .def("getFocusDevice", &CMMCore::getFocusDevice RGIL)
-        .def("getXYStageDevice", &CMMCore::getXYStageDevice RGIL)
-        .def("getAutoFocusDevice", &CMMCore::getAutoFocusDevice RGIL)
-        .def("getImageProcessorDevice", &CMMCore::getImageProcessorDevice RGIL)
-        .def("getSLMDevice", &CMMCore::getSLMDevice RGIL)
-        .def("getGalvoDevice", &CMMCore::getGalvoDevice RGIL)
-        .def("getChannelGroup", &CMMCore::getChannelGroup RGIL)
-        .def("setCameraDevice", &CMMCore::setCameraDevice, "cameraLabel"_a , "Sets the current camera device. camera the camera device label" RGIL)
-        .def("setShutterDevice", &CMMCore::setShutterDevice, "shutterLabel"_a , "Sets the current shutter device. shutter the shutter device label" RGIL)
-        .def("setFocusDevice", &CMMCore::setFocusDevice, "focusLabel"_a , "Sets the current focus device. focus the focus stage device label" RGIL)
-        .def("setXYStageDevice", &CMMCore::setXYStageDevice, "xyStageLabel"_a , "Sets the current XY device." RGIL)
-        .def("setAutoFocusDevice", &CMMCore::setAutoFocusDevice, "focusLabel"_a , "Sets the current auto-focus device." RGIL)
-        .def("setImageProcessorDevice", &CMMCore::setImageProcessorDevice, "procLabel"_a , "Sets the current image processor device." RGIL)
-        .def("setSLMDevice", &CMMCore::setSLMDevice, "slmLabel"_a , "Sets the current slm device." RGIL)
-        .def("setGalvoDevice", &CMMCore::setGalvoDevice, "galvoLabel"_a , "Sets the current galvo device." RGIL)
-        .def("setChannelGroup", &CMMCore::setChannelGroup, "channelGroup"_a , "Specifies the group determining the channel selection." RGIL)
+            .def("getCameraDevice", &CMMCore::getCameraDevice,
+                 "Returns the label of the currently selected camera device." RGIL)
+            .def("getShutterDevice", &CMMCore::getShutterDevice,
+                 "Returns the label of the currently selected shutter device." RGIL)
+            .def("getFocusDevice", &CMMCore::getFocusDevice,
+                 "Returns the label of the currently selected focus device." RGIL)
+            .def("getXYStageDevice", &CMMCore::getXYStageDevice,
+                 "Returns the label of the currently selected XYStage device." RGIL)
+            .def("getAutoFocusDevice", &CMMCore::getAutoFocusDevice,
+                 "Returns the label of the currently selected auto-focus device." RGIL)
+            .def("getImageProcessorDevice", &CMMCore::getImageProcessorDevice,
+                 "Returns the label of the currently selected image processor device." RGIL)
+            .def("getSLMDevice", &CMMCore::getSLMDevice,
+                 "Returns the label of the currently selected SLM device." RGIL)
+            .def("getGalvoDevice", &CMMCore::getGalvoDevice,
+                 "Returns the label of the currently selected Galvo device." RGIL)
+            .def("getChannelGroup", &CMMCore::getChannelGroup,
+                 "Returns the group determining the channel selection." RGIL)
+            .def("setCameraDevice", &CMMCore::setCameraDevice,
+                 "Sets the current camera device." RGIL)
+            .def("setShutterDevice", &CMMCore::setShutterDevice,
+                 "Sets the current shutter device." RGIL)
+            .def("setFocusDevice", &CMMCore::setFocusDevice,
+                 "Sets the current focus device." RGIL)
+            .def("setXYStageDevice", &CMMCore::setXYStageDevice,
+                 "Sets the current XY device." RGIL)
+            .def("setAutoFocusDevice", &CMMCore::setAutoFocusDevice,
+                 "Sets the current auto-focus device." RGIL)
+            .def("setImageProcessorDevice", &CMMCore::setImageProcessorDevice,
+                 "Sets the current image processor device." RGIL)
+            .def("setSLMDevice", &CMMCore::setSLMDevice, "Sets the current slm device." RGIL)
+            .def("setGalvoDevice", &CMMCore::setGalvoDevice,
+                 "Sets the current galvo device." RGIL)
+            .def("setChannelGroup", &CMMCore::setChannelGroup,
+                 "Specifies the group determining the channel selection." RGIL)
 
-        .def("getSystemStateCache", &CMMCore::getSystemStateCache , "Returns the entire system state, i.e. the collection of all property values from all devices. This method will return cached values instead of querying each device Configuration object containing a collection of device-property-value triplets" RGIL)
-        .def("updateSystemStateCache", &CMMCore::updateSystemStateCache , "Updates the state of the entire hardware." RGIL)
-        .def("getPropertyFromCache",
-             &CMMCore::getPropertyFromCache,
-             "deviceLabel"_a,
-             "propName"_a RGIL)
-        .def("getCurrentConfigFromCache", &CMMCore::getCurrentConfigFromCache, "groupName"_a RGIL)
-        .def("getConfigGroupStateFromCache", &CMMCore::getConfigGroupStateFromCache, "group"_a , "Returns the partial state of the system cache, only for the devices included in the specified group. It will create a union of all devices referenced in a group." RGIL)
+            .def(
+                "getSystemStateCache", &CMMCore::getSystemStateCache,
+                "Returns the entire system state, i.e. the collection of all property values from all devices. This method will return cached values instead of querying each device" RGIL)
+            .def("updateSystemStateCache", &CMMCore::updateSystemStateCache,
+                 "Updates the state of the entire hardware." RGIL)
+            .def("getPropertyFromCache", &CMMCore::getPropertyFromCache,
+                 "Returns the cached property value for the specified device." RGIL)
+            .def(
+                "getCurrentConfigFromCache", &CMMCore::getCurrentConfigFromCache,
+                "Returns the configuration for a given group based on the data in the cache. An empty string is a valid return value, since the system state will not always correspond to any of the defined configurations. Also, in general it is possible that the system state fits multiple configurations. This method will return only the first matching configuration, if any." RGIL)
+            .def(
+                "getConfigGroupStateFromCache", &CMMCore::getConfigGroupStateFromCache,
+                "Returns the partial state of the system cache, only for the devices included in the specified group. It will create a union of all devices referenced in a group." RGIL)
 
-        .def("defineConfig",
-             nb::overload_cast<const char *, const char *>(&CMMCore::defineConfig ),
-             "groupName"_a,
-             "configName"_a , "Defines a configuration. If the configuration group/name was not previously defined a new configuration will be automatically created; otherwise nothing happens. groupName the configuration group name configName the configuration preset name" RGIL)
-        .def("defineConfig",
-             nb::overload_cast<const char *,
-                               const char *,
-                               const char *,
-                               const char *,
-                               const char *>(&CMMCore::defineConfig),
-             "groupName"_a,
-             "configName"_a,
-             "deviceLabel"_a,
-             "propName"_a,
-             "value"_a, "Defines a single configuration entry (setting). If the configuration group/name was not previously defined a new configuration will be automatically created. If the name was previously defined the new setting will be added to its list of property settings. The new setting will override previously defined ones if it refers to the same property name. groupName the group name configName the configuration name deviceLabel the device label propName the property name value the property value" RGIL)
-        .def("defineConfigGroup", &CMMCore::defineConfigGroup, "groupName"_a , "Creates an empty configuration group." RGIL)
-        .def("deleteConfigGroup", &CMMCore::deleteConfigGroup, "groupName"_a , "Deletes an entire configuration group." RGIL)
-        .def("renameConfigGroup",
-             &CMMCore::renameConfigGroup,
-             "oldGroupName"_a,
-             "newGroupName"_a , "Renames a configuration group." RGIL)
-        .def("isGroupDefined", &CMMCore::isGroupDefined, "groupName"_a , "Checks if the group already exists. true if the group is already defined" RGIL)
-        .def("isConfigDefined", &CMMCore::isConfigDefined, "groupName"_a, "configName"_a , "Checks if the configuration already exists within a group. true if the configuration is already defined" RGIL)
-        .def("setConfig", &CMMCore::setConfig, "groupName"_a, "configName"_a , "Applies a configuration to a group. The command will fail if the configuration was not previously defined. groupName the configuration group name configName the configuration preset name" RGIL)
+            .def(
+                "defineConfig",
+                nb::overload_cast<const char *, const char *>(&CMMCore::defineConfig),
+                "groupName"_a, "configName"_a,
+                "Defines a configuration. If the configuration group/name was not previously defined a new configuration will be automatically created; otherwise nothing happens. groupName the configuration group name configName the configuration preset name" RGIL)
+            .def(
+                "defineConfig",
+                nb::overload_cast<const char *, const char *, const char *, const char *,
+                                  const char *>(&CMMCore::defineConfig),
+                "groupName"_a, "configName"_a, "deviceLabel"_a, "propName"_a, "value"_a,
+                "Defines a single configuration entry (setting). If the configuration group/name was not previously defined a new configuration will be automatically created. If the name was previously defined the new setting will be added to its list of property settings. The new setting will override previously defined ones if it refers to the same property name. groupName the group name configName the configuration name deviceLabel the device label propName the property name value the property value" RGIL)
+            .def("defineConfigGroup", &CMMCore::defineConfigGroup,
+                 "Creates an empty configuration group." RGIL)
+            .def("deleteConfigGroup", &CMMCore::deleteConfigGroup,
+                 "Deletes an entire configuration group." RGIL)
+            .def("renameConfigGroup", &CMMCore::renameConfigGroup,
+                 "Renames a configuration group." RGIL)
+            .def("isGroupDefined", &CMMCore::isGroupDefined,
+                 "Checks if the group already exists." RGIL)
+            .def("isConfigDefined", &CMMCore::isConfigDefined,
+                 "Checks if the configuration already exists within a group." RGIL)
+            .def(
+                "setConfig", &CMMCore::setConfig,
+                "Applies a configuration to a group. The command will fail if the configuration was not previously defined." RGIL)
 
-        .def("deleteConfig",
-             nb::overload_cast<const char *, const char *>(&CMMCore::deleteConfig),
-             "groupName"_a,
-             "configName"_a , "Deletes a configuration from a group. The command will fail if the configuration was not previously defined." RGIL)
-        .def("deleteConfig",
-             nb::overload_cast<const char *, const char *, const char *, const char *>(
-                 &CMMCore::deleteConfig),
-             "groupName"_a,
-             "configName"_a,
-             "deviceLabel"_a,
-             "propName"_a , "Deletes a property from a configuration in the specified group. The command will fail if the configuration was not previously defined." RGIL)
+            .def(
+                "deleteConfig",
+                nb::overload_cast<const char *, const char *>(&CMMCore::deleteConfig),
+                "groupName"_a, "configName"_a,
+                "Deletes a configuration from a group. The command will fail if the configuration was not previously defined." RGIL)
+            .def(
+                "deleteConfig",
+                nb::overload_cast<const char *, const char *, const char *, const char *>(
+                    &CMMCore::deleteConfig),
+                "groupName"_a, "configName"_a, "deviceLabel"_a, "propName"_a,
+                "Deletes a property from a configuration in the specified group. The command will fail if the configuration was not previously defined." RGIL)
 
-        .def("renameConfig",
-             &CMMCore::renameConfig,
-             "groupName"_a,
-             "oldConfigName"_a,
-             "newConfigName"_a , "Renames a configuration within a specified group. The command will fail if the configuration was not previously defined." RGIL)
-        .def("getAvailableConfigGroups", &CMMCore::getAvailableConfigGroups RGIL)
-        .def("getAvailableConfigs", &CMMCore::getAvailableConfigs, "configGroup"_a RGIL)
-        .def("getCurrentConfig", &CMMCore::getCurrentConfig, "groupName"_a RGIL)
-        .def("getConfigData", &CMMCore::getConfigData, "configGroup"_a, "configName"_a , "Returns the configuration object for a given group and name. The configuration object" RGIL)
+            .def(
+                "renameConfig", &CMMCore::renameConfig,
+                "Renames a configuration within a specified group. The command will fail if the configuration was not previously defined." RGIL)
+            .def("getAvailableConfigGroups", &CMMCore::getAvailableConfigGroups,
+                 "Returns the names of all defined configuration groups" RGIL)
+            .def("getAvailableConfigs", &CMMCore::getAvailableConfigs,
+                 "Returns all defined configuration names in a given group" RGIL)
+            .def(
+                "getCurrentConfig", &CMMCore::getCurrentConfig,
+                "Returns the current configuration for a given group. An empty string is a valid return value, since the system state will not always correspond to any of the defined configurations. Also, in general it is possible that the system state fits multiple configurations. This method will return only the first matching configuration, if any." RGIL)
+            .def("getConfigData", &CMMCore::getConfigData,
+                 "Returns the configuration object for a given group and name." RGIL)
 
-        .def("getCurrentPixelSizeConfig",
-             nb::overload_cast<>(&CMMCore::getCurrentPixelSizeConfig) RGIL)
-        .def("getCurrentPixelSizeConfig",
-             nb::overload_cast<bool>(&CMMCore::getCurrentPixelSizeConfig),
-             "cached"_a RGIL)
-        .def("getPixelSizeUm", nb::overload_cast<>(&CMMCore::getPixelSizeUm) , "Returns the current pixel size in microns. This method is based on sensing the current pixel size configuration and adjusting for the binning." RGIL)
-        .def("getPixelSizeUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeUm), "cached"_a , "Returns the current pixel size in microns. This method is based on sensing the current pixel size configuration and adjusting for the binning. For legacy reasons, an exception is not thrown if there is an error. Instead, 0.0 is returned if any property values cannot be read, or if no pixel size preset matches the property values." RGIL)
-        .def("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID, "resolutionID"_a , "Returns the pixel size in um for the requested pixel size group" RGIL)
-        .def("getPixelSizeAffine", nb::overload_cast<>(&CMMCore::getPixelSizeAffine) RGIL)
-        .def("getPixelSizeAffine",
-             nb::overload_cast<bool>(&CMMCore::getPixelSizeAffine),
-             "cached"_a RGIL)
-        .def("getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID, "resolutionID"_a RGIL)
+            .def("getCurrentPixelSizeConfig",
+                 nb::overload_cast<>(&CMMCore::getCurrentPixelSizeConfig) RGIL)
+            .def("getCurrentPixelSizeConfig",
+                 nb::overload_cast<bool>(&CMMCore::getCurrentPixelSizeConfig), "cached"_a RGIL)
+            .def(
+                "getPixelSizeUm", nb::overload_cast<>(&CMMCore::getPixelSizeUm),
+                "Returns the current pixel size in microns. This method is based on sensing the current pixel size configuration and adjusting for the binning." RGIL)
+            .def(
+                "getPixelSizeUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeUm), "cached"_a,
+                "Returns the current pixel size in microns. This method is based on sensing the current pixel size configuration and adjusting for the binning. For legacy reasons, an exception is not thrown if there is an error. Instead, 0.0 is returned if any property values cannot be read, or if no pixel size preset matches the property values." RGIL)
+            .def("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID,
+                 "Returns the pixel size in um for the requested pixel size group" RGIL)
+            .def("getPixelSizeAffine", nb::overload_cast<>(&CMMCore::getPixelSizeAffine) RGIL)
+            .def("getPixelSizeAffine", nb::overload_cast<bool>(&CMMCore::getPixelSizeAffine),
+                 "cached"_a RGIL)
+            .def(
+                "getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID,
+                "Returns the Affine Transform to related camera pixels with stage movement for the requested pixel size group The raw affine transform without correction for binning and magnification will be returned." RGIL)
 
-        .def("getPixelSizedxdz", nb::overload_cast<>(&CMMCore::getPixelSizedxdz) , "Returns the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("getPixelSizedxdz", nb::overload_cast<bool>(&CMMCore::getPixelSizedxdz), "cached"_a , "Returns the angle between the camera's x axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name Angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("getPixelSizedxdz", nb::overload_cast<const char*>(&CMMCore::getPixelSizedxdz), "resolutionID"_a , "Returns the angle between the camera's x axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name Angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("getPixelSizedydz", nb::overload_cast<>(&CMMCore::getPixelSizedydz) , "Returns the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("getPixelSizedydz", nb::overload_cast<bool>(&CMMCore::getPixelSizedydz), "cached"_a , "Returns the angle between the camera's y axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 @resolutionID Name of Pixel Size configuration for this dy /dz angle angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("getPixelSizedydz", nb::overload_cast<const char*>(&CMMCore::getPixelSizedydz), "resolutionID"_a , "Returns the angle between the camera's y axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 @resolutionID Name of Pixel Size configuration for this dy /dz angle angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("getPixelSizeOptimalZUm", nb::overload_cast<>(&CMMCore::getPixelSizeOptimalZUm) , "Returns the optimal z step size in um There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration" RGIL)
-        .def("getPixelSizeOptimalZUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeOptimalZUm), "cached"_a , "Returns the optimal z step size in um, optionally using cached pixel configuration There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration" RGIL)
-        .def("getPixelSizeOptimalZUm", nb::overload_cast<const char*>(&CMMCore::getPixelSizeOptimalZUm), "resolutionID"_a , "Returns the optimal z step size in um, optionally using cached pixel configuration There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration" RGIL)
-        .def("setPixelSizedxdz", &CMMCore::setPixelSizedxdz, "resolutionID"_a, "dXdZ"_a , "Sets the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name dxdz Angle of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("setPixelSizedydz", &CMMCore::setPixelSizedydz, "resolutionID"_a, "dYdZ"_a , "Sets the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name dydz Angle of the Z-stage axis with the camera axis (dimensionless)" RGIL)
-        .def("setPixelSizeOptimalZUm", &CMMCore::setPixelSizeOptimalZUm, "resolutionID"_a, "optimalZ"_a , "Sets the opimal Z stepSize (in microns). There is no magic here, this number is provided by the person configuring the microscope, to be used by the person using the microscope. resolutionID The pixel size configuration group name optimalZ Optimal z step in microns" RGIL)
+            .def(
+                "getPixelSizedxdz", nb::overload_cast<>(&CMMCore::getPixelSizedxdz),
+                "Returns the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def(
+                "getPixelSizedxdz", nb::overload_cast<bool>(&CMMCore::getPixelSizedxdz),
+                "cached"_a,
+                "Returns the angle between the camera's x axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name Angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def(
+                "getPixelSizedxdz", nb::overload_cast<const char *>(&CMMCore::getPixelSizedxdz),
+                "resolutionID"_a,
+                "Returns the angle between the camera's x axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name Angle (dx/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def(
+                "getPixelSizedydz", nb::overload_cast<>(&CMMCore::getPixelSizedydz),
+                "Returns the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def("getPixelSizedydz", nb::overload_cast<bool>(&CMMCore::getPixelSizedydz), "cached"_a, "Returns the angle between the camera's y axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 @resolutionID Name of Pixel Size configuration for this dy /dz angle angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def(
+                "getPixelSizedydz", nb::overload_cast<const char *>(&CMMCore::getPixelSizedydz),
+                "resolutionID"_a,
+                "Returns the angle between the camera's y axis and the axis (direction) of the z drive for the given pixel size configuration. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 @resolutionID Name of Pixel Size configuration for this dy /dz angle angle (dy/dz) of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def(
+                "getPixelSizeOptimalZUm", nb::overload_cast<>(&CMMCore::getPixelSizeOptimalZUm),
+                "Returns the optimal z step size in um There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration" RGIL)
+            .def(
+                "getPixelSizeOptimalZUm",
+                nb::overload_cast<bool>(&CMMCore::getPixelSizeOptimalZUm), "cached"_a,
+                "Returns the optimal z step size in um, optionally using cached pixel configuration There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration" RGIL)
+            .def(
+                "getPixelSizeOptimalZUm",
+                nb::overload_cast<const char *>(&CMMCore::getPixelSizeOptimalZUm),
+                "resolutionID"_a,
+                "Returns the optimal z step size in um, optionally using cached pixel configuration There is no magic to this number, but lets the system configuration communicate to the end user what the optimal Z step size is for this pixel size configuration" RGIL)
+            .def(
+                "setPixelSizedxdz", &CMMCore::setPixelSizedxdz, "resolutionID"_a, "dXdZ"_a,
+                "Sets the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name dxdz Angle of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def(
+                "setPixelSizedydz", &CMMCore::setPixelSizedydz, "resolutionID"_a, "dYdZ"_a,
+                "Sets the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). See: https://github.com/micro-manager/micro-manager/issues/1984 resolutionID The pixel size configuration group name dydz Angle of the Z-stage axis with the camera axis (dimensionless)" RGIL)
+            .def(
+                "setPixelSizeOptimalZUm", &CMMCore::setPixelSizeOptimalZUm, "resolutionID"_a,
+                "optimalZ"_a,
+                "Sets the opimal Z stepSize (in microns). There is no magic here, this number is provided by the person configuring the microscope, to be used by the person using the microscope. resolutionID The pixel size configuration group name optimalZ Optimal z step in microns" RGIL)
 
-        .def("getMagnificationFactor", &CMMCore::getMagnificationFactor , "Returns the product of all Magnifiers in the system or 1.0 when none is found This is used internally by GetPixelSizeUm products of all magnifier devices in the system or 1.0 when none is found" RGIL)
-        .def("setPixelSizeUm", &CMMCore::setPixelSizeUm, "resolutionID"_a, "pixSize"_a , "Sets pixel size in microns for the specified resolution sensing configuration preset." RGIL)
-        .def("setPixelSizeAffine", &CMMCore::setPixelSizeAffine, "resolutionID"_a, "affine"_a , "Sets the raw affine transform for the specific pixel size configuration The affine transform consists of the first two rows of a 3x3 matrix, the third row is alsways assumed to be 0.0 0.0 1.0. The transform should be valid for binning 1 and no magnification device (as given by the getMagnification() function). Order: row[0]col[0] row[0]c[1] row[0]c[2] row[1]c[0] row[1]c[1] row[1]c[2] The given vector has to have 6 doubles, or bad stuff will happen" RGIL)
+            .def(
+                "getMagnificationFactor", &CMMCore::getMagnificationFactor,
+                "Returns the product of all Magnifiers in the system or 1.0 when none is found This is used internally by GetPixelSizeUm" RGIL)
+            .def(
+                "setPixelSizeUm", &CMMCore::setPixelSizeUm,
+                "Sets pixel size in microns for the specified resolution sensing configuration preset." RGIL)
+            .def(
+                "setPixelSizeAffine", &CMMCore::setPixelSizeAffine, "resolutionID"_a,
+                "affine"_a,
+                "Sets the raw affine transform for the specific pixel size configuration The affine transform consists of the first two rows of a 3x3 matrix, the third row is alsways assumed to be 0.0 0.0 1.0. The transform should be valid for binning 1 and no magnification device (as given by the getMagnification() function). Order: row[0]col[0] row[0]c[1] row[0]c[2] row[1]c[0] row[1]c[1] row[1]c[2] The given vector has to have 6 doubles, or bad stuff will happen" RGIL)
 
-        .def("definePixelSizeConfig",
-             nb::overload_cast<const char *, const char *, const char *, const char *>(
-                 &CMMCore::definePixelSizeConfig),
-             "resolutionID"_a,
-             "deviceLabel"_a,
-             "propName"_a,
-             "value"_a , "Defines a single pixel size entry (setting). The system will treat pixel size configurations very similar to configuration presets, i.e. it will try to detect if any of the pixel size presets matches the current state of the system. If the pixel size was previously defined the new setting will be added to its list of property settings. The new setting will override previously defined ones if it refers to the same property name. resolutionID identifier for one unique property setting deviceLabel device label propName property name value property value" RGIL)
-        .def("definePixelSizeConfig",
-             nb::overload_cast<const char *>(&CMMCore::definePixelSizeConfig),
-             "resolutionID"_a , "Defines an empty pixel size entry." RGIL)
-        .def("getAvailablePixelSizeConfigs", &CMMCore::getAvailablePixelSizeConfigs RGIL)
-        .def("isPixelSizeConfigDefined", &CMMCore::isPixelSizeConfigDefined, "resolutionID"_a , "Checks if the Pixel Size Resolution already exists true if the configuration is already defined" RGIL)
-        .def("setPixelSizeConfig", &CMMCore::setPixelSizeConfig, "resolutionID"_a , "Applies a Pixel Size Configuration. The command will fail if the configuration was not previously defined. resolutionID the pixel size configuration group name" RGIL)
-        .def("renamePixelSizeConfig",
-             &CMMCore::renamePixelSizeConfig,
-             "oldConfigName"_a,
-             "newConfigName"_a , "Renames a pixel size configuration. The command will fail if the configuration was not previously defined." RGIL)
-        .def("deletePixelSizeConfig", &CMMCore::deletePixelSizeConfig, "configName"_a , "Deletes a pixel size configuration. The command will fail if the configuration was not previously defined." RGIL)
-        .def("getPixelSizeConfigData", &CMMCore::getPixelSizeConfigData, "configName"_a , "Returns the configuration object for a give pixel size preset. The configuration object" RGIL)
+            .def("definePixelSizeConfig",
+                 nb::overload_cast<const char *, const char *, const char *, const char *>(
+                     &CMMCore::definePixelSizeConfig),
+                 "resolutionID"_a, "deviceLabel"_a, "propName"_a, "value"_a,
+                 "Defines a single pixel size entry (setting). The system will treat pixel size configurations very similar to configuration presets, i.e. it will try to detect if any of the pixel size presets matches the current state of the system. If the pixel size was previously defined the new setting will be added to its list of property settings. The new setting will override previously defined ones if it refers to the same property name. resolutionID identifier for one unique property setting deviceLabel device label propName property name value property value" RGIL)
+            .def("definePixelSizeConfig",
+                 nb::overload_cast<const char *>(&CMMCore::definePixelSizeConfig),
+                 "resolutionID"_a, "Defines an empty pixel size entry." RGIL)
+            .def("getAvailablePixelSizeConfigs", &CMMCore::getAvailablePixelSizeConfigs,
+                 "Returns all defined resolution preset names" RGIL)
+            .def("isPixelSizeConfigDefined", &CMMCore::isPixelSizeConfigDefined,
+                 "Checks if the Pixel Size Resolution already exists" RGIL)
+            .def(
+                "setPixelSizeConfig", &CMMCore::setPixelSizeConfig,
+                "Applies a Pixel Size Configuration. The command will fail if the configuration was not previously defined." RGIL)
+            .def(
+                "renamePixelSizeConfig", &CMMCore::renamePixelSizeConfig,
+                "Renames a pixel size configuration. The command will fail if the configuration was not previously defined." RGIL)
+            .def(
+                "deletePixelSizeConfig", &CMMCore::deletePixelSizeConfig,
+                "Deletes a pixel size configuration. The command will fail if the configuration was not previously defined." RGIL)
+            .def("getPixelSizeConfigData", &CMMCore::getPixelSizeConfigData,
+                 "Returns the configuration object for a give pixel size preset." RGIL)
 
-        // Image Acquisition Methods
-        .def("setROI",
-             nb::overload_cast<int, int, int, int>(&CMMCore::setROI),
-             "x"_a,
-             "y"_a,
-             "xSize"_a,
-             "ySize"_a , "Set the hardwar region of interest for the current camera. A successful call to this method will clear any images in the sequence buffer, even if the ROI does not change. If multiple ROIs are set prior to this call, they will be replaced by the new single ROI. The coordinates are in units of binned pixels. That is, conceptually, binning is applied before the ROI. x coordinate of the top left corner y coordinate of the top left corner xSize number of horizontal pixels ySize number of horizontal pixels" RGIL)
-        .def("setROI",
-             nb::overload_cast<const char *, int, int, int, int>(&CMMCore::setROI),
-             "label"_a,
-             "x"_a,
-             "y"_a,
-             "xSize"_a,
-             "ySize"_a , "Set the hardware region of interest for a specified camera. A successful call to this method will clear any images in the sequence buffer, even if the ROI does not change. Warning: the clearing of the sequence buffer will interfere with any sequence acquisitions currently being performed on other cameras. If multiple ROIs are set prior to this call, they will be replaced by the new single ROI. The coordinates are in units of binned pixels. That is, conceptually, binning is applied before the ROI. label camera label x coordinate of the top left corner y coordinate of the top left corner xSize number of horizontal pixels ySize number of horizontal pixels" RGIL)
-        .def("getROI",
-             [](CMMCore &self) {
-                int x, y, xSize, ySize;
-                self.getROI(x, y, xSize, ySize);            // Call C++ method
-                return std::make_tuple(x, y, xSize, ySize); // Return a tuple
-             } RGIL)
-        .def(
-            "getROI",
-            [](CMMCore &self, const char *label) {
-                int x, y, xSize, ySize;
-                self.getROI(label, x, y, xSize, ySize);     // Call the C++ method
-                return std::make_tuple(x, y, xSize, ySize); // Return as Python tuple
-            },
-            "label"_a RGIL)
-        .def("clearROI", &CMMCore::clearROI , "Set the region of interest of the current camera to the full frame. A successful call to this method will clear any images in the sequence buffer, even if the ROI does not change." RGIL)
-        .def("isMultiROISupported", &CMMCore::isMultiROISupported , "Queries the camera to determine if it supports multiple ROIs." RGIL)
-        .def("isMultiROIEnabled", &CMMCore::isMultiROIEnabled , "Queries the camera to determine if multiple ROIs are currently set." RGIL)
-        .def("setMultiROI", &CMMCore::setMultiROI, "xs"_a, "ys"_a, "widths"_a, "heights"_a , "Set multiple ROIs for the current camera device. Will fail if the camera does not support multiple ROIs, any widths or heights are non-positive, or if the vectors do not all have the same length. xs X indices for the upper-left corners of each ROI. ys Y indices for the upper-left corners of each ROI. widths Width in pixels for each ROI. heights Height in pixels for each ROI." RGIL)
-        .def("getMultiROI",
-             [](CMMCore &self) -> std::tuple<std::vector<unsigned>,
-                                             std::vector<unsigned>,
-                                             std::vector<unsigned>,
-                                             std::vector<unsigned>> {
-                std::vector<unsigned> xs, ys, widths, heights;
-                self.getMultiROI(xs, ys, widths, heights);
-                return {xs, ys, widths, heights};
-             } RGIL)
+            // Image Acquisition Methods
+            .def(
+                "setROI", nb::overload_cast<int, int, int, int>(&CMMCore::setROI), "x"_a, "y"_a,
+                "xSize"_a, "ySize"_a,
+                "Set the hardwar region of interest for the current camera. A successful call to this method will clear any images in the sequence buffer, even if the ROI does not change. If multiple ROIs are set prior to this call, they will be replaced by the new single ROI. The coordinates are in units of binned pixels. That is, conceptually, binning is applied before the ROI. x coordinate of the top left corner y coordinate of the top left corner xSize number of horizontal pixels ySize number of horizontal pixels" RGIL)
+            .def(
+                "setROI",
+                nb::overload_cast<const char *, int, int, int, int>(&CMMCore::setROI), "label"_a, "x"_a, "y"_a, "xSize"_a, "ySize"_a, "Set the hardware region of interest for a specified camera. A successful call to this method will clear any images in the sequence buffer, even if the ROI does not change. Warning: the clearing of the sequence buffer will interfere with any sequence acquisitions currently being performed on other cameras. If multiple ROIs are set prior to this call, they will be replaced by the new single ROI. The coordinates are in units of binned pixels. That is, conceptually, binning is applied before the ROI. label camera label x coordinate of the top left corner y coordinate of the top left corner xSize number of horizontal pixels ySize number of horizontal pixels" RGIL)
+            .def("getROI",
+                 [](CMMCore &self) {
+                     int x, y, xSize, ySize;
+                     self.getROI(x, y, xSize, ySize);            // Call C++ method
+                     return std::make_tuple(x, y, xSize, ySize); // Return a tuple
+                 } RGIL)
+            .def(
+                "getROI",
+                [](CMMCore &self, const char *label) {
+                    int x, y, xSize, ySize;
+                    self.getROI(label, x, y, xSize, ySize);     // Call the C++ method
+                    return std::make_tuple(x, y, xSize, ySize); // Return as Python tuple
+                },
+                "label"_a RGIL)
+            .def("clearROI", &CMMCore::clearROI,
+                 "Set the region of interest of the current camera to the full frame." RGIL)
+            .def("isMultiROISupported", &CMMCore::isMultiROISupported,
+                 "Queries the camera to determine if it supports multiple ROIs." RGIL)
+            .def("isMultiROIEnabled", &CMMCore::isMultiROIEnabled,
+                 "Queries the camera to determine if multiple ROIs are currently set." RGIL)
+            .def(
+                "setMultiROI", &CMMCore::setMultiROI,
+                "Set multiple ROIs for the current camera device. Will fail if the camera does not support multiple ROIs, any widths or heights are non-positive, or if the vectors do not all have the same length." RGIL)
+            .def("getMultiROI",
+                 [](CMMCore &self) -> std::tuple<std::vector<unsigned>, std::vector<unsigned>,
+                                                 std::vector<unsigned>, std::vector<unsigned>> {
+                     std::vector<unsigned> xs, ys, widths, heights;
+                     self.getMultiROI(xs, ys, widths, heights);
+                     return {xs, ys, widths, heights};
+                 } RGIL)
 
-        .def("setExposure", nb::overload_cast<double>(&CMMCore::setExposure), "exp"_a , "Sets the exposure setting of the current camera in milliseconds. dExp the exposure in milliseconds" RGIL)
-        .def("setExposure",
-             nb::overload_cast<const char *, double>(&CMMCore::setExposure),
-             "cameraLabel"_a,
-             "dExp"_a , "Sets the exposure setting of the specified camera in milliseconds. label the camera device label dExp the exposure in milliseconds" RGIL)
-        .def("getExposure", nb::overload_cast<>(&CMMCore::getExposure) , "Returns the current exposure setting of the camera in milliseconds. the exposure time in milliseconds" RGIL)
-        .def("getExposure", nb::overload_cast<const char *>(&CMMCore::getExposure), "label"_a , "Returns the current exposure setting of the specified camera in milliseconds. label the camera device label the exposure time in milliseconds" RGIL)
-        .def("snapImage", &CMMCore::snapImage , "Acquires a single image with current settings. Snap is not allowed while the acquisition thread is run" RGIL)
-        .def(
-            "getImage",
-            [](CMMCore &self) -> np_array {
-                return create_image_array(self, self.getImage()); } RGIL)
-        .def("getImage",
-             [](CMMCore &self, unsigned channel) -> np_array {
-                return create_image_array(self, self.getImage(channel));
-             } , "Horizontal dimension of the image buffer in pixels. the width in pixels (an integer)" RGIL)
-        .def("getImageWidth", &CMMCore::getImageWidth , "Horizontal dimension of the image buffer in pixels. the width in pixels (an integer)" RGIL)
-        .def("getImageHeight", &CMMCore::getImageHeight , "Vertical dimension of the image buffer in pixels. the height in pixels (an integer)" RGIL)
-        .def("getBytesPerPixel", &CMMCore::getBytesPerPixel , "How many bytes for each pixel. This value does not necessarily reflect the capabilities of the particular camera A/D converter.  the number of bytes" RGIL)
-        .def("getImageBitDepth", &CMMCore::getImageBitDepth , "How many bits of dynamic range are to be expected from the camera. This value should be used only as a guideline - it does not guarantee that image buffer will contain only values from the returned dynamic range. \n the number of bits" RGIL)
-        .def("getNumberOfComponents", &CMMCore::getNumberOfComponents , "Returns the number of components the default camera is returning. For example color camera will return 4 components (RGBA) on each snap." RGIL)
-        .def("getNumberOfCameraChannels", &CMMCore::getNumberOfCameraChannels , "Returns the number of simultaneous channels the default camera is returning." RGIL)
-        .def("getCameraChannelName", &CMMCore::getCameraChannelName, "channelNr"_a RGIL)
-        .def("getImageBufferSize", &CMMCore::getImageBufferSize , "Returns the size of the internal image buffer. \n buffer size" RGIL)
-        .def("setAutoShutter", &CMMCore::setAutoShutter, "state"_a , "If this option is enabled Shutter automatically opens and closes when the image is acquired. state true for enabled" RGIL)
-        .def("getAutoShutter", &CMMCore::getAutoShutter , "Returns the current setting of the auto-shutter option." RGIL)
-        .def("setShutterOpen", nb::overload_cast<bool>(&CMMCore::setShutterOpen), "state"_a , "Opens or closes the currently selected (default) shutter. state the desired state of the shutter (true for open)" RGIL)
-        .def("getShutterOpen", nb::overload_cast<>(&CMMCore::getShutterOpen) , "Returns the state of the currently selected (default) shutter." RGIL)
-        .def("setShutterOpen",
-             nb::overload_cast<const char *, bool>(&CMMCore::setShutterOpen),
-             "shutterLabel"_a,
-             "state"_a , "Opens or closes the specified shutter. state the desired state of the shutter (true for open)" RGIL)
-        .def("getShutterOpen",
-             nb::overload_cast<const char *>(&CMMCore::getShutterOpen),
-             "shutterLabel"_a , "Returns the state of the specified shutter. shutterLabel the name of the shutter" RGIL)
-        .def("startSequenceAcquisition",
-             nb::overload_cast<long, double, bool>(&CMMCore::startSequenceAcquisition),
-             "numImages"_a,
-             "intervalMs"_a,
-             "stopOnOverflow"_a , "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer." , "Starts streaming camera sequence acquisition. This command does not block the calling thread for the duration of the acquisition. numImages Number of images requested from the camera intervalMs The interval between images, currently only supported by Andor cameras stopOnOverflow whether or not the camera stops acquiring when the circular buffer is full" RGIL)
-        .def("startSequenceAcquisition",
-             nb::overload_cast<const char *, long, double, bool>(
-                 &CMMCore::startSequenceAcquisition),
-             "cameraLabel"_a,
-             "numImages"_a,
-             "intervalMs"_a,
-             "stopOnOverflow"_a , "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer." , "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer." RGIL)
-        .def(
-            "prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition, "cameraLabel"_a RGIL)
-        .def("startContinuousSequenceAcquisition",
-             &CMMCore::startContinuousSequenceAcquisition,
-             "intervalMs"_a , "Starts the continuous camera sequence acquisition. This command does not block the calling thread for the duration of the acquisition." RGIL)
-        .def("stopSequenceAcquisition", nb::overload_cast<>(&CMMCore::stopSequenceAcquisition) , "Stops streaming camera sequence acquisition." RGIL)
-        .def("stopSequenceAcquisition",
-             nb::overload_cast<const char *>(&CMMCore::stopSequenceAcquisition),
-             "cameraLabel"_a , "Stops streaming camera sequence acquisition for a specified camera. label The camera name" RGIL)
-        .def("isSequenceRunning", nb::overload_cast<>(&CMMCore::isSequenceRunning) , "Check if the current camera is acquiring the sequence Returns false when the sequence is done" RGIL)
-        .def("isSequenceRunning",
-             nb::overload_cast<const char *>(&CMMCore::isSequenceRunning),
-             "cameraLabel"_a , "Check if the specified camera is acquiring the sequence Returns false when the sequence is done" RGIL)
-        .def("getLastImage",
-             [](CMMCore &self) -> np_array {
-                return create_image_array(self, self.getLastImage());
-             } RGIL)
-        .def("popNextImage",
-             [](CMMCore &self) -> np_array {
-                return create_image_array(self, self.popNextImage());
-             } RGIL)
-        // this is a new overload that returns both the image and the metadata
-        // not present in the original C++ API
-        .def(
-            "getLastImageMD",
-            [](CMMCore &self) -> std::tuple<np_array, Metadata> {
-                Metadata md;
-                auto img = self.getLastImageMD(md);
-                return {create_metadata_array(self, img, md), md};
-            },
-            "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
-        .def(
-            "getLastImageMD",
-            [](CMMCore &self, Metadata &md) -> np_array {
-                auto img = self.getLastImageMD(md);
-                return create_metadata_array(self, img, md);
-            },
-            "md"_a,
-            "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
-        .def(
-            "getLastImageMD",
-            [](CMMCore &self,
-               unsigned channel,
-               unsigned slice) -> std::tuple<np_array, Metadata> {
-                Metadata md;
-                auto img = self.getLastImageMD(channel, slice, md);
-                return {create_metadata_array(self, img, md), md};
-            },
-            "channel"_a,
-            "slice"_a,
-            "Get the last image in the circular buffer for a specific channel and slice, return"
-            "as tuple of image and metadata" RGIL)
-        .def(
-            "getLastImageMD",
-            [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
-                auto img = self.getLastImageMD(channel, slice, md);
-                return create_metadata_array(self, img, md);
-            },
-            "channel"_a,
-            "slice"_a,
-            "md"_a,
-            "Get the last image in the circular buffer for a specific channel and slice, store "
-            "metadata in the provided object" RGIL)
+            .def(
+                "setExposure", nb::overload_cast<double>(&CMMCore::setExposure), "exp"_a,
+                "Sets the exposure setting of the current camera in milliseconds. dExp the exposure in milliseconds" RGIL)
+            .def(
+                "setExposure", nb::overload_cast<const char *, double>(&CMMCore::setExposure),
+                "cameraLabel"_a, "dExp"_a,
+                "Sets the exposure setting of the specified camera in milliseconds. label the camera device label dExp the exposure in milliseconds" RGIL)
+            .def(
+                "getExposure", nb::overload_cast<>(&CMMCore::getExposure),
+                "Returns the current exposure setting of the camera in milliseconds. the exposure time in milliseconds" RGIL)
+            .def(
+                "getExposure", nb::overload_cast<const char *>(&CMMCore::getExposure),
+                "label"_a,
+                "Returns the current exposure setting of the specified camera in milliseconds. label the camera device label the exposure time in milliseconds" RGIL)
+            .def(
+                "snapImage", &CMMCore::snapImage,
+                "Acquires a single image with current settings. Snap is not allowed while the acquisition thread is run" RGIL)
+            .def("getImage",
+                 [](CMMCore &self) -> np_array {
+                     return create_image_array(self, self.getImage());
+                 } RGIL)
+            .def(
+                "getImage",
+                [](CMMCore &self, unsigned channel) -> np_array {
+                    return create_image_array(self, self.getImage(channel));
+                },
+                "Horizontal dimension of the image buffer in pixels. the width in pixels (an integer)" RGIL)
+            .def(
+                "getImageWidth", &CMMCore::getImageWidth,
+                "Horizontal dimension of the image buffer in pixels. the width in pixels (an integer)" RGIL)
+            .def(
+                "getImageHeight", &CMMCore::getImageHeight,
+                "Vertical dimension of the image buffer in pixels. the height in pixels (an integer)" RGIL)
+            .def(
+                "getBytesPerPixel", &CMMCore::getBytesPerPixel,
+                "How many bytes for each pixel. This value does not necessarily reflect the capabilities of the particular camera A/D converter." RGIL)
+            .def(
+                "getImageBitDepth", &CMMCore::getImageBitDepth,
+                "How many bits of dynamic range are to be expected from the camera. This value should be used only as a guideline - it does not guarantee that image buffer will contain only values from the returned dynamic range." RGIL)
+            .def(
+                "getNumberOfComponents", &CMMCore::getNumberOfComponents,
+                "Returns the number of components the default camera is returning. For example color camera will return 4 components (RGBA) on each snap." RGIL)
+            .def(
+                "getNumberOfCameraChannels", &CMMCore::getNumberOfCameraChannels,
+                "Returns the number of simultaneous channels the default camera is returning." RGIL)
+            .def(
+                "getCameraChannelName", &CMMCore::getCameraChannelName,
+                "Returns the name of the requested channel as known by the default camera" RGIL)
+            .def("getImageBufferSize", &CMMCore::getImageBufferSize,
+                 "Returns the size of the internal image buffer." RGIL)
+            .def(
+                "setAutoShutter", &CMMCore::setAutoShutter,
+                "If this option is enabled Shutter automatically opens and closes when the image is acquired." RGIL)
+            .def("getAutoShutter", &CMMCore::getAutoShutter,
+                 "Returns the current setting of the auto-shutter option." RGIL)
+            .def(
+                "setShutterOpen", nb::overload_cast<bool>(&CMMCore::setShutterOpen), "state"_a,
+                "Opens or closes the currently selected (default) shutter. state the desired state of the shutter (true for open)" RGIL)
+            .def("getShutterOpen", nb::overload_cast<>(&CMMCore::getShutterOpen),
+                 "Returns the state of the currently selected (default) shutter." RGIL)
+            .def(
+                "setShutterOpen",
+                nb::overload_cast<const char *, bool>(&CMMCore::setShutterOpen),
+                "shutterLabel"_a, "state"_a,
+                "Opens or closes the specified shutter. state the desired state of the shutter (true for open)" RGIL)
+            .def(
+                "getShutterOpen", nb::overload_cast<const char *>(&CMMCore::getShutterOpen),
+                "shutterLabel"_a,
+                "Returns the state of the specified shutter. shutterLabel the name of the shutter" RGIL)
+            .def(
+                "startSequenceAcquisition",
+                nb::overload_cast<long, double, bool>(&CMMCore::startSequenceAcquisition), "numImages"_a, "intervalMs"_a, "stopOnOverflow"_a, "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition. This command does not block the calling thread for the duration of the acquisition. numImages Number of images requested from the camera intervalMs The interval between images, currently only supported by Andor cameras stopOnOverflow whether or not the camera stops acquiring when the circular buffer is full" RGIL)
+            .def(
+                "startSequenceAcquisition",
+                nb::overload_cast<const char *, long, double, bool>(
+                    &CMMCore::startSequenceAcquisition),
+                "cameraLabel"_a, "numImages"_a,
+                "intervalMs"_a, "stopOnOverflow"_a, "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.",
+                "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.", "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer.",
+                "Starts streaming camera sequence acquisition for a specified camera. This command does not block the calling thread for the duration of the acquisition. The difference between this method and the one with the same name but operating on the \"default\" camera is that it does not automatically initialize the circular buffer." RGIL)
+            .def(
+                "prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition,
+                "cameraLabel"_a,
+                "Prepare the camera for the sequence acquisition to save the time in the StartSequenceAcqusition() call which is supposed to come next." RGIL)
+            .def(
+                "startContinuousSequenceAcquisition",
+                &CMMCore::startContinuousSequenceAcquisition,
+                "Starts the continuous camera sequence acquisition. This command does not block the calling thread for the duration of the acquisition." RGIL)
+            .def("stopSequenceAcquisition",
+                 nb::overload_cast<>(&CMMCore::stopSequenceAcquisition),
+                 "Stops streaming camera sequence acquisition." RGIL)
+            .def(
+                "stopSequenceAcquisition",
+                nb::overload_cast<const char *>(&CMMCore::stopSequenceAcquisition),
+                "cameraLabel"_a,
+                "Stops streaming camera sequence acquisition for a specified camera. label The camera name" RGIL)
+            .def(
+                "isSequenceRunning", nb::overload_cast<>(&CMMCore::isSequenceRunning),
+                "Check if the current camera is acquiring the sequence Returns false when the sequence is done" RGIL)
+            .def(
+                "isSequenceRunning",
+                nb::overload_cast<const char *>(&CMMCore::isSequenceRunning), "cameraLabel"_a,
+                "Check if the specified camera is acquiring the sequence Returns false when the sequence is done" RGIL)
+            .def("getLastImage",
+                 [](CMMCore &self) -> np_array {
+                     return create_image_array(self, self.getLastImage());
+                 } RGIL)
+            .def("popNextImage",
+                 [](CMMCore &self) -> np_array {
+                     return create_image_array(self, self.popNextImage());
+                 } RGIL)
+            // this is a new overload that returns both the image and the metadata
+            // not present in the original C++ API
+            .def(
+                "getLastImageMD",
+                [](CMMCore &self) -> std::tuple<np_array, Metadata> {
+                    Metadata md;
+                    auto img = self.getLastImageMD(md);
+                    return {create_metadata_array(self, img, md), md};
+                },
+                "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
+            .def(
+                "getLastImageMD",
+                [](CMMCore &self, Metadata &md) -> np_array {
+                    auto img = self.getLastImageMD(md);
+                    return create_metadata_array(self, img, md);
+                },
+                "md"_a,
+                "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
+            .def(
+                "getLastImageMD",
+                [](CMMCore &self, unsigned channel,
+                   unsigned slice) -> std::tuple<np_array, Metadata> {
+                    Metadata md;
+                    auto img = self.getLastImageMD(channel, slice, md);
+                    return {create_metadata_array(self, img, md), md};
+                },
+                "channel"_a, "slice"_a,
+                "Get the last image in the circular buffer for a specific channel and slice, return"
+                "as tuple of image and metadata" RGIL)
+            .def(
+                "getLastImageMD",
+                [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
+                    auto img = self.getLastImageMD(channel, slice, md);
+                    return create_metadata_array(self, img, md);
+                },
+                "channel"_a, "slice"_a, "md"_a,
+                "Get the last image in the circular buffer for a specific channel and slice, store "
+                "metadata in the provided object" RGIL)
 
-        .def(
-            "popNextImageMD",
-            [](CMMCore &self) -> std::tuple<np_array, Metadata> {
-                Metadata md;
-                auto img = self.popNextImageMD(md);
-                return {create_metadata_array(self, img, md), md};
-            },
-            "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
-        .def(
-            "popNextImageMD",
-            [](CMMCore &self, Metadata &md) -> np_array {
-                auto img = self.popNextImageMD(md);
-                return create_metadata_array(self, img, md);
-            },
-            "md"_a,
-            "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
-        .def(
-            "popNextImageMD",
-            [](CMMCore &self,
-               unsigned channel,
-               unsigned slice) -> std::tuple<np_array, Metadata> {
-                Metadata md;
-                auto img = self.popNextImageMD(channel, slice, md);
-                return {create_metadata_array(self, img, md), md};
-            },
-            "channel"_a,
-            "slice"_a,
-            "Get the last image in the circular buffer for a specific channel and slice, return"
-            "as tuple of image and metadata" RGIL)
-        .def(
-            "popNextImageMD",
-            [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
-                auto img = self.popNextImageMD(channel, slice, md);
-                return create_metadata_array(self, img, md);
-            },
-            "channel"_a,
-            "slice"_a,
-            "md"_a,
-            "Get the last image in the circular buffer for a specific channel and slice, store "
-            "metadata in the provided object" RGIL)
+            .def(
+                "popNextImageMD",
+                [](CMMCore &self) -> std::tuple<np_array, Metadata> {
+                    Metadata md;
+                    auto img = self.popNextImageMD(md);
+                    return {create_metadata_array(self, img, md), md};
+                },
+                "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
+            .def(
+                "popNextImageMD",
+                [](CMMCore &self, Metadata &md) -> np_array {
+                    auto img = self.popNextImageMD(md);
+                    return create_metadata_array(self, img, md);
+                },
+                "md"_a,
+                "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
+            .def(
+                "popNextImageMD",
+                [](CMMCore &self, unsigned channel,
+                   unsigned slice) -> std::tuple<np_array, Metadata> {
+                    Metadata md;
+                    auto img = self.popNextImageMD(channel, slice, md);
+                    return {create_metadata_array(self, img, md), md};
+                },
+                "channel"_a, "slice"_a,
+                "Get the last image in the circular buffer for a specific channel and slice, return"
+                "as tuple of image and metadata" RGIL)
+            .def(
+                "popNextImageMD",
+                [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
+                    auto img = self.popNextImageMD(channel, slice, md);
+                    return create_metadata_array(self, img, md);
+                },
+                "channel"_a, "slice"_a, "md"_a,
+                "Get the last image in the circular buffer for a specific channel and slice, store "
+                "metadata in the provided object" RGIL)
 
-        .def(
-            "getNBeforeLastImageMD",
-            [](CMMCore &self, unsigned long n) -> std::tuple<np_array, Metadata> {
-                Metadata md;
-                auto img = self.getNBeforeLastImageMD(n, md);
-                return {create_metadata_array(self, img, md), md};
-            },
-            "n"_a,
-            "Get the nth image before the last image in the circular buffer and return it as a "
-            "tuple "
-            "of image and metadata" RGIL)
-        .def(
-            "getNBeforeLastImageMD",
-            [](CMMCore &self, unsigned long n, Metadata &md) -> np_array {
-                auto img = self.getNBeforeLastImageMD(n, md);
-                return create_metadata_array(self, img, md);
-            },
-            "n"_a,
-            "md"_a,
-            "Get the nth image before the last image in the circular buffer and store the "
-            "metadata "
-            "in the provided object" RGIL)
+            .def(
+                "getNBeforeLastImageMD",
+                [](CMMCore &self, unsigned long n) -> std::tuple<np_array, Metadata> {
+                    Metadata md;
+                    auto img = self.getNBeforeLastImageMD(n, md);
+                    return {create_metadata_array(self, img, md), md};
+                },
+                "n"_a,
+                "Get the nth image before the last image in the circular buffer and return it as a "
+                "tuple "
+                "of image and metadata" RGIL)
+            .def(
+                "getNBeforeLastImageMD",
+                [](CMMCore &self, unsigned long n, Metadata &md) -> np_array {
+                    auto img = self.getNBeforeLastImageMD(n, md);
+                    return create_metadata_array(self, img, md);
+                },
+                "n"_a, "md"_a,
+                "Get the nth image before the last image in the circular buffer and store the "
+                "metadata "
+                "in the provided object" RGIL)
 
-        // Circular Buffer Methods
-        .def("getRemainingImageCount", &CMMCore::getRemainingImageCount , "Returns number ofimages available in the Circular Buffer" RGIL)
-        .def("getBufferTotalCapacity", &CMMCore::getBufferTotalCapacity , "Returns the total number of images that can be stored in the buffer" RGIL)
-        .def("getBufferFreeCapacity", &CMMCore::getBufferFreeCapacity , "Returns the number of images that can be added to the buffer without overflowing" RGIL)
-        .def("isBufferOverflowed", &CMMCore::isBufferOverflowed , "Indicates whether the circular buffer is overflowed" RGIL)
-        .def("setCircularBufferMemoryFootprint",
-             &CMMCore::setCircularBufferMemoryFootprint,
-             "sizeMB"_a , "Reserve memory for the circular buffer." RGIL)
-        .def("getCircularBufferMemoryFootprint", &CMMCore::getCircularBufferMemoryFootprint , "Returns the size of the Circular Buffer in MB" RGIL)
-        .def("initializeCircularBuffer", &CMMCore::initializeCircularBuffer , "Initialize circular buffer based on the current camera settings." RGIL)
-        .def("clearCircularBuffer", &CMMCore::clearCircularBuffer , "Removes all images from the circular buffer. It is rarely necessary to call this directly since starting a sequence acquisition or changing the ROI will always clear the buffer." RGIL)
+            // Circular Buffer Methods
+            .def("getRemainingImageCount", &CMMCore::getRemainingImageCount,
+                 "Returns number ofimages available in the Circular Buffer" RGIL)
+            .def("getBufferTotalCapacity", &CMMCore::getBufferTotalCapacity,
+                 "Returns the total number of images that can be stored in the buffer" RGIL)
+            .def(
+                "getBufferFreeCapacity", &CMMCore::getBufferFreeCapacity,
+                "Returns the number of images that can be added to the buffer without overflowing" RGIL)
+            .def("isBufferOverflowed", &CMMCore::isBufferOverflowed,
+                 "Indicates whether the circular buffer is overflowed" RGIL)
+            .def("setCircularBufferMemoryFootprint", &CMMCore::setCircularBufferMemoryFootprint,
+                 "Reserve memory for the circular buffer." RGIL)
+            .def("getCircularBufferMemoryFootprint", &CMMCore::getCircularBufferMemoryFootprint,
+                 "Returns the size of the Circular Buffer in MB" RGIL)
+            .def("initializeCircularBuffer", &CMMCore::initializeCircularBuffer,
+                 "Initialize circular buffer based on the current camera settings." RGIL)
+            .def("clearCircularBuffer", &CMMCore::clearCircularBuffer,
+                 "Removes all images from the circular buffer." RGIL)
 
-        // Exposure Sequence Methods
-        .def("isExposureSequenceable", &CMMCore::isExposureSequenceable, "cameraLabel"_a , "Queries camera if exposure can be used in a sequence cameraLabel the camera device label true if exposure can be sequenced" RGIL)
-        .def("startExposureSequence", &CMMCore::startExposureSequence, "cameraLabel"_a , "Starts an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable cameraLabel the camera device label" RGIL)
-        .def("stopExposureSequence", &CMMCore::stopExposureSequence, "cameraLabel"_a , "Stops an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable cameraLabel the camera device label" RGIL)
-        .def("getExposureSequenceMaxLength",
-             &CMMCore::getExposureSequenceMaxLength,
-             "cameraLabel"_a , "Gets the maximum length of a camera's exposure sequence. This should only be called for cameras where exposure time is sequenceable cameraLabel the camera device label" RGIL)
-        .def("loadExposureSequence",
-             &CMMCore::loadExposureSequence,
-             "cameraLabel"_a,
-             "exposureSequence_ms"_a , "Transfer a sequence of exposure times to the camera. This should only be called for cameras where exposure time is sequenceable cameraLabel the camera device label exposureTime_ms sequence of exposure times the camera will use during a sequence acquisition" RGIL)
+            // Exposure Sequence Methods
+            .def("isExposureSequenceable", &CMMCore::isExposureSequenceable,
+                 "Queries camera if exposure can be used in a sequence" RGIL)
+            .def(
+                "startExposureSequence", &CMMCore::startExposureSequence,
+                "Starts an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable" RGIL)
+            .def(
+                "stopExposureSequence", &CMMCore::stopExposureSequence,
+                "Stops an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable" RGIL)
+            .def(
+                "getExposureSequenceMaxLength", &CMMCore::getExposureSequenceMaxLength,
+                "Gets the maximum length of a camera's exposure sequence. This should only be called for cameras where exposure time is sequenceable" RGIL)
+            .def(
+                "loadExposureSequence", &CMMCore::loadExposureSequence,
+                "Transfer a sequence of exposure times to the camera. This should only be called for cameras where exposure time is sequenceable" RGIL)
 
-        // Autofocus Methods
-        .def("getLastFocusScore", &CMMCore::getLastFocusScore , "Returns the latest focus score from the focusing device. Use this value to estimate or record how reliable the focus is. The range of values is device dependent." RGIL)
-        .def("getCurrentFocusScore", &CMMCore::getCurrentFocusScore , "Returns the focus score from the default focusing device measured at the current Z position. Use this value to create profiles or just to verify that the image is in focus. The absolute range of returned scores depends on the actual focusing device." RGIL)
-        .def("enableContinuousFocus", &CMMCore::enableContinuousFocus, "enable"_a , "Enables or disables the operation of the continuous focusing hardware device." RGIL)
-        .def("isContinuousFocusEnabled", &CMMCore::isContinuousFocusEnabled , "Checks if the continuous focusing hardware device is ON or OFF." RGIL)
-        .def("isContinuousFocusLocked", &CMMCore::isContinuousFocusLocked , "Returns the lock-in status of the continuous focusing device." RGIL)
-        .def("isContinuousFocusDrive", &CMMCore::isContinuousFocusDrive, "stageLabel"_a , "Check if a stage has continuous focusing capability (positions can be set while continuous focus runs)." RGIL)
-        .def("fullFocus", &CMMCore::fullFocus , "Performs focus acquisition and lock for the one-shot focusing device." RGIL)
-        .def("incrementalFocus", &CMMCore::incrementalFocus , "Performs incremental focus for the one-shot focusing device." RGIL)
-        .def("setAutoFocusOffset", &CMMCore::setAutoFocusOffset, "offset"_a , "Applies offset the one-shot focusing device." RGIL)
-        .def("getAutoFocusOffset", &CMMCore::getAutoFocusOffset , "Measures offset for the one-shot focusing device." RGIL)
+            // Autofocus Methods
+            .def(
+                "getLastFocusScore", &CMMCore::getLastFocusScore,
+                "Returns the latest focus score from the focusing device. Use this value to estimate or record how reliable the focus is. The range of values is device dependent." RGIL)
+            .def(
+                "getCurrentFocusScore", &CMMCore::getCurrentFocusScore,
+                "Returns the focus score from the default focusing device measured at the current Z position. Use this value to create profiles or just to verify that the image is in focus. The absolute range of returned scores depends on the actual focusing device." RGIL)
+            .def(
+                "enableContinuousFocus", &CMMCore::enableContinuousFocus,
+                "Enables or disables the operation of the continuous focusing hardware device." RGIL)
+            .def("isContinuousFocusEnabled", &CMMCore::isContinuousFocusEnabled,
+                 "Checks if the continuous focusing hardware device is ON or OFF." RGIL)
+            .def("isContinuousFocusLocked", &CMMCore::isContinuousFocusLocked,
+                 "Returns the lock-in status of the continuous focusing device." RGIL)
+            .def(
+                "isContinuousFocusDrive", &CMMCore::isContinuousFocusDrive, "stageLabel"_a,
+                "Check if a stage has continuous focusing capability (positions can be set while continuous focus runs)." RGIL)
+            .def("fullFocus", &CMMCore::fullFocus,
+                 "Performs focus acquisition and lock for the one-shot focusing device." RGIL)
+            .def("incrementalFocus", &CMMCore::incrementalFocus,
+                 "Performs incremental focus for the one-shot focusing device." RGIL)
+            .def("setAutoFocusOffset", &CMMCore::setAutoFocusOffset,
+                 "Applies offset the one-shot focusing device." RGIL)
+            .def("getAutoFocusOffset", &CMMCore::getAutoFocusOffset,
+                 "Measures offset for the one-shot focusing device." RGIL)
 
-        // State Device Control Methods
-        .def("setState", &CMMCore::setState, "stateDeviceLabel"_a, "state"_a , "Sets the state (position) on the specific device. The command will fail if the device does not support states. deviceLabel the device label state the new state" RGIL)
-        .def("getState", &CMMCore::getState, "stateDeviceLabel"_a , "Returns the current state (position) on the specific device. The command will fail if the device does not support states. the current state deviceLabel the device label" RGIL)
-        .def("getNumberOfStates", &CMMCore::getNumberOfStates, "stateDeviceLabel"_a , "Returns the total number of available positions (states). For legacy reasons, an exception is not thrown on error. Instead, -1 is returned if deviceLabel is not a valid state device." RGIL)
-        .def("setStateLabel", &CMMCore::setStateLabel, "stateDeviceLabel"_a, "stateLabel"_a , "Sets device state using the previously assigned label (string). deviceLabel the device label stateLabel the state label" RGIL)
-        .def("getStateLabel", &CMMCore::getStateLabel, "stateDeviceLabel"_a RGIL)
-        .def("defineStateLabel",
-             &CMMCore::defineStateLabel,
-             "stateDeviceLabel"_a,
-             "state"_a,
-             "stateLabel"_a , "Defines a label for the specific state/ deviceLabel the device label state the state to be labeled label the label for the specified state" RGIL)
-        .def("getStateLabels", &CMMCore::getStateLabels, "stateDeviceLabel"_a RGIL)
-        .def("getStateFromLabel",
-             &CMMCore::getStateFromLabel,
-             "stateDeviceLabel"_a,
-             "stateLabel"_a , "Obtain the state for a given label. the state (an integer) deviceLabel the device label stateLabel the label for which the state is being queried" RGIL)
+            // State Device Control Methods
+            .def(
+                "setState",
+                &CMMCore::setState, "stateDeviceLabel"_a, "state"_a, "Sets the state (position) on the specific device. The command will fail if the device does not support states. deviceLabel the device label state the new state" RGIL)
+            .def(
+                "getState", &CMMCore::getState, "stateDeviceLabel"_a,
+                "Returns the current state (position) on the specific device. The command will fail if the device does not support states. the current state deviceLabel the device label" RGIL)
+            .def(
+                "getNumberOfStates", &CMMCore::getNumberOfStates, "stateDeviceLabel"_a,
+                "Returns the total number of available positions (states). For legacy reasons, an exception is not thrown on error. Instead, -1 is returned if deviceLabel is not a valid state device." RGIL)
+            .def(
+                "setStateLabel", &CMMCore::setStateLabel, "stateDeviceLabel"_a, "stateLabel"_a,
+                "Sets device state using the previously assigned label (string). deviceLabel the device label stateLabel the state label" RGIL)
+            .def(
+                "getStateLabel", &CMMCore::getStateLabel, "stateDeviceLabel"_a,
+                "Returns the current state as the label (string). \n the current state's label  \n \n \n \n deviceLabel \n \n \n the device label" RGIL)
+            .def("defineStateLabel", &CMMCore::defineStateLabel,
+                 "Defines a label for the specific state/" RGIL)
+            .def("getStateLabels", &CMMCore::getStateLabels,
+                 "Return labels for all states" RGIL)
+            .def(
+                "getStateFromLabel", &CMMCore::getStateFromLabel, "stateDeviceLabel"_a,
+                "stateLabel"_a,
+                "Obtain the state for a given label. the state (an integer) deviceLabel the device label stateLabel the label for which the state is being queried" RGIL)
 
-        // Stage Control Methods
-        .def("setPosition",
-             nb::overload_cast<const char *, double>(&CMMCore::setPosition),
-             "stageLabel"_a,
-             "position"_a , "Sets the position of the stage in microns. label the stage device label position the desired stage position, in microns" RGIL)
-        .def("setPosition", nb::overload_cast<double>(&CMMCore::setPosition), "position"_a , "Sets the position of the stage in microns. Uses the current Z positioner (focus) device. position the desired stage position, in microns" RGIL)
-        .def("getPosition",
-             nb::overload_cast<const char *>(&CMMCore::getPosition),
-             "stageLabel"_a , "Returns the current position of the stage in microns. the position in microns label the single-axis drive device label" RGIL)
-        .def("getPosition", nb::overload_cast<>(&CMMCore::getPosition) , "Returns the current position of the stage in microns. Uses the current Z positioner (focus) device. the position in microns" RGIL)
-        .def("setRelativePosition",
-             nb::overload_cast<const char *, double>(&CMMCore::setRelativePosition),
-             "stageLabel"_a,
-             "d"_a , "Sets the relative position of the stage in microns. label the single-axis drive device label d the amount to move the stage, in microns (positive or negative)" RGIL)
-        .def("setRelativePosition",
-             nb::overload_cast<double>(&CMMCore::setRelativePosition),
-             "d"_a , "Sets the relative position of the stage in microns. Uses the current Z positioner (focus) device. d the amount to move the stage, in microns (positive or negative)" RGIL)
-        .def("setOrigin", nb::overload_cast<const char *>(&CMMCore::setOrigin), "stageLabel"_a , "Zero the given focus/Z stage's coordinates at the current position. The current position becomes the new origin (Z = 0). Not to be confused with setAdapterOrigin(). label the stage device label" RGIL)
-        .def("setOrigin", nb::overload_cast<>(&CMMCore::setOrigin) , "Zero the current focus/Z stage's coordinates at the current position. The current position becomes the new origin (Z = 0). Not to be confused with setAdapterOrigin()." RGIL)
-        .def("setAdapterOrigin",
-             nb::overload_cast<const char *, double>(&CMMCore::setAdapterOrigin),
-             "stageLabel"_a,
-             "newZUm"_a , "Enable software translation of coordinates for the given focus/Z stage. The current position of the stage becomes Z = newZUm. Only some stages support this functionality; it is recommended that setOrigin() be used instead where available. label the stage device label newZUm the new coordinate to assign to the current Z position" RGIL)
-        .def("setAdapterOrigin",
-             nb::overload_cast<double>(&CMMCore::setAdapterOrigin),
-             "newZUm"_a , "Enable software translation of coordinates for the current focus/Z stage. The current position of the stage becomes Z = newZUm. Only some stages support this functionality; it is recommended that setOrigin() be used instead where available. newZUm the new coordinate to assign to the current Z position" RGIL)
+            // Stage Control Methods
+            .def(
+                "setPosition", nb::overload_cast<const char *, double>(&CMMCore::setPosition),
+                "stageLabel"_a, "position"_a,
+                "Sets the position of the stage in microns. label the stage device label position the desired stage position, in microns" RGIL)
+            .def(
+                "setPosition", nb::overload_cast<double>(&CMMCore::setPosition), "position"_a,
+                "Sets the position of the stage in microns. Uses the current Z positioner (focus) device. position the desired stage position, in microns" RGIL)
+            .def(
+                "getPosition", nb::overload_cast<const char *>(&CMMCore::getPosition),
+                "stageLabel"_a,
+                "Returns the current position of the stage in microns. the position in microns label the single-axis drive device label" RGIL)
+            .def(
+                "getPosition", nb::overload_cast<>(&CMMCore::getPosition),
+                "Returns the current position of the stage in microns. Uses the current Z positioner (focus) device. the position in microns" RGIL)
+            .def(
+                "setRelativePosition",
+                nb::overload_cast<const char *, double>(&CMMCore::setRelativePosition),
+                "stageLabel"_a, "d"_a,
+                "Sets the relative position of the stage in microns. label the single-axis drive device label d the amount to move the stage, in microns (positive or negative)" RGIL)
+            .def(
+                "setRelativePosition", nb::overload_cast<double>(&CMMCore::setRelativePosition),
+                "d"_a,
+                "Sets the relative position of the stage in microns. Uses the current Z positioner (focus) device. d the amount to move the stage, in microns (positive or negative)" RGIL)
+            .def(
+                "setOrigin", nb::overload_cast<const char *>(&CMMCore::setOrigin),
+                "stageLabel"_a,
+                "Zero the given focus/Z stage's coordinates at the current position. The current position becomes the new origin (Z = 0). Not to be confused with setAdapterOrigin(). label the stage device label" RGIL)
+            .def(
+                "setOrigin", nb::overload_cast<>(&CMMCore::setOrigin),
+                "Zero the current focus/Z stage's coordinates at the current position. The current position becomes the new origin (Z = 0). Not to be confused with setAdapterOrigin()." RGIL)
+            .def(
+                "setAdapterOrigin",
+                nb::overload_cast<const char *, double>(&CMMCore::setAdapterOrigin),
+                "stageLabel"_a, "newZUm"_a,
+                "Enable software translation of coordinates for the given focus/Z stage. The current position of the stage becomes Z = newZUm. Only some stages support this functionality; it is recommended that setOrigin() be used instead where available. label the stage device label newZUm the new coordinate to assign to the current Z position" RGIL)
+            .def(
+                "setAdapterOrigin",
+                nb::overload_cast<double>(&CMMCore::setAdapterOrigin), "newZUm"_a, "Enable software translation of coordinates for the current focus/Z stage. The current position of the stage becomes Z = newZUm. Only some stages support this functionality; it is recommended that setOrigin() be used instead where available. newZUm the new coordinate to assign to the current Z position" RGIL)
 
-        // Focus Direction Methods
-        .def("setFocusDirection", &CMMCore::setFocusDirection, "stageLabel"_a, "sign"_a , "Set the focus direction of a stage. The sign should be +1 (or any positive value), zero, or -1 (or any negative value), and is interpreted in the same way as the return value of getFocusDirection(). Once this method is called, getFocusDirection() for the stage will always return the set value. For legacy reasons, an exception is not thrown if there is an error. Instead, nothing is done if stageLabel is not a valid focus stage." RGIL)
-        .def("getFocusDirection", &CMMCore::getFocusDirection, "stageLabel"_a , "Get the focus direction of a stage. Returns +1 if increasing position brings objective closer to sample, -1 if increasing position moves objective away from sample, or 0 if unknown. (Make sure to check for zero!) The returned value is determined by the most recent call to setFocusDirection() for the stage, or defaults to what the stage device adapter declares (often 0, for unknown). An exception is thrown if the direction has not been set and the device encounters an error when determining the default direction." RGIL)
+            // Focus Direction Methods
+            .def(
+                "setFocusDirection", &CMMCore::setFocusDirection, "stageLabel"_a, "sign"_a,
+                "Set the focus direction of a stage. The sign should be +1 (or any positive value), zero, or -1 (or any negative value), and is interpreted in the same way as the return value of getFocusDirection(). Once this method is called, getFocusDirection() for the stage will always return the set value. For legacy reasons, an exception is not thrown if there is an error. Instead, nothing is done if stageLabel is not a valid focus stage." RGIL)
+            .def(
+                "getFocusDirection", &CMMCore::getFocusDirection, "stageLabel"_a,
+                "Get the focus direction of a stage. Returns +1 if increasing position brings objective closer to sample, -1 if increasing position moves objective away from sample, or 0 if unknown. (Make sure to check for zero!) The returned value is determined by the most recent call to setFocusDirection() for the stage, or defaults to what the stage device adapter declares (often 0, for unknown). An exception is thrown if the direction has not been set and the device encounters an error when determining the default direction." RGIL)
 
-        // Stage Sequence Methods
-        .def("isStageSequenceable", &CMMCore::isStageSequenceable, "stageLabel"_a , "Queries stage if it can be used in a sequence label the stage device label true if the stage can be sequenced" RGIL)
-        .def("isStageLinearSequenceable", &CMMCore::isStageLinearSequenceable, "stageLabel"_a , "Queries if the stage can be used in a linear sequence A linear sequence is defined by a stepsize and number of slices label the stage device label true if the stage supports linear sequences" RGIL)
-        .def("startStageSequence", &CMMCore::startStageSequence, "stageLabel"_a , "Starts an ongoing sequence of triggered events in a stage This should only be called for stages label the stage device label" RGIL)
-        .def("stopStageSequence", &CMMCore::stopStageSequence, "stageLabel"_a , "Stops an ongoing sequence of triggered events in a stage This should only be called for stages that are sequenceable label the stage device label" RGIL)
-        .def("getStageSequenceMaxLength", &CMMCore::getStageSequenceMaxLength, "stageLabel"_a , "Gets the maximum length of a stage's position sequence. This should only be called for stages that are sequenceable label the stage device label the maximum length (integer)" RGIL)
-        .def("loadStageSequence",
-             &CMMCore::loadStageSequence,
-             "stageLabel"_a,
-             "positionSequence"_a , "Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable label the device label positionSequence a sequence of positions that the stage will execute in response to external triggers" RGIL)
-        .def("setStageLinearSequence",
-             &CMMCore::setStageLinearSequence,
-             "stageLabel"_a,
-             "dZ_um"_a,
-             "nSlices"_a , "Loads a linear sequence (defined by stepsize and nr. of steps) into the device. Why was it not called loadStageLinearSequence??? label Name of the stage device dZ_um Step size between slices in microns nSlices Number of slices fo ethis sequence Presumably the sequence will repeat after this number of TTLs was received" RGIL)
+            // Stage Sequence Methods
+            .def("isStageSequenceable", &CMMCore::isStageSequenceable,
+                 "Queries stage if it can be used in a sequence" RGIL)
+            .def(
+                "isStageLinearSequenceable", &CMMCore::isStageLinearSequenceable,
+                "Queries if the stage can be used in a linear sequence A linear sequence is defined by a stepsize and number of slices" RGIL)
+            .def(
+                "startStageSequence", &CMMCore::startStageSequence,
+                "Starts an ongoing sequence of triggered events in a stage This should only be called for stages" RGIL)
+            .def(
+                "stopStageSequence", &CMMCore::stopStageSequence,
+                "Stops an ongoing sequence of triggered events in a stage This should only be called for stages that are sequenceable" RGIL)
+            .def(
+                "getStageSequenceMaxLength", &CMMCore::getStageSequenceMaxLength,
+                "stageLabel"_a,
+                "Gets the maximum length of a stage's position sequence. This should only be called for stages that are sequenceable label the stage device label the maximum length (integer)" RGIL)
+            .def(
+                "loadStageSequence", &CMMCore::loadStageSequence,
+                "Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable" RGIL)
+            .def(
+                "setStageLinearSequence", &CMMCore::setStageLinearSequence, "stageLabel"_a,
+                "dZ_um"_a,
+                "nSlices"_a, "Loads a linear sequence (defined by stepsize and nr. of steps) into the device. Why was it not called loadStageLinearSequence??? label Name of the stage device dZ_um Step size between slices in microns nSlices Number of slices fo ethis sequence Presumably the sequence will repeat after this number of TTLs was received" RGIL)
 
-        // XY Stage Control Methods
-        .def("setXYPosition",
-             nb::overload_cast<const char *, double, double>(&CMMCore::setXYPosition),
-             "xyStageLabel"_a,
-             "x"_a,
-             "y"_a , "Sets the position of the XY stage in microns. label the XY stage device label x the X axis position in microns y the Y axis position in microns" RGIL)
-        .def("setXYPosition",
-             nb::overload_cast<double, double>(&CMMCore::setXYPosition),
-             "x"_a,
-             "y"_a , "Sets the position of the XY stage in microns. Uses the current XY stage device. x the X axis position in microns y the Y axis position in microns" RGIL)
-        .def("setRelativeXYPosition",
-             nb::overload_cast<const char *, double, double>(&CMMCore::setRelativeXYPosition),
-             "xyStageLabel"_a,
-             "dx"_a,
-             "dy"_a , "Sets the relative position of the XY stage in microns. label the xy stage device label dx the distance to move in X (positive or negative) dy the distance to move in Y (positive or negative)" RGIL)
-        .def("setRelativeXYPosition",
-             nb::overload_cast<double, double>(&CMMCore::setRelativeXYPosition),
-             "dx"_a,
-             "dy"_a , "Sets the relative position of the XY stage in microns. Uses the current XY stage device. dx the distance to move in X (positive or negative) dy the distance to move in Y (positive or negative)" RGIL)
+            // XY Stage Control Methods
+            .def(
+                "setXYPosition",
+                nb::overload_cast<const char *, double, double>(&CMMCore::setXYPosition),
+                "xyStageLabel"_a, "x"_a, "y"_a,
+                "Sets the position of the XY stage in microns. label the XY stage device label x the X axis position in microns y the Y axis position in microns" RGIL)
+            .def(
+                "setXYPosition", nb::overload_cast<double, double>(&CMMCore::setXYPosition),
+                "x"_a, "y"_a,
+                "Sets the position of the XY stage in microns. Uses the current XY stage device. x the X axis position in microns y the Y axis position in microns" RGIL)
+            .def(
+                "setRelativeXYPosition",
+                nb::overload_cast<const char *, double, double>(
+                    &CMMCore::setRelativeXYPosition),
+                "xyStageLabel"_a, "dx"_a, "dy"_a,
+                "Sets the relative position of the XY stage in microns. label the xy stage device label dx the distance to move in X (positive or negative) dy the distance to move in Y (positive or negative)" RGIL)
+            .def(
+                "setRelativeXYPosition",
+                nb::overload_cast<double, double>(&CMMCore::setRelativeXYPosition), "dx"_a,
+                "dy"_a,
+                "Sets the relative position of the XY stage in microns. Uses the current XY stage device. dx the distance to move in X (positive or negative) dy the distance to move in Y (positive or negative)" RGIL)
 
-        .def(
-            "getXYPosition",
-            [](CMMCore &self, const char *xyStageLabel) -> std::tuple<double, double> {
-                double x, y;
-                self.getXYPosition(xyStageLabel, x, y);
-                return {x, y};
-            },
-            "xyStageLabel"_a RGIL)
-        .def("getXYPosition",
-             [](CMMCore &self) -> std::tuple<double, double> {
-                double x, y;
-                self.getXYPosition(x, y);
-                return {x, y};
-             } RGIL)
-        .def("getXPosition",
-             nb::overload_cast<const char *>(&CMMCore::getXPosition),
-             "xyStageLabel"_a , "Obtains the current position of the X axis of the XY stage in microns. the x position label the stage device label" RGIL)
-        .def("getYPosition",
-             nb::overload_cast<const char *>(&CMMCore::getYPosition),
-             "xyStageLabel"_a , "Obtains the current position of the Y axis of the XY stage in microns. the y position label the stage device label" RGIL)
-        .def("getXPosition", nb::overload_cast<>(&CMMCore::getXPosition) , "Obtains the current position of the X axis of the XY stage in microns. Uses the current XY stage device. the x position label the stage device label" RGIL)
-        .def("getYPosition", nb::overload_cast<>(&CMMCore::getYPosition) , "Obtains the current position of the Y axis of the XY stage in microns. Uses the current XY stage device. the y position label the stage device label" RGIL)
-        .def("stop", &CMMCore::stop, "xyOrZStageLabel"_a , "Stop the XY or focus/Z stage motors Not all stages support this operation; check before use. label the stage device label (either XY or focus/Z stage)" RGIL)
-        .def("home", &CMMCore::home, "xyOrZStageLabel"_a , "Perform a hardware homing operation for an XY or focus/Z stage. Not all stages support this operation. The user should be warned before calling this method, as it can cause large stage movements, potentially resulting in collision (e.g. with an expensive objective lens). label the stage device label (either XY or focus/Z stage)" RGIL)
-        .def("setOriginXY",
-             nb::overload_cast<const char *>(&CMMCore::setOriginXY),
-             "xyStageLabel"_a , "Zero the given XY stage's coordinates at the current position. The current position becomes the new origin. Not to be confused with setAdapterOriginXY(). label the stage device label" RGIL)
-        .def("setOriginXY", nb::overload_cast<>(&CMMCore::setOriginXY) , "Zero the current XY stage's coordinates at the current position. The current position becomes the new origin. Not to be confused with setAdapterOriginXY()." RGIL)
-        .def("setOriginX",
-             nb::overload_cast<const char *>(&CMMCore::setOriginX),
-             "xyStageLabel"_a , "Zero the given XY stage's X coordinate at the current position. The current position becomes the new X = 0. label the xy stage device label" RGIL)
-        .def("setOriginX", nb::overload_cast<>(&CMMCore::setOriginX) , "Zero the given XY stage's X coordinate at the current position. The current position becomes the new X = 0." RGIL)
-        .def("setOriginY",
-             nb::overload_cast<const char *>(&CMMCore::setOriginY),
-             "xyStageLabel"_a , "Zero the given XY stage's Y coordinate at the current position. The current position becomes the new Y = 0. label the xy stage device label" RGIL)
-        .def("setOriginY", nb::overload_cast<>(&CMMCore::setOriginY) , "Zero the given XY stage's Y coordinate at the current position. The current position becomes the new Y = 0." RGIL)
-        .def("setAdapterOriginXY",
-             nb::overload_cast<const char *, double, double>(&CMMCore::setAdapterOriginXY),
-             "xyStageLabel"_a,
-             "newXUm"_a,
-             "newYUm"_a , "Enable software translation of coordinates for the given XY stage. The current position of the stage becomes (newXUm, newYUm). It is recommended that setOriginXY() be used instead where available. label the XY stage device label newXUm the new coordinate to assign to the current X position newYUm the new coordinate to assign to the current Y position" RGIL)
-        .def("setAdapterOriginXY",
-             nb::overload_cast<double, double>(&CMMCore::setAdapterOriginXY),
-             "newXUm"_a,
-             "newYUm"_a , "Enable software translation of coordinates for the current XY stage. The current position of the stage becomes (newXUm, newYUm). It is recommended that setOriginXY() be used instead where available. newXUm the new coordinate to assign to the current X position newYUm the new coordinate to assign to the current Y position" RGIL)
+            .def(
+                "getXYPosition",
+                [](CMMCore &self, const char *xyStageLabel) -> std::tuple<double, double> {
+                    double x, y;
+                    self.getXYPosition(xyStageLabel, x, y);
+                    return {x, y};
+                },
+                "xyStageLabel"_a RGIL)
+            .def("getXYPosition",
+                 [](CMMCore &self) -> std::tuple<double, double> {
+                     double x, y;
+                     self.getXYPosition(x, y);
+                     return {x, y};
+                 } RGIL)
+            .def(
+                "getXPosition", nb::overload_cast<const char *>(&CMMCore::getXPosition),
+                "xyStageLabel"_a,
+                "Obtains the current position of the X axis of the XY stage in microns. the x position label the stage device label" RGIL)
+            .def(
+                "getYPosition", nb::overload_cast<const char *>(&CMMCore::getYPosition),
+                "xyStageLabel"_a,
+                "Obtains the current position of the Y axis of the XY stage in microns. the y position label the stage device label" RGIL)
+            .def(
+                "getXPosition", nb::overload_cast<>(&CMMCore::getXPosition),
+                "Obtains the current position of the X axis of the XY stage in microns. Uses the current XY stage device. the x position label the stage device label" RGIL)
+            .def(
+                "getYPosition", nb::overload_cast<>(&CMMCore::getYPosition),
+                "Obtains the current position of the Y axis of the XY stage in microns. Uses the current XY stage device. the y position label the stage device label" RGIL)
+            .def(
+                "stop", &CMMCore::stop, "xyOrZStageLabel"_a,
+                "Stop the XY or focus/Z stage motors Not all stages support this operation; check before use. label the stage device label (either XY or focus/Z stage)" RGIL)
+            .def(
+                "home", &CMMCore::home, "xyOrZStageLabel"_a,
+                "Perform a hardware homing operation for an XY or focus/Z stage. Not all stages support this operation. The user should be warned before calling this method, as it can cause large stage movements, potentially resulting in collision (e.g. with an expensive objective lens). label the stage device label (either XY or focus/Z stage)" RGIL)
+            .def(
+                "setOriginXY", nb::overload_cast<const char *>(&CMMCore::setOriginXY),
+                "xyStageLabel"_a,
+                "Zero the given XY stage's coordinates at the current position. The current position becomes the new origin. Not to be confused with setAdapterOriginXY(). label the stage device label" RGIL)
+            .def(
+                "setOriginXY", nb::overload_cast<>(&CMMCore::setOriginXY),
+                "Zero the current XY stage's coordinates at the current position. The current position becomes the new origin. Not to be confused with setAdapterOriginXY()." RGIL)
+            .def(
+                "setOriginX", nb::overload_cast<const char *>(&CMMCore::setOriginX),
+                "xyStageLabel"_a,
+                "Zero the given XY stage's X coordinate at the current position. The current position becomes the new X = 0. label the xy stage device label" RGIL)
+            .def(
+                "setOriginX", nb::overload_cast<>(&CMMCore::setOriginX),
+                "Zero the given XY stage's X coordinate at the current position. The current position becomes the new X = 0." RGIL)
+            .def(
+                "setOriginY", nb::overload_cast<const char *>(&CMMCore::setOriginY),
+                "xyStageLabel"_a,
+                "Zero the given XY stage's Y coordinate at the current position. The current position becomes the new Y = 0. label the xy stage device label" RGIL)
+            .def(
+                "setOriginY", nb::overload_cast<>(&CMMCore::setOriginY),
+                "Zero the given XY stage's Y coordinate at the current position. The current position becomes the new Y = 0." RGIL)
+            .def(
+                "setAdapterOriginXY",
+                nb::overload_cast<const char *, double, double>(&CMMCore::setAdapterOriginXY), "xyStageLabel"_a, "newXUm"_a, "newYUm"_a,
+                "Enable software translation of coordinates for the given XY stage. The current position of the stage becomes (newXUm, newYUm). It is recommended that setOriginXY() be used instead where available. label the XY stage device label newXUm the new coordinate to assign to the current X position newYUm the new coordinate to assign to the current Y position" RGIL)
+            .def(
+                "setAdapterOriginXY",
+                nb::overload_cast<double, double>(&CMMCore::setAdapterOriginXY), "newXUm"_a,
+                "newYUm"_a,
+                "Enable software translation of coordinates for the current XY stage. The current position of the stage becomes (newXUm, newYUm). It is recommended that setOriginXY() be used instead where available. newXUm the new coordinate to assign to the current X position newYUm the new coordinate to assign to the current Y position" RGIL)
 
-        // XY Stage Sequence Methods
-        .def("isXYStageSequenceable", &CMMCore::isXYStageSequenceable, "xyStageLabel"_a , "Queries XY stage if it can be used in a sequence label the XY stage device label" RGIL)
-        .def("startXYStageSequence", &CMMCore::startXYStageSequence, "xyStageLabel"_a , "Starts an ongoing sequence of triggered events in an XY stage This should only be called for stages label the XY stage device label" RGIL)
-        .def("stopXYStageSequence", &CMMCore::stopXYStageSequence, "xyStageLabel"_a , "Stops an ongoing sequence of triggered events in an XY stage This should only be called for stages that are sequenceable label the XY stage device label" RGIL)
-        .def("getXYStageSequenceMaxLength",
-             &CMMCore::getXYStageSequenceMaxLength,
-             "xyStageLabel"_a , "Gets the maximum length of an XY stage's position sequence. This should only be called for XY stages that are sequenceable label the XY stage device label the maximum allowed sequence length" RGIL)
-        .def("loadXYStageSequence",
-             &CMMCore::loadXYStageSequence,
-             "xyStageLabel"_a,
-             "xSequence"_a,
-             "ySequence"_a , "Transfer a sequence of stage positions to the xy stage. xSequence and ySequence must have the same length. This should only be called for XY stages that are sequenceable label the XY stage device label xSequence the sequence of x positions that the stage will execute in response to external triggers ySequence the sequence of y positions that the stage will execute in response to external triggers" RGIL)
+            // XY Stage Sequence Methods
+            .def("isXYStageSequenceable", &CMMCore::isXYStageSequenceable,
+                 "Queries XY stage if it can be used in a sequence" RGIL)
+            .def(
+                "startXYStageSequence", &CMMCore::startXYStageSequence,
+                "Starts an ongoing sequence of triggered events in an XY stage This should only be called for stages" RGIL)
+            .def(
+                "stopXYStageSequence", &CMMCore::stopXYStageSequence,
+                "Stops an ongoing sequence of triggered events in an XY stage This should only be called for stages that are sequenceable" RGIL)
+            .def(
+                "getXYStageSequenceMaxLength", &CMMCore::getXYStageSequenceMaxLength,
+                "Gets the maximum length of an XY stage's position sequence. This should only be called for XY stages that are sequenceable" RGIL)
+            .def(
+                "loadXYStageSequence", &CMMCore::loadXYStageSequence,
+                "Transfer a sequence of stage positions to the xy stage. xSequence and ySequence must have the same length. This should only be called for XY stages that are sequenceable" RGIL)
 
-        // Serial Port Control
-        .def("setSerialProperties",
-             &CMMCore::setSerialProperties,
-             "portName"_a,
-             "answerTimeout"_a,
-             "baudRate"_a,
-             "delayBetweenCharsMs"_a,
-             "handshaking"_a,
-             "parity"_a,
-             "stopBits"_a , "Sets all com port properties in a single call" RGIL)
-        .def("setSerialPortCommand",
-             &CMMCore::setSerialPortCommand,
-             "portLabel"_a,
-             "command"_a,
-             "term"_a , "Send string to the serial device and return an answer. This command blocks until it receives an answer from the device terminated by the specified sequence." RGIL)
-        .def("getSerialPortAnswer", &CMMCore::getSerialPortAnswer, "portLabel"_a, "term"_a RGIL)
-        .def("writeToSerialPort", &CMMCore::writeToSerialPort, "portLabel"_a, "data"_a , "Sends an array of characters to the serial port and returns immediately." RGIL)
-        .def("readFromSerialPort", &CMMCore::readFromSerialPort, "portLabel"_a RGIL)
+            // Serial Port Control
+            .def("setSerialProperties", &CMMCore::setSerialProperties,
+                 "Sets all com port properties in a single call" RGIL)
+            .def(
+                "setSerialPortCommand", &CMMCore::setSerialPortCommand,
+                "Send string to the serial device and return an answer. This command blocks until it receives an answer from the device terminated by the specified sequence." RGIL)
+            .def(
+                "getSerialPortAnswer", &CMMCore::getSerialPortAnswer,
+                "Continuously read from the serial port until the terminating sequence is encountered." RGIL)
+            .def(
+                "writeToSerialPort", &CMMCore::writeToSerialPort,
+                "Sends an array of characters to the serial port and returns immediately." RGIL)
+            .def("readFromSerialPort", &CMMCore::readFromSerialPort,
+                 "Reads the contents of the Rx buffer." RGIL)
 
-        // SLM Control
-        // setSLMImage accepts a second argument (pixels) of either unsigned char* or unsigned
-        // int*
-        .def(
-            "setSLMImage",
-            [](CMMCore &self,
-               const char *slmLabel,
-               const nb::ndarray<uint8_t> &pixels) -> void {
-                long expectedWidth = self.getSLMWidth(slmLabel);
-                long expectedHeight = self.getSLMHeight(slmLabel);
-                long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
-                validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel);
+            // SLM Control
+            // setSLMImage accepts a second argument (pixels) of either unsigned char* or
+            // unsigned int*
+            .def(
+                "setSLMImage",
+                [](CMMCore &self, const char *slmLabel,
+                   const nb::ndarray<uint8_t> &pixels) -> void {
+                    long expectedWidth = self.getSLMWidth(slmLabel);
+                    long expectedHeight = self.getSLMHeight(slmLabel);
+                    long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
+                    validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel);
 
-                // Cast the numpy array to a pointer to unsigned char
-                self.setSLMImage(slmLabel, reinterpret_cast<unsigned char *>(pixels.data()));
-            },
-            "slmLabel"_a,
-            "pixels"_a RGIL)
-        .def("setSLMPixelsTo",
-             nb::overload_cast<const char *, unsigned char>(&CMMCore::setSLMPixelsTo),
-             "slmLabel"_a,
-             "intensity"_a , "Set all SLM pixels to a single 8-bit intensity." RGIL)
-        .def("setSLMPixelsTo",
-             nb::overload_cast<const char *, unsigned char, unsigned char, unsigned char>(
-                 &CMMCore::setSLMPixelsTo),
-             "slmLabel"_a,
-             "red"_a,
-             "green"_a,
-             "blue"_a , "Set all SLM pixels to an RGB color." RGIL)
-        .def("displaySLMImage", &CMMCore::displaySLMImage, "slmLabel"_a , "Display the waiting image on the SLM." RGIL)
-        .def("setSLMExposure", &CMMCore::setSLMExposure, "slmLabel"_a, "exposure_ms"_a , "For SLM devices with build-in light source (such as projectors) this will set the exposure time, but not (yet) start the illumination" RGIL)
-        .def("getSLMExposure", &CMMCore::getSLMExposure, "slmLabel"_a , "Returns the exposure time that will be used by the SLM for illumination" RGIL)
-        .def("getSLMWidth", &CMMCore::getSLMWidth, "slmLabel"_a , "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM" , "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM" RGIL)
-        .def("getSLMHeight", &CMMCore::getSLMHeight, "slmLabel"_a , "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM" , "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM", "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM" RGIL)
-        .def("getSLMNumberOfComponents", &CMMCore::getSLMNumberOfComponents, "slmLabel"_a , "Returns the number of components (usually these depict colors) of the SLM For instance, an RGB projector will return 3, but a grey scale SLM returns 1 deviceLabel name of the SLM" RGIL)
-        .def("getSLMBytesPerPixel", &CMMCore::getSLMBytesPerPixel, "slmLabel"_a , "Returns the number of bytes per SLM pixel deviceLabel name of the SLM" RGIL)
-        // SLM Sequence
-        .def("getSLMSequenceMaxLength", &CMMCore::getSLMSequenceMaxLength, "slmLabel"_a , "For SLMs that support sequences, returns the maximum length of the sequence that can be uploaded to the device deviceLabel name of the SLM" RGIL)
-        .def("startSLMSequence", &CMMCore::startSLMSequence, "slmLabel"_a , "Starts the sequence previously uploaded to the SLM deviceLabel name of the SLM" RGIL)
-        .def("stopSLMSequence", &CMMCore::stopSLMSequence, "slmLabel"_a , "Stops the SLM sequence if previously started deviceLabel name of the SLM" RGIL)
-        .def(
-            "loadSLMSequence",
-            [](CMMCore &self,
-               const char *slmLabel,
-               std::vector<nb::ndarray<uint8_t>> &imageSequence) -> void {
-                long expectedWidth = self.getSLMWidth(slmLabel);
-                long expectedHeight = self.getSLMHeight(slmLabel);
-                long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
-                std::vector<unsigned char *> inputVector;
-                for (auto &image : imageSequence) {
-                    validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel);
-                    inputVector.push_back(reinterpret_cast<unsigned char *>(image.data()));
-                }
-                self.loadSLMSequence(slmLabel, inputVector);
-            },
-            "slmLabel"_a,
-            "pixels"_a RGIL)
+                    // Cast the numpy array to a pointer to unsigned char
+                    self.setSLMImage(slmLabel,
+                                     reinterpret_cast<unsigned char *>(pixels.data()));
+                },
+                "slmLabel"_a, "pixels"_a RGIL)
+            .def("setSLMPixelsTo",
+                 nb::overload_cast<const char *, unsigned char>(&CMMCore::setSLMPixelsTo),
+                 "slmLabel"_a, "intensity"_a,
+                 "Set all SLM pixels to a single 8-bit intensity." RGIL)
+            .def("setSLMPixelsTo",
+                 nb::overload_cast<const char *, unsigned char, unsigned char, unsigned char>(
+                     &CMMCore::setSLMPixelsTo),
+                 "slmLabel"_a, "red"_a, "green"_a, "blue"_a,
+                 "Set all SLM pixels to an RGB color." RGIL)
+            .def("displaySLMImage", &CMMCore::displaySLMImage,
+                 "Display the waiting image on the SLM." RGIL)
+            .def(
+                "setSLMExposure", &CMMCore::setSLMExposure, "slmLabel"_a, "exposure_ms"_a,
+                "For SLM devices with build-in light source (such as projectors) this will set the exposure time, but not (yet) start the illumination" RGIL)
+            .def("getSLMExposure", &CMMCore::getSLMExposure,
+                 "Returns the exposure time that will be used by the SLM for illumination" RGIL)
+            .def(
+                "getSLMWidth", &CMMCore::getSLMWidth, "slmLabel"_a,
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the width (in \"pixels\") of the SLM deviceLabel name of the SLM" RGIL)
+            .def(
+                "getSLMHeight", &CMMCore::getSLMHeight, "slmLabel"_a,
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM",
+                "Returns the height (in \"pixels\") of the SLM deviceLabel name of the SLM" RGIL)
+            .def(
+                "getSLMNumberOfComponents", &CMMCore::getSLMNumberOfComponents, "slmLabel"_a,
+                "Returns the number of components (usually these depict colors) of the SLM For instance, an RGB projector will return 3, but a grey scale SLM returns 1 deviceLabel name of the SLM" RGIL)
+            .def("getSLMBytesPerPixel", &CMMCore::getSLMBytesPerPixel,
+                 "Returns the number of bytes per SLM pixel" RGIL)
+            // SLM Sequence
+            .def(
+                "getSLMSequenceMaxLength", &CMMCore::getSLMSequenceMaxLength,
+                "For SLMs that support sequences, returns the maximum length of the sequence that can be uploaded to the device" RGIL)
+            .def("startSLMSequence", &CMMCore::startSLMSequence,
+                 "Starts the sequence previously uploaded to the SLM" RGIL)
+            .def("stopSLMSequence", &CMMCore::stopSLMSequence,
+                 "Stops the SLM sequence if previously started" RGIL)
+            .def(
+                "loadSLMSequence",
+                [](CMMCore &self, const char *slmLabel,
+                   std::vector<nb::ndarray<uint8_t>> &imageSequence) -> void {
+                    long expectedWidth = self.getSLMWidth(slmLabel);
+                    long expectedHeight = self.getSLMHeight(slmLabel);
+                    long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
+                    std::vector<unsigned char *> inputVector;
+                    for (auto &image : imageSequence) {
+                        validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel);
+                        inputVector.push_back(reinterpret_cast<unsigned char *>(image.data()));
+                    }
+                    self.loadSLMSequence(slmLabel, inputVector);
+                },
+                "slmLabel"_a, "pixels"_a RGIL)
 
-        // Galvo Control
-        .def("pointGalvoAndFire",
-             &CMMCore::pointGalvoAndFire,
-             "galvoLabel"_a,
-             "x"_a,
-             "y"_a,
-             "pulseTime_us"_a , "Set the Galvo to an x,y position and fire the laser for a predetermined duration." RGIL)
-        .def("setGalvoSpotInterval",
-             &CMMCore::setGalvoSpotInterval,
-             "galvoLabel"_a,
-             "pulseTime_us"_a RGIL)
-        .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a , "Set the Galvo to an x,y position" RGIL)
-        .def("getGalvoPosition",
-             [](CMMCore &self, const char *galvoLabel) -> std::tuple<double, double> {
-                double x, y;
-                self.getGalvoPosition(galvoLabel, x, y); // Call C++ method
-                return std::make_tuple(x, y);            // Return a tuple
-             } RGIL)
-        .def("setGalvoIlluminationState",
-             &CMMCore::setGalvoIlluminationState,
-             "galvoLabel"_a,
-             "on"_a , "Set the galvo's illumination state to on or off" RGIL)
-        .def("getGalvoXRange", &CMMCore::getGalvoXRange, "galvoLabel"_a , "Get the Galvo x range" RGIL)
-        .def("getGalvoXMinimum", &CMMCore::getGalvoXMinimum, "galvoLabel"_a , "Get the Galvo x minimum" RGIL)
-        .def("getGalvoYRange", &CMMCore::getGalvoYRange, "galvoLabel"_a , "Get the Galvo y range" RGIL)
-        .def("getGalvoYMinimum", &CMMCore::getGalvoYMinimum, "galvoLabel"_a , "Get the Galvo y minimum" RGIL)
-        .def("addGalvoPolygonVertex",
-             &CMMCore::addGalvoPolygonVertex,
-             "galvoLabel"_a,
-             "polygonIndex"_a,
-             "x"_a,
-             "y"_a,
-             R"doc(Add a vertex to a galvo polygon.)doc" , "Add a vertex to a galvo polygon." RGIL)
-        .def("deleteGalvoPolygons", &CMMCore::deleteGalvoPolygons, "galvoLabel"_a , "Remove all added polygons" RGIL)
-        .def("loadGalvoPolygons", &CMMCore::loadGalvoPolygons, "galvoLabel"_a , "Load a set of galvo polygons to the device" RGIL)
-        .def("setGalvoPolygonRepetitions",
-             &CMMCore::setGalvoPolygonRepetitions,
-             "galvoLabel"_a,
-             "repetitions"_a , "Set the number of times to loop galvo polygons" RGIL)
-        .def("runGalvoPolygons", &CMMCore::runGalvoPolygons, "galvoLabel"_a , "Run a loop of galvo polygons" RGIL)
-        .def("runGalvoSequence", &CMMCore::runGalvoSequence, "galvoLabel"_a , "Run a sequence of galvo positions" RGIL)
-        .def("getGalvoChannel", &CMMCore::getGalvoChannel, "galvoLabel"_a RGIL)
-        
-        // PressurePump Control
-        .def("pressurePumpStop", &CMMCore::pressurePumpStop, "pumpLabel"_a , "Stops the pressure pump" RGIL)
-        .def("pressurePumpCalibrate", &CMMCore::pressurePumpCalibrate, "pumpLabel"_a , "Calibrates the pump" RGIL)
-        .def("pressurePumpRequiresCalibration", &CMMCore::pressurePumpRequiresCalibration, "pumpLabel"_a , "Returns boolean whether the pump is operational before calibration" RGIL)
-        .def("setPumpPressureKPa", &CMMCore::setPumpPressureKPa, "pumpLabel"_a, "pressure"_a , "Sets the pressure of the pump in kPa" RGIL)
-        .def("getPumpPressureKPa", &CMMCore::getPumpPressureKPa, "pumpLabel"_a , "Gets the pressure of the pump in kPa" RGIL)
-        
-        // VolumetricPump control
-        .def("volumetricPumpStop", &CMMCore::volumetricPumpStop, "pumpLabel"_a , "Stops the volumetric pump" RGIL)
-        .def("volumetricPumpHome", &CMMCore::volumetricPumpHome, "pumpLabel"_a , "Homes the pump" RGIL)
-        .def("volumetricPumpRequiresHoming", &CMMCore::volumetricPumpRequiresHoming, "pumpLabel"_a RGIL)
-        .def("invertPumpDirection", &CMMCore::invertPumpDirection, "pumpLabel"_a, "invert"_a , "Sets whether the pump direction needs to be inverted" RGIL)
-        .def("isPumpDirectionInverted", &CMMCore::isPumpDirectionInverted, "pumpLabel"_a , "Gets whether the pump direction needs to be inverted" RGIL)
-        .def("setPumpVolume", &CMMCore::setPumpVolume, "pumpLabel"_a, "volume"_a , "Sets the volume of fluid in the pump in uL. Note it does not withdraw upto this amount. It is merely to inform MM of the volume in a prefilled pump." RGIL)
-        .def("getPumpVolume", &CMMCore::getPumpVolume, "pumpLabel"_a , "Get the fluid volume in the pump in uL" RGIL)
-        .def("setPumpMaxVolume", &CMMCore::setPumpMaxVolume, "pumpLabel"_a, "volume"_a , "Sets the max volume of the pump in uL" RGIL)
-        .def("getPumpMaxVolume", &CMMCore::getPumpMaxVolume, "pumpLabel"_a , "Gets the max volume of the pump in uL" RGIL)
-        .def("setPumpFlowrate", &CMMCore::setPumpFlowrate, "pumpLabel"_a, "volume"_a , "Sets the flowrate of the pump in uL per second" RGIL)
-        .def("getPumpFlowrate", &CMMCore::getPumpFlowrate, "pumpLabel"_a , "Gets the flowrate of the pump in uL per second" RGIL)
-        .def("pumpStart", &CMMCore::pumpStart, "pumpLabel"_a , "Start dispensing at the set flowrate until syringe is empty, or manually stopped (whichever occurs first)." RGIL)
-        .def("pumpDispenseDurationSeconds", &CMMCore::pumpDispenseDurationSeconds, "pumpLabel"_a, "seconds"_a , "Dispenses for the provided duration (in seconds) at the set flowrate" RGIL)
-        .def("pumpDispenseVolumeUl", &CMMCore::pumpDispenseVolumeUl, "pumpLabel"_a, "microLiter"_a , "Dispenses the provided volume (in uL) at the set flowrate" RGIL)
+            // Galvo Control
+            .def(
+                "pointGalvoAndFire", &CMMCore::pointGalvoAndFire,
+                "Set the Galvo to an x,y position and fire the laser for a predetermined duration." RGIL)
+            .def("setGalvoSpotInterval", &CMMCore::setGalvoSpotInterval, "galvoLabel"_a,
+                 "pulseTime_us"_a RGIL)
+            .def("setGalvoPosition", &CMMCore::setGalvoPosition,
+                 "Set the Galvo to an x,y position" RGIL)
+            .def("getGalvoPosition",
+                 [](CMMCore &self, const char *galvoLabel) -> std::tuple<double, double> {
+                     double x, y;
+                     self.getGalvoPosition(galvoLabel, x, y); // Call C++ method
+                     return std::make_tuple(x, y);            // Return a tuple
+                 } RGIL)
+            .def("setGalvoIlluminationState", &CMMCore::setGalvoIlluminationState,
+                 "Set the galvo's illumination state to on or off" RGIL)
+            .def("getGalvoXRange", &CMMCore::getGalvoXRange, "Get the Galvo x range" RGIL)
+            .def("getGalvoXMinimum", &CMMCore::getGalvoXMinimum, "Get the Galvo x minimum" RGIL)
+            .def("getGalvoYRange", &CMMCore::getGalvoYRange, "Get the Galvo y range" RGIL)
+            .def("getGalvoYMinimum", &CMMCore::getGalvoYMinimum, "Get the Galvo y minimum" RGIL)
+            .def("addGalvoPolygonVertex", &CMMCore::addGalvoPolygonVertex, "galvoLabel"_a,
+                 "polygonIndex"_a, "x"_a, "y"_a, R"doc(Add a vertex to a galvo polygon.)doc",
+                 "Add a vertex to a galvo polygon." RGIL)
+            .def("deleteGalvoPolygons", &CMMCore::deleteGalvoPolygons,
+                 "Remove all added polygons" RGIL)
+            .def("loadGalvoPolygons", &CMMCore::loadGalvoPolygons,
+                 "Load a set of galvo polygons to the device" RGIL)
+            .def("setGalvoPolygonRepetitions", &CMMCore::setGalvoPolygonRepetitions,
+                 "Set the number of times to loop galvo polygons" RGIL)
+            .def("runGalvoPolygons", &CMMCore::runGalvoPolygons,
+                 "Run a loop of galvo polygons" RGIL)
+            .def("runGalvoSequence", &CMMCore::runGalvoSequence,
+                 "Run a sequence of galvo positions" RGIL)
+            .def(
+                "getGalvoChannel", &CMMCore::getGalvoChannel, "galvoLabel"_a,
+                "Get the name of the active galvo channel (for a multi-laser galvo device)." RGIL)
 
-        // Device Discovery
-        .def("supportsDeviceDetection", &CMMCore::supportsDeviceDetection, "deviceLabel"_a , "Return whether or not the device supports automatic device detection (i.e. whether or not detectDevice() may be safely called). For legacy reasons, an exception is not thrown if there is an error. Instead, false is returned if label is not a valid device." RGIL)
-        .def("detectDevice", &CMMCore::detectDevice, "deviceLabel"_a RGIL)
+            // PressurePump Control
+            .def("pressurePumpStop", &CMMCore::pressurePumpStop, "Stops the pressure pump" RGIL)
+            .def("pressurePumpCalibrate", &CMMCore::pressurePumpCalibrate,
+                 "Calibrates the pump" RGIL)
+            .def("pressurePumpRequiresCalibration", &CMMCore::pressurePumpRequiresCalibration,
+                 "Returns boolean whether the pump is operational before calibration" RGIL)
+            .def("setPumpPressureKPa", &CMMCore::setPumpPressureKPa,
+                 "Sets the pressure of the pump in kPa" RGIL)
+            .def("getPumpPressureKPa", &CMMCore::getPumpPressureKPa,
+                 "Gets the pressure of the pump in kPa" RGIL)
 
-        // Hub and Peripheral Devices
-        .def("getParentLabel", &CMMCore::getParentLabel, "peripheralLabel"_a RGIL)
-        .def("setParentLabel", &CMMCore::setParentLabel, "deviceLabel"_a, "parentHubLabel"_a , "Sets parent device label" RGIL)
-        .def("getInstalledDevices", &CMMCore::getInstalledDevices, "hubLabel"_a RGIL)
-        .def("getInstalledDeviceDescription",
-             &CMMCore::getInstalledDeviceDescription,
-             "hubLabel"_a,
-             "peripheralLabel"_a RGIL)
-        .def("getLoadedPeripheralDevices", &CMMCore::getLoadedPeripheralDevices, "hubLabel"_a RGIL)
+            // VolumetricPump control
+            .def("volumetricPumpStop", &CMMCore::volumetricPumpStop,
+                 "Stops the volumetric pump" RGIL)
+            .def("volumetricPumpHome", &CMMCore::volumetricPumpHome, "Homes the pump" RGIL)
+            .def("volumetricPumpRequiresHoming", &CMMCore::volumetricPumpRequiresHoming,
+                 "pumpLabel"_a RGIL)
+            .def("invertPumpDirection", &CMMCore::invertPumpDirection,
+                 "Sets whether the pump direction needs to be inverted" RGIL)
+            .def("isPumpDirectionInverted", &CMMCore::isPumpDirectionInverted,
+                 "Gets whether the pump direction needs to be inverted" RGIL)
+            .def(
+                "setPumpVolume", &CMMCore::setPumpVolume,
+                "Sets the volume of fluid in the pump in uL. Note it does not withdraw upto this amount. It is merely to inform MM of the volume in a prefilled pump." RGIL)
+            .def("getPumpVolume", &CMMCore::getPumpVolume,
+                 "Get the fluid volume in the pump in uL" RGIL)
+            .def("setPumpMaxVolume", &CMMCore::setPumpMaxVolume,
+                 "Sets the max volume of the pump in uL" RGIL)
+            .def("getPumpMaxVolume", &CMMCore::getPumpMaxVolume,
+                 "Gets the max volume of the pump in uL" RGIL)
+            .def("setPumpFlowrate", &CMMCore::setPumpFlowrate,
+                 "Sets the flowrate of the pump in uL per second" RGIL)
+            .def("getPumpFlowrate", &CMMCore::getPumpFlowrate,
+                 "Gets the flowrate of the pump in uL per second" RGIL)
+            .def(
+                "pumpStart", &CMMCore::pumpStart, "pumpLabel"_a,
+                "Start dispensing at the set flowrate until syringe is empty, or manually stopped (whichever occurs first)." RGIL)
+            .def("pumpDispenseDurationSeconds", &CMMCore::pumpDispenseDurationSeconds,
+                 "pumpLabel"_a, "seconds"_a,
+                 "Dispenses for the provided duration (in seconds) at the set flowrate" RGIL)
+            .def("pumpDispenseVolumeUl", &CMMCore::pumpDispenseVolumeUl, "pumpLabel"_a,
+                 "microLiter"_a,
+                 "Dispenses the provided volume (in uL) at the set flowrate" RGIL)
+
+            // Device Discovery
+            .def(
+                "supportsDeviceDetection", &CMMCore::supportsDeviceDetection, "deviceLabel"_a,
+                "Return whether or not the device supports automatic device detection (i.e. whether or not detectDevice() may be safely called). For legacy reasons, an exception is not thrown if there is an error. Instead, false is returned if label is not a valid device." RGIL)
+            .def(
+                "detectDevice", &CMMCore::detectDevice,
+                "Tries to communicate to a device through a given serial port Used to automate discovery of correct serial port Also configures the serial port correctly" RGIL)
+
+            // Hub and Peripheral Devices
+            .def("getParentLabel", &CMMCore::getParentLabel, "Returns parent device." RGIL)
+            .def("setParentLabel", &CMMCore::setParentLabel, "Sets parent device label" RGIL)
+            .def("getInstalledDevices", &CMMCore::getInstalledDevices,
+                 "Performs auto-detection and loading of child devices that are attached to a Hub device. For example, if a motorized microscope is represented by a Hub device, it is capable of discovering what specific child devices are currently attached. In that case this call might report that Z-stage, filter changer and objective turret are currently installed and return three device names in the string list." RGIL)
+            .def("getInstalledDeviceDescription", &CMMCore::getInstalledDeviceDescription,
+                 "hubLabel"_a, "peripheralLabel"_a RGIL)
+            .def("getLoadedPeripheralDevices", &CMMCore::getLoadedPeripheralDevices,
+                 "hubLabel"_a RGIL)
 
         ;
 }
