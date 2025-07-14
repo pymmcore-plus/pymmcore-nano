@@ -822,7 +822,7 @@ programming.
                 self.loadSystemConfiguration(nb::str(fileName).c_str());
             },
             "fileName"_a, "Loads a system configuration from a file.")
-        .def("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a, "Saves the current system configuration to a text file of the MM specific format. The configuration file records only the information essential to the hardware setup: devices, labels, pre-initialization properties, and configurations. The file format is the same as for the system state." RGIL)
+        .def("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a RGIL)
         .def_static("enableFeature", &CMMCore::enableFeature, "name"_a, "enable"_a RGIL)
         .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a RGIL)
         .def_static("getMMCoreVersionMajor", &CMMCore::getMMCoreVersionMajor RGIL)
@@ -830,26 +830,26 @@ programming.
         .def_static("getMMCoreVersionPatch", &CMMCore::getMMCoreVersionPatch RGIL)
         .def_static("getMMDeviceModuleInterfaceVersion", &CMMCore::getMMDeviceModuleInterfaceVersion RGIL)
         .def_static("getMMDeviceDeviceInterfaceVersion", &CMMCore::getMMDeviceDeviceInterfaceVersion RGIL)
-        .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a, "Loads a device from the plugin library." RGIL)
-        .def("unloadDevice", &CMMCore::unloadDevice, "label"_a, "Unloads the device from the core and adjusts all configuration data." RGIL)
+        .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a RGIL)
+        .def("unloadDevice", &CMMCore::unloadDevice, "label"_a RGIL)
         .def("unloadAllDevices", &CMMCore::unloadAllDevices)
-        .def("initializeAllDevices", &CMMCore::initializeAllDevices, "Calls Initialize() method for each loaded device. Parallel implemnetation should be faster" RGIL)
+        .def("initializeAllDevices", &CMMCore::initializeAllDevices RGIL)
         .def("initializeDevice", &CMMCore::initializeDevice, "label"_a RGIL)
-        .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a, "Queries the initialization state of the given device." RGIL)
-        .def("reset", &CMMCore::reset, "Unloads all devices from the core, clears all configuration data." RGIL)
-        .def("unloadLibrary", &CMMCore::unloadLibrary, "moduleName"_a, "Forcefully unload a library. Experimental. Don't use." RGIL)
-        .def("updateCoreProperties", &CMMCore::updateCoreProperties, "Updates CoreProperties (currently all Core properties are devices types) with the loaded hardware. After this call, each of the Core-Device properties will be populated with the currently loaded devices of that type" RGIL)
-        .def("getCoreErrorText", &CMMCore::getCoreErrorText, "code"_a, "Returns a pre-defined error test with the given error code" RGIL)
+        .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a RGIL)
+        .def("reset", &CMMCore::reset RGIL)
+        .def("unloadLibrary", &CMMCore::unloadLibrary, "moduleName"_a RGIL)
+        .def("updateCoreProperties", &CMMCore::updateCoreProperties RGIL)
+        .def("getCoreErrorText", &CMMCore::getCoreErrorText, "code"_a RGIL)
         .def("getVersionInfo", &CMMCore::getVersionInfo RGIL)
-        .def("getAPIVersionInfo", &CMMCore::getAPIVersionInfo, "Returns the module and device interface versions." RGIL)
-        .def("getSystemState", &CMMCore::getSystemState, "Returns the entire system state, i.e. the collection of all property values from all devices." RGIL)
-        .def("setSystemState", &CMMCore::setSystemState, "conf"_a, "Sets all properties contained in the Configuration object. The procedure will attempt to set each property it encounters, but won't stop if any of the properties fail or if the requested device is not present. It will just quietly continue." RGIL)
-        .def("getConfigState", &CMMCore::getConfigState, "group"_a, "config"_a, "Returns a partial state of the system, only for devices included in the specified configuration." RGIL)
+        .def("getAPIVersionInfo", &CMMCore::getAPIVersionInfo RGIL)
+        .def("getSystemState", &CMMCore::getSystemState RGIL)
+        .def("setSystemState", &CMMCore::setSystemState, "conf"_a RGIL)
+        .def("getConfigState", &CMMCore::getConfigState, "group"_a, "config"_a RGIL)
         .def("getConfigGroupState",
              nb::overload_cast<const char *>(&CMMCore::getConfigGroupState),
              "group"_a RGIL)
-        .def("saveSystemState", &CMMCore::saveSystemState, "fileName"_a, "Saves the current system state to a text file of the MM specific format. The file records only read-write properties. The file format is directly readable by the complementary loadSystemState() command." RGIL)
-        .def("loadSystemState", &CMMCore::loadSystemState, "fileName"_a, "Loads the system configuration from the text file conforming to the MM specific format. The configuration contains a list of commands to build the desired system state from read-write properties." RGIL)
+        .def("saveSystemState", &CMMCore::saveSystemState, "fileName"_a RGIL)
+        .def("loadSystemState", &CMMCore::loadSystemState, "fileName"_a RGIL)
         .def("registerCallback", &CMMCore::registerCallback, R"doc(Register a callback (listener class).
 
 
@@ -865,17 +865,17 @@ MMCore will send notifications on internal events using this interface
             "filename"_a,
             "truncate"_a = false )
 
-        .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile, "Return the name of the primary Core log file." RGIL)
+        .def("getPrimaryLogFile", &CMMCore::getPrimaryLogFile RGIL)
         .def("logMessage", nb::overload_cast<const char *>(&CMMCore::logMessage), "msg"_a RGIL)
         .def("logMessage",
              nb::overload_cast<const char *, bool>(&CMMCore::logMessage),
              "msg"_a,
              "debugOnly"_a RGIL)
 
-        .def("enableDebugLog", &CMMCore::enableDebugLog, "enable"_a, "Enable or disable logging of debug messages." RGIL)
-        .def("debugLogEnabled", &CMMCore::debugLogEnabled, "Indicates if logging of debug messages is enabled" RGIL)
-        .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a, "Enables or disables log message display on the standard console." RGIL)
-        .def("stderrLogEnabled", &CMMCore::stderrLogEnabled, "Indicates whether logging output goes to stdErr" RGIL)
+        .def("enableDebugLog", &CMMCore::enableDebugLog, "enable"_a RGIL)
+        .def("debugLogEnabled", &CMMCore::debugLogEnabled RGIL)
+        .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a RGIL)
+        .def("stderrLogEnabled", &CMMCore::stderrLogEnabled RGIL)
         .def(
             "startSecondaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)
@@ -891,27 +891,27 @@ MMCore will send notifications on internal events using this interface
             "enableDebug"_a,
             "truncate"_a = true,
             "synchronous"_a = false )
-        .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a, "Stop capturing logging output into an additional file." RGIL)
+        .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a RGIL)
 
-        .def("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths, "Return the current device adapter search paths." RGIL)
-        .def("setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a, "Set the device adapter search paths." RGIL)
-        .def("getDeviceAdapterNames", &CMMCore::getDeviceAdapterNames, "Return the names of discoverable device adapters." RGIL)
-        .def("getAvailableDevices", &CMMCore::getAvailableDevices, "library"_a, "Get available devices from the specified device library." RGIL)
+        .def("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths RGIL)
+        .def("setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a RGIL)
+        .def("getDeviceAdapterNames", &CMMCore::getDeviceAdapterNames RGIL)
+        .def("getAvailableDevices", &CMMCore::getAvailableDevices, "library"_a RGIL)
         .def("getAvailableDeviceDescriptions",
              &CMMCore::getAvailableDeviceDescriptions,
-             "library"_a, "Get descriptions for available devices from the specified library." RGIL)
-        .def("getAvailableDeviceTypes", &CMMCore::getAvailableDeviceTypes, "library"_a, "Get type information for available devices from the specified library." RGIL)
-        .def("getLoadedDevices", &CMMCore::getLoadedDevices, "Returns an array of labels for currently loaded devices." RGIL)
-        .def("getLoadedDevicesOfType", &CMMCore::getLoadedDevicesOfType, "devType"_a, "Returns an array of labels for currently loaded devices of specific type." RGIL)
+             "library"_a RGIL)
+        .def("getAvailableDeviceTypes", &CMMCore::getAvailableDeviceTypes, "library"_a RGIL)
+        .def("getLoadedDevices", &CMMCore::getLoadedDevices RGIL)
+        .def("getLoadedDevicesOfType", &CMMCore::getLoadedDevicesOfType, "devType"_a RGIL)
         .def("getDeviceType", &CMMCore::getDeviceType, "label"_a RGIL)
-        .def("getDeviceLibrary", &CMMCore::getDeviceLibrary, "label"_a, "Returns device library (aka module, device adapter) name." RGIL)
+        .def("getDeviceLibrary", &CMMCore::getDeviceLibrary, "label"_a RGIL)
         .def("getDeviceName",
              nb::overload_cast<const char *>(&CMMCore::getDeviceName),
              "label"_a RGIL)
-        .def("getDeviceDescription", &CMMCore::getDeviceDescription, "label"_a, "Returns description text for a given device label. \"Description\" is determined by the library and is immutable." RGIL)
-        .def("getDevicePropertyNames", &CMMCore::getDevicePropertyNames, "label"_a, "Returns all property names supported by the device." RGIL)
-        .def("hasProperty", &CMMCore::hasProperty, "label"_a, "propName"_a, "Checks if device has a property with a specified name. The exception will be thrown in case device label is not defined." RGIL)
-        .def("getProperty", &CMMCore::getProperty, "label"_a, "propName"_a, "Returns the property value for the specified device." RGIL)
+        .def("getDeviceDescription", &CMMCore::getDeviceDescription, "label"_a RGIL)
+        .def("getDevicePropertyNames", &CMMCore::getDevicePropertyNames, "label"_a RGIL)
+        .def("hasProperty", &CMMCore::hasProperty, "label"_a, "propName"_a RGIL)
+        .def("getProperty", &CMMCore::getProperty, "label"_a, "propName"_a RGIL)
         .def("setProperty",
              nb::overload_cast<const char *, const char *, const char *>(&CMMCore::setProperty),
              "label"_a,
@@ -935,69 +935,69 @@ MMCore will send notifications on internal events using this interface
         .def("getAllowedPropertyValues",
              &CMMCore::getAllowedPropertyValues,
              "label"_a,
-             "propName"_a, "Returns all valid values for the specified property. If the array is empty it means that there are no restrictions for values. However, even if all values are allowed it is not guaranteed that all of them will be actually accepted by the device at run time." RGIL)
-        .def("isPropertyReadOnly", &CMMCore::isPropertyReadOnly, "label"_a, "propName"_a, "Tells us whether the property can be modified." RGIL)
-        .def("isPropertyPreInit", &CMMCore::isPropertyPreInit, "label"_a, "propName"_a, "Tells us whether the property must be defined prior to initialization." RGIL)
+             "propName"_a RGIL)
+        .def("isPropertyReadOnly", &CMMCore::isPropertyReadOnly, "label"_a, "propName"_a RGIL)
+        .def("isPropertyPreInit", &CMMCore::isPropertyPreInit, "label"_a, "propName"_a RGIL)
         .def(
-            "isPropertySequenceable", &CMMCore::isPropertySequenceable, "label"_a, "propName"_a, "Queries device if the specified property can be used in a sequence" RGIL)
-        .def("hasPropertyLimits", &CMMCore::hasPropertyLimits, "label"_a, "propName"_a, "Queries device if the specific property has limits." RGIL)
-        .def("getPropertyLowerLimit", &CMMCore::getPropertyLowerLimit, "label"_a, "propName"_a, "Returns the property lower limit value, if the property has limits - 0 otherwise." RGIL)
-        .def("getPropertyUpperLimit", &CMMCore::getPropertyUpperLimit, "label"_a, "propName"_a, "Returns the property upper limit value, if the property has limits - 0 otherwise." RGIL)
-        .def("getPropertyType", &CMMCore::getPropertyType, "label"_a, "propName"_a, "Returns the intrinsic property type." RGIL)
-        .def("startPropertySequence", &CMMCore::startPropertySequence, "label"_a, "propName"_a, "Starts an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable" RGIL)
-        .def("stopPropertySequence", &CMMCore::stopPropertySequence, "label"_a, "propName"_a, "Stops an ongoing sequence of triggered events in a property of a device This should only be called for device-properties that are sequenceable" RGIL)
+            "isPropertySequenceable", &CMMCore::isPropertySequenceable, "label"_a, "propName"_a RGIL)
+        .def("hasPropertyLimits", &CMMCore::hasPropertyLimits, "label"_a, "propName"_a RGIL)
+        .def("getPropertyLowerLimit", &CMMCore::getPropertyLowerLimit, "label"_a, "propName"_a RGIL)
+        .def("getPropertyUpperLimit", &CMMCore::getPropertyUpperLimit, "label"_a, "propName"_a RGIL)
+        .def("getPropertyType", &CMMCore::getPropertyType, "label"_a, "propName"_a RGIL)
+        .def("startPropertySequence", &CMMCore::startPropertySequence, "label"_a, "propName"_a RGIL)
+        .def("stopPropertySequence", &CMMCore::stopPropertySequence, "label"_a, "propName"_a RGIL)
         .def("getPropertySequenceMaxLength",
              &CMMCore::getPropertySequenceMaxLength,
              "label"_a,
-             "propName"_a, "Queries device property for the maximum number of events that can be put in a sequence" RGIL)
+             "propName"_a RGIL)
         .def("loadPropertySequence",
              &CMMCore::loadPropertySequence,
              "label"_a,
              "propName"_a,
-             "eventSequence"_a, "Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable" RGIL)
-        .def("deviceBusy", &CMMCore::deviceBusy, "label"_a, "Checks the busy status of the specific device." RGIL)
+             "eventSequence"_a RGIL)
+        .def("deviceBusy", &CMMCore::deviceBusy, "label"_a RGIL)
         .def("waitForDevice",
              nb::overload_cast<const char *>(&CMMCore::waitForDevice),
              "label"_a RGIL)
-        .def("waitForConfig", &CMMCore::waitForConfig, "group"_a, "configName"_a, "Blocks until all devices included in the configuration become ready." RGIL)
-        .def("systemBusy", &CMMCore::systemBusy, "Checks the busy status of the entire system. The system will report busy if any of the devices is busy." RGIL)
-        .def("waitForSystem", &CMMCore::waitForSystem, "Blocks until all devices in the system become ready (not-busy)." RGIL)
-        .def("deviceTypeBusy", &CMMCore::deviceTypeBusy, "devType"_a, "Checks the busy status for all devices of the specific type. The system will report busy if any of the devices of the specified type are busy." RGIL)
-        .def("waitForDeviceType", &CMMCore::waitForDeviceType, "devType"_a, "Blocks until all devices of the specific type become ready (not-busy)." RGIL)
-        .def("getDeviceDelayMs", &CMMCore::getDeviceDelayMs, "label"_a, "Reports action delay in milliseconds for the specific device. The delay is used in the synchronization process to ensure that the action is performed, without polling. Value of \"0\" means that action is either blocking or that polling of device status is required. Some devices ignore this setting." RGIL)
-        .def("setDeviceDelayMs", &CMMCore::setDeviceDelayMs, "label"_a, "delayMs"_a, "Overrides the built-in value for the action delay. Some devices ignore this setting." RGIL)
-        .def("usesDeviceDelay", &CMMCore::usesDeviceDelay, "label"_a, "Signals if the device will use the delay setting or not." RGIL)
+        .def("waitForConfig", &CMMCore::waitForConfig, "group"_a, "configName"_a RGIL)
+        .def("systemBusy", &CMMCore::systemBusy RGIL)
+        .def("waitForSystem", &CMMCore::waitForSystem RGIL)
+        .def("deviceTypeBusy", &CMMCore::deviceTypeBusy, "devType"_a RGIL)
+        .def("waitForDeviceType", &CMMCore::waitForDeviceType, "devType"_a RGIL)
+        .def("getDeviceDelayMs", &CMMCore::getDeviceDelayMs, "label"_a RGIL)
+        .def("setDeviceDelayMs", &CMMCore::setDeviceDelayMs, "label"_a, "delayMs"_a RGIL)
+        .def("usesDeviceDelay", &CMMCore::usesDeviceDelay, "label"_a RGIL)
         .def("setTimeoutMs", &CMMCore::setTimeoutMs, "timeoutMs"_a RGIL)
         .def("getTimeoutMs", &CMMCore::getTimeoutMs RGIL)
-        .def("sleep", &CMMCore::sleep, "intervalMs"_a, "Waits (blocks the calling thread) for specified time in milliseconds." RGIL)
+        .def("sleep", &CMMCore::sleep, "intervalMs"_a RGIL)
 
-        .def("getCameraDevice", &CMMCore::getCameraDevice, "Returns the label of the currently selected camera device." RGIL)
-        .def("getShutterDevice", &CMMCore::getShutterDevice, "Returns the label of the currently selected shutter device." RGIL)
-        .def("getFocusDevice", &CMMCore::getFocusDevice, "Returns the label of the currently selected focus device." RGIL)
-        .def("getXYStageDevice", &CMMCore::getXYStageDevice, "Returns the label of the currently selected XYStage device." RGIL)
-        .def("getAutoFocusDevice", &CMMCore::getAutoFocusDevice, "Returns the label of the currently selected auto-focus device." RGIL)
-        .def("getImageProcessorDevice", &CMMCore::getImageProcessorDevice, "Returns the label of the currently selected image processor device." RGIL)
-        .def("getSLMDevice", &CMMCore::getSLMDevice, "Returns the label of the currently selected SLM device." RGIL)
-        .def("getGalvoDevice", &CMMCore::getGalvoDevice, "Returns the label of the currently selected Galvo device." RGIL)
-        .def("getChannelGroup", &CMMCore::getChannelGroup, "Returns the group determining the channel selection." RGIL)
-        .def("setCameraDevice", &CMMCore::setCameraDevice, "cameraLabel"_a, "Sets the current camera device." RGIL)
-        .def("setShutterDevice", &CMMCore::setShutterDevice, "shutterLabel"_a, "Sets the current shutter device." RGIL)
-        .def("setFocusDevice", &CMMCore::setFocusDevice, "focusLabel"_a, "Sets the current focus device." RGIL)
-        .def("setXYStageDevice", &CMMCore::setXYStageDevice, "xyStageLabel"_a, "Sets the current XY device." RGIL)
-        .def("setAutoFocusDevice", &CMMCore::setAutoFocusDevice, "focusLabel"_a, "Sets the current auto-focus device." RGIL)
-        .def("setImageProcessorDevice", &CMMCore::setImageProcessorDevice, "procLabel"_a, "Sets the current image processor device." RGIL)
-        .def("setSLMDevice", &CMMCore::setSLMDevice, "slmLabel"_a, "Sets the current slm device." RGIL)
-        .def("setGalvoDevice", &CMMCore::setGalvoDevice, "galvoLabel"_a, "Sets the current galvo device." RGIL)
-        .def("setChannelGroup", &CMMCore::setChannelGroup, "channelGroup"_a, "Specifies the group determining the channel selection." RGIL)
+        .def("getCameraDevice", &CMMCore::getCameraDevice RGIL)
+        .def("getShutterDevice", &CMMCore::getShutterDevice RGIL)
+        .def("getFocusDevice", &CMMCore::getFocusDevice RGIL)
+        .def("getXYStageDevice", &CMMCore::getXYStageDevice RGIL)
+        .def("getAutoFocusDevice", &CMMCore::getAutoFocusDevice RGIL)
+        .def("getImageProcessorDevice", &CMMCore::getImageProcessorDevice RGIL)
+        .def("getSLMDevice", &CMMCore::getSLMDevice RGIL)
+        .def("getGalvoDevice", &CMMCore::getGalvoDevice RGIL)
+        .def("getChannelGroup", &CMMCore::getChannelGroup RGIL)
+        .def("setCameraDevice", &CMMCore::setCameraDevice, "cameraLabel"_a RGIL)
+        .def("setShutterDevice", &CMMCore::setShutterDevice, "shutterLabel"_a RGIL)
+        .def("setFocusDevice", &CMMCore::setFocusDevice, "focusLabel"_a RGIL)
+        .def("setXYStageDevice", &CMMCore::setXYStageDevice, "xyStageLabel"_a RGIL)
+        .def("setAutoFocusDevice", &CMMCore::setAutoFocusDevice, "focusLabel"_a RGIL)
+        .def("setImageProcessorDevice", &CMMCore::setImageProcessorDevice, "procLabel"_a RGIL)
+        .def("setSLMDevice", &CMMCore::setSLMDevice, "slmLabel"_a RGIL)
+        .def("setGalvoDevice", &CMMCore::setGalvoDevice, "galvoLabel"_a RGIL)
+        .def("setChannelGroup", &CMMCore::setChannelGroup, "channelGroup"_a RGIL)
 
-        .def("getSystemStateCache", &CMMCore::getSystemStateCache, "Returns the entire system state, i.e. the collection of all property values from all devices. This method will return cached values instead of querying each device" RGIL)
-        .def("updateSystemStateCache", &CMMCore::updateSystemStateCache, "Updates the state of the entire hardware." RGIL)
+        .def("getSystemStateCache", &CMMCore::getSystemStateCache RGIL)
+        .def("updateSystemStateCache", &CMMCore::updateSystemStateCache RGIL)
         .def("getPropertyFromCache",
              &CMMCore::getPropertyFromCache,
              "deviceLabel"_a,
-             "propName"_a, "Returns the cached property value for the specified device." RGIL)
-        .def("getCurrentConfigFromCache", &CMMCore::getCurrentConfigFromCache, "groupName"_a, "Returns the configuration for a given group based on the data in the cache. An empty string is a valid return value, since the system state will not always correspond to any of the defined configurations. Also, in general it is possible that the system state fits multiple configurations. This method will return only the first matching configuration, if any." RGIL)
-        .def("getConfigGroupStateFromCache", &CMMCore::getConfigGroupStateFromCache, "group"_a, "Returns the partial state of the system cache, only for the devices included in the specified group. It will create a union of all devices referenced in a group." RGIL)
+             "propName"_a RGIL)
+        .def("getCurrentConfigFromCache", &CMMCore::getCurrentConfigFromCache, "groupName"_a RGIL)
+        .def("getConfigGroupStateFromCache", &CMMCore::getConfigGroupStateFromCache, "group"_a RGIL)
 
         .def("defineConfig",
              nb::overload_cast<const char *, const char *>(&CMMCore::defineConfig ),
@@ -1014,15 +1014,15 @@ MMCore will send notifications on internal events using this interface
              "deviceLabel"_a,
              "propName"_a,
              "value"_a RGIL)
-        .def("defineConfigGroup", &CMMCore::defineConfigGroup, "groupName"_a, "Creates an empty configuration group." RGIL)
-        .def("deleteConfigGroup", &CMMCore::deleteConfigGroup, "groupName"_a, "Deletes an entire configuration group." RGIL)
+        .def("defineConfigGroup", &CMMCore::defineConfigGroup, "groupName"_a RGIL)
+        .def("deleteConfigGroup", &CMMCore::deleteConfigGroup, "groupName"_a RGIL)
         .def("renameConfigGroup",
              &CMMCore::renameConfigGroup,
              "oldGroupName"_a,
-             "newGroupName"_a, "Renames a configuration group." RGIL)
-        .def("isGroupDefined", &CMMCore::isGroupDefined, "groupName"_a, "Checks if the group already exists." RGIL)
-        .def("isConfigDefined", &CMMCore::isConfigDefined, "groupName"_a, "configName"_a, "Checks if the configuration already exists within a group." RGIL)
-        .def("setConfig", &CMMCore::setConfig, "groupName"_a, "configName"_a, "Applies a configuration to a group. The command will fail if the configuration was not previously defined." RGIL)
+             "newGroupName"_a RGIL)
+        .def("isGroupDefined", &CMMCore::isGroupDefined, "groupName"_a RGIL)
+        .def("isConfigDefined", &CMMCore::isConfigDefined, "groupName"_a, "configName"_a RGIL)
+        .def("setConfig", &CMMCore::setConfig, "groupName"_a, "configName"_a RGIL)
 
         .def("deleteConfig",
              nb::overload_cast<const char *, const char *>(&CMMCore::deleteConfig),
@@ -1040,11 +1040,11 @@ MMCore will send notifications on internal events using this interface
              &CMMCore::renameConfig,
              "groupName"_a,
              "oldConfigName"_a,
-             "newConfigName"_a, "Renames a configuration within a specified group. The command will fail if the configuration was not previously defined." RGIL)
-        .def("getAvailableConfigGroups", &CMMCore::getAvailableConfigGroups, "Returns the names of all defined configuration groups" RGIL)
-        .def("getAvailableConfigs", &CMMCore::getAvailableConfigs, "configGroup"_a, "Returns all defined configuration names in a given group" RGIL)
-        .def("getCurrentConfig", &CMMCore::getCurrentConfig, "groupName"_a, "Returns the current configuration for a given group. An empty string is a valid return value, since the system state will not always correspond to any of the defined configurations. Also, in general it is possible that the system state fits multiple configurations. This method will return only the first matching configuration, if any." RGIL)
-        .def("getConfigData", &CMMCore::getConfigData, "configGroup"_a, "configName"_a, "Returns the configuration object for a given group and name." RGIL)
+             "newConfigName"_a RGIL)
+        .def("getAvailableConfigGroups", &CMMCore::getAvailableConfigGroups RGIL)
+        .def("getAvailableConfigs", &CMMCore::getAvailableConfigs, "configGroup"_a RGIL)
+        .def("getCurrentConfig", &CMMCore::getCurrentConfig, "groupName"_a RGIL)
+        .def("getConfigData", &CMMCore::getConfigData, "configGroup"_a, "configName"_a RGIL)
 
         .def("getCurrentPixelSizeConfig",
              nb::overload_cast<>(&CMMCore::getCurrentPixelSizeConfig) RGIL)
@@ -1053,12 +1053,12 @@ MMCore will send notifications on internal events using this interface
              "cached"_a RGIL)
         .def("getPixelSizeUm", nb::overload_cast<>(&CMMCore::getPixelSizeUm) RGIL)
         .def("getPixelSizeUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeUm), "cached"_a RGIL)
-        .def("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID, "resolutionID"_a, "Returns the pixel size in um for the requested pixel size group" RGIL)
+        .def("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID, "resolutionID"_a RGIL)
         .def("getPixelSizeAffine", nb::overload_cast<>(&CMMCore::getPixelSizeAffine) RGIL)
         .def("getPixelSizeAffine",
              nb::overload_cast<bool>(&CMMCore::getPixelSizeAffine),
              "cached"_a RGIL)
-        .def("getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID, "resolutionID"_a, "Returns the Affine Transform to related camera pixels with stage movement for the requested pixel size group The raw affine transform without correction for binning and magnification will be returned." RGIL)
+        .def("getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID, "resolutionID"_a RGIL)
 
         .def("getPixelSizedxdz", nb::overload_cast<>(&CMMCore::getPixelSizedxdz) RGIL)
         .def("getPixelSizedxdz", nb::overload_cast<bool>(&CMMCore::getPixelSizedxdz), "cached"_a RGIL)
@@ -1069,13 +1069,13 @@ MMCore will send notifications on internal events using this interface
         .def("getPixelSizeOptimalZUm", nb::overload_cast<>(&CMMCore::getPixelSizeOptimalZUm) RGIL)
         .def("getPixelSizeOptimalZUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeOptimalZUm), "cached"_a RGIL)
         .def("getPixelSizeOptimalZUm", nb::overload_cast<const char*>(&CMMCore::getPixelSizeOptimalZUm), "resolutionID"_a RGIL)
-        .def("setPixelSizedxdz", &CMMCore::setPixelSizedxdz, "resolutionID"_a, "dXdZ"_a, "Sets the angle between the camera's x axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in x caused by a translation in z, i.e. dx / dz). \n This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). \n See: https://github.com/micro-manager/micro-manager/issues/1984" RGIL)
-        .def("setPixelSizedydz", &CMMCore::setPixelSizedydz, "resolutionID"_a, "dYdZ"_a, "Sets the angle between the camera's y axis and the axis (direction) of the z drive. This angle is dimensionless (i.e. the ratio of the translation in y caused by a translation in z, i.e. dy / dz). \n This angle can be different for different z drives (if there are multiple Z drives in the system, please add the Core-Focus device to the pixel size configuration). \n See: https://github.com/micro-manager/micro-manager/issues/1984" RGIL)
-        .def("setPixelSizeOptimalZUm", &CMMCore::setPixelSizeOptimalZUm, "resolutionID"_a, "optimalZ"_a, "Sets the opimal Z stepSize (in microns). There is no magic here, this number is provided by the person configuring the microscope, to be used by the person using the microscope." RGIL)
+        .def("setPixelSizedxdz", &CMMCore::setPixelSizedxdz, "resolutionID"_a, "dXdZ"_a RGIL)
+        .def("setPixelSizedydz", &CMMCore::setPixelSizedydz, "resolutionID"_a, "dYdZ"_a RGIL)
+        .def("setPixelSizeOptimalZUm", &CMMCore::setPixelSizeOptimalZUm, "resolutionID"_a, "optimalZ"_a RGIL)
 
-        .def("getMagnificationFactor", &CMMCore::getMagnificationFactor, "Returns the product of all Magnifiers in the system or 1.0 when none is found This is used internally by GetPixelSizeUm" RGIL)
-        .def("setPixelSizeUm", &CMMCore::setPixelSizeUm, "resolutionID"_a, "pixSize"_a, "Sets pixel size in microns for the specified resolution sensing configuration preset." RGIL)
-        .def("setPixelSizeAffine", &CMMCore::setPixelSizeAffine, "resolutionID"_a, "affine"_a, "Sets the raw affine transform for the specific pixel size configuration The affine transform consists of the first two rows of a 3x3 matrix, the third row is alsways assumed to be 0.0 0.0 1.0. The transform should be valid for binning 1 and no magnification device (as given by the getMagnification() function). Order: row[0]col[0] row[0]c[1] row[0]c[2] row[1]c[0] row[1]c[1] row[1]c[2] The given vector has to have 6 doubles, or bad stuff will happen" RGIL)
+        .def("getMagnificationFactor", &CMMCore::getMagnificationFactor RGIL)
+        .def("setPixelSizeUm", &CMMCore::setPixelSizeUm, "resolutionID"_a, "pixSize"_a RGIL)
+        .def("setPixelSizeAffine", &CMMCore::setPixelSizeAffine, "resolutionID"_a, "affine"_a RGIL)
 
         .def("definePixelSizeConfig",
              nb::overload_cast<const char *, const char *, const char *, const char *>(
@@ -1087,15 +1087,15 @@ MMCore will send notifications on internal events using this interface
         .def("definePixelSizeConfig",
              nb::overload_cast<const char *>(&CMMCore::definePixelSizeConfig),
              "resolutionID"_a RGIL)
-        .def("getAvailablePixelSizeConfigs", &CMMCore::getAvailablePixelSizeConfigs, "Returns all defined resolution preset names" RGIL)
-        .def("isPixelSizeConfigDefined", &CMMCore::isPixelSizeConfigDefined, "resolutionID"_a, "Checks if the Pixel Size Resolution already exists" RGIL)
-        .def("setPixelSizeConfig", &CMMCore::setPixelSizeConfig, "resolutionID"_a, "Applies a Pixel Size Configuration. The command will fail if the configuration was not previously defined." RGIL)
+        .def("getAvailablePixelSizeConfigs", &CMMCore::getAvailablePixelSizeConfigs RGIL)
+        .def("isPixelSizeConfigDefined", &CMMCore::isPixelSizeConfigDefined, "resolutionID"_a RGIL)
+        .def("setPixelSizeConfig", &CMMCore::setPixelSizeConfig, "resolutionID"_a RGIL)
         .def("renamePixelSizeConfig",
              &CMMCore::renamePixelSizeConfig,
              "oldConfigName"_a,
-             "newConfigName"_a, "Renames a pixel size configuration. The command will fail if the configuration was not previously defined." RGIL)
-        .def("deletePixelSizeConfig", &CMMCore::deletePixelSizeConfig, "configName"_a, "Deletes a pixel size configuration. The command will fail if the configuration was not previously defined." RGIL)
-        .def("getPixelSizeConfigData", &CMMCore::getPixelSizeConfigData, "configName"_a, "Returns the configuration object for a give pixel size preset." RGIL)
+             "newConfigName"_a RGIL)
+        .def("deletePixelSizeConfig", &CMMCore::deletePixelSizeConfig, "configName"_a RGIL)
+        .def("getPixelSizeConfigData", &CMMCore::getPixelSizeConfigData, "configName"_a RGIL)
 
         // Image Acquisition Methods
         .def("setROI",
@@ -1125,10 +1125,10 @@ MMCore will send notifications on internal events using this interface
                 return std::make_tuple(x, y, xSize, ySize); // Return as Python tuple
             },
             "label"_a RGIL)
-        .def("clearROI", &CMMCore::clearROI, "Set the region of interest of the current camera to the full frame." RGIL)
-        .def("isMultiROISupported", &CMMCore::isMultiROISupported, "Queries the camera to determine if it supports multiple ROIs." RGIL)
-        .def("isMultiROIEnabled", &CMMCore::isMultiROIEnabled, "Queries the camera to determine if multiple ROIs are currently set." RGIL)
-        .def("setMultiROI", &CMMCore::setMultiROI, "xs"_a, "ys"_a, "widths"_a, "heights"_a, "Set multiple ROIs for the current camera device. Will fail if the camera does not support multiple ROIs, any widths or heights are non-positive, or if the vectors do not all have the same length." RGIL)
+        .def("clearROI", &CMMCore::clearROI RGIL)
+        .def("isMultiROISupported", &CMMCore::isMultiROISupported RGIL)
+        .def("isMultiROIEnabled", &CMMCore::isMultiROIEnabled RGIL)
+        .def("setMultiROI", &CMMCore::setMultiROI, "xs"_a, "ys"_a, "widths"_a, "heights"_a RGIL)
         .def("getMultiROI",
              [](CMMCore &self) -> std::tuple<std::vector<unsigned>,
                                              std::vector<unsigned>,
@@ -1146,7 +1146,7 @@ MMCore will send notifications on internal events using this interface
              "dExp"_a RGIL)
         .def("getExposure", nb::overload_cast<>(&CMMCore::getExposure) RGIL)
         .def("getExposure", nb::overload_cast<const char *>(&CMMCore::getExposure), "label"_a RGIL)
-        .def("snapImage", &CMMCore::snapImage, "Acquires a single image with current settings. Snap is not allowed while the acquisition thread is run" RGIL)
+        .def("snapImage", &CMMCore::snapImage RGIL)
         .def(
             "getImage",
             [](CMMCore &self) -> np_array {
@@ -1155,16 +1155,16 @@ MMCore will send notifications on internal events using this interface
              [](CMMCore &self, unsigned channel) -> np_array {
                 return create_image_array(self, self.getImage(channel));
              } RGIL)
-        .def("getImageWidth", &CMMCore::getImageWidth, "Horizontal dimension of the image buffer in pixels." RGIL)
-        .def("getImageHeight", &CMMCore::getImageHeight, "Vertical dimension of the image buffer in pixels." RGIL)
-        .def("getBytesPerPixel", &CMMCore::getBytesPerPixel, "How many bytes for each pixel. This value does not necessarily reflect the capabilities of the particular camera A/D converter." RGIL)
-        .def("getImageBitDepth", &CMMCore::getImageBitDepth, "How many bits of dynamic range are to be expected from the camera. This value should be used only as a guideline - it does not guarantee that image buffer will contain only values from the returned dynamic range." RGIL)
-        .def("getNumberOfComponents", &CMMCore::getNumberOfComponents, "Returns the number of components the default camera is returning. For example color camera will return 4 components (RGBA) on each snap." RGIL)
-        .def("getNumberOfCameraChannels", &CMMCore::getNumberOfCameraChannels, "Returns the number of simultaneous channels the default camera is returning." RGIL)
-        .def("getCameraChannelName", &CMMCore::getCameraChannelName, "channelNr"_a, "Returns the name of the requested channel as known by the default camera" RGIL)
-        .def("getImageBufferSize", &CMMCore::getImageBufferSize, "Returns the size of the internal image buffer." RGIL)
-        .def("setAutoShutter", &CMMCore::setAutoShutter, "state"_a, "If this option is enabled Shutter automatically opens and closes when the image is acquired." RGIL)
-        .def("getAutoShutter", &CMMCore::getAutoShutter, "Returns the current setting of the auto-shutter option." RGIL)
+        .def("getImageWidth", &CMMCore::getImageWidth RGIL)
+        .def("getImageHeight", &CMMCore::getImageHeight RGIL)
+        .def("getBytesPerPixel", &CMMCore::getBytesPerPixel RGIL)
+        .def("getImageBitDepth", &CMMCore::getImageBitDepth RGIL)
+        .def("getNumberOfComponents", &CMMCore::getNumberOfComponents RGIL)
+        .def("getNumberOfCameraChannels", &CMMCore::getNumberOfCameraChannels RGIL)
+        .def("getCameraChannelName", &CMMCore::getCameraChannelName, "channelNr"_a RGIL)
+        .def("getImageBufferSize", &CMMCore::getImageBufferSize RGIL)
+        .def("setAutoShutter", &CMMCore::setAutoShutter, "state"_a RGIL)
+        .def("getAutoShutter", &CMMCore::getAutoShutter RGIL)
         .def("setShutterOpen", nb::overload_cast<bool>(&CMMCore::setShutterOpen), "state"_a RGIL)
         .def("getShutterOpen", nb::overload_cast<>(&CMMCore::getShutterOpen) RGIL)
         .def("setShutterOpen",
@@ -1187,10 +1187,10 @@ MMCore will send notifications on internal events using this interface
              "intervalMs"_a,
              "stopOnOverflow"_a RGIL)
         .def(
-            "prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition, "cameraLabel"_a, "Prepare the camera for the sequence acquisition to save the time in the StartSequenceAcqusition() call which is supposed to come next." RGIL)
+            "prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition, "cameraLabel"_a RGIL)
         .def("startContinuousSequenceAcquisition",
              &CMMCore::startContinuousSequenceAcquisition,
-             "intervalMs"_a, "Starts the continuous camera sequence acquisition. This command does not block the calling thread for the duration of the acquisition." RGIL)
+             "intervalMs"_a RGIL)
         .def("stopSequenceAcquisition", nb::overload_cast<>(&CMMCore::stopSequenceAcquisition) RGIL)
         .def("stopSequenceAcquisition",
              nb::overload_cast<const char *>(&CMMCore::stopSequenceAcquisition),
@@ -1315,57 +1315,57 @@ MMCore will send notifications on internal events using this interface
             "in the provided object" RGIL)
 
         // Circular Buffer Methods
-        .def("getRemainingImageCount", &CMMCore::getRemainingImageCount, "Returns number ofimages available in the Circular Buffer" RGIL)
-        .def("getBufferTotalCapacity", &CMMCore::getBufferTotalCapacity, "Returns the total number of images that can be stored in the buffer" RGIL)
-        .def("getBufferFreeCapacity", &CMMCore::getBufferFreeCapacity, "Returns the number of images that can be added to the buffer without overflowing" RGIL)
-        .def("isBufferOverflowed", &CMMCore::isBufferOverflowed, "Indicates whether the circular buffer is overflowed" RGIL)
+        .def("getRemainingImageCount", &CMMCore::getRemainingImageCount RGIL)
+        .def("getBufferTotalCapacity", &CMMCore::getBufferTotalCapacity RGIL)
+        .def("getBufferFreeCapacity", &CMMCore::getBufferFreeCapacity RGIL)
+        .def("isBufferOverflowed", &CMMCore::isBufferOverflowed RGIL)
         .def("setCircularBufferMemoryFootprint",
              &CMMCore::setCircularBufferMemoryFootprint,
-             "sizeMB"_a, "Reserve memory for the circular buffer." RGIL)
-        .def("getCircularBufferMemoryFootprint", &CMMCore::getCircularBufferMemoryFootprint, "Returns the size of the Circular Buffer in MB" RGIL)
-        .def("initializeCircularBuffer", &CMMCore::initializeCircularBuffer, "Initialize circular buffer based on the current camera settings." RGIL)
-        .def("clearCircularBuffer", &CMMCore::clearCircularBuffer, "Removes all images from the circular buffer." RGIL)
+             "sizeMB"_a RGIL)
+        .def("getCircularBufferMemoryFootprint", &CMMCore::getCircularBufferMemoryFootprint RGIL)
+        .def("initializeCircularBuffer", &CMMCore::initializeCircularBuffer RGIL)
+        .def("clearCircularBuffer", &CMMCore::clearCircularBuffer RGIL)
 
         // Exposure Sequence Methods
-        .def("isExposureSequenceable", &CMMCore::isExposureSequenceable, "cameraLabel"_a, "Queries camera if exposure can be used in a sequence" RGIL)
-        .def("startExposureSequence", &CMMCore::startExposureSequence, "cameraLabel"_a, "Starts an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable" RGIL)
-        .def("stopExposureSequence", &CMMCore::stopExposureSequence, "cameraLabel"_a, "Stops an ongoing sequence of triggered exposures in a camera This should only be called for cameras where exposure time is sequenceable" RGIL)
+        .def("isExposureSequenceable", &CMMCore::isExposureSequenceable, "cameraLabel"_a RGIL)
+        .def("startExposureSequence", &CMMCore::startExposureSequence, "cameraLabel"_a RGIL)
+        .def("stopExposureSequence", &CMMCore::stopExposureSequence, "cameraLabel"_a RGIL)
         .def("getExposureSequenceMaxLength",
              &CMMCore::getExposureSequenceMaxLength,
-             "cameraLabel"_a, "Gets the maximum length of a camera's exposure sequence. This should only be called for cameras where exposure time is sequenceable" RGIL)
+             "cameraLabel"_a RGIL)
         .def("loadExposureSequence",
              &CMMCore::loadExposureSequence,
              "cameraLabel"_a,
-             "exposureSequence_ms"_a, "Transfer a sequence of exposure times to the camera. This should only be called for cameras where exposure time is sequenceable" RGIL)
+             "exposureSequence_ms"_a RGIL)
 
         // Autofocus Methods
-        .def("getLastFocusScore", &CMMCore::getLastFocusScore, "Returns the latest focus score from the focusing device. Use this value to estimate or record how reliable the focus is. The range of values is device dependent." RGIL)
-        .def("getCurrentFocusScore", &CMMCore::getCurrentFocusScore, "Returns the focus score from the default focusing device measured at the current Z position. Use this value to create profiles or just to verify that the image is in focus. The absolute range of returned scores depends on the actual focusing device." RGIL)
-        .def("enableContinuousFocus", &CMMCore::enableContinuousFocus, "enable"_a, "Enables or disables the operation of the continuous focusing hardware device." RGIL)
-        .def("isContinuousFocusEnabled", &CMMCore::isContinuousFocusEnabled, "Checks if the continuous focusing hardware device is ON or OFF." RGIL)
-        .def("isContinuousFocusLocked", &CMMCore::isContinuousFocusLocked, "Returns the lock-in status of the continuous focusing device." RGIL)
-        .def("isContinuousFocusDrive", &CMMCore::isContinuousFocusDrive, "stageLabel"_a, "Check if a stage has continuous focusing capability (positions can be set while continuous focus runs)." RGIL)
-        .def("fullFocus", &CMMCore::fullFocus, "Performs focus acquisition and lock for the one-shot focusing device." RGIL)
-        .def("incrementalFocus", &CMMCore::incrementalFocus, "Performs incremental focus for the one-shot focusing device." RGIL)
-        .def("setAutoFocusOffset", &CMMCore::setAutoFocusOffset, "offset"_a, "Applies offset the one-shot focusing device." RGIL)
-        .def("getAutoFocusOffset", &CMMCore::getAutoFocusOffset, "Measures offset for the one-shot focusing device." RGIL)
+        .def("getLastFocusScore", &CMMCore::getLastFocusScore RGIL)
+        .def("getCurrentFocusScore", &CMMCore::getCurrentFocusScore RGIL)
+        .def("enableContinuousFocus", &CMMCore::enableContinuousFocus, "enable"_a RGIL)
+        .def("isContinuousFocusEnabled", &CMMCore::isContinuousFocusEnabled RGIL)
+        .def("isContinuousFocusLocked", &CMMCore::isContinuousFocusLocked RGIL)
+        .def("isContinuousFocusDrive", &CMMCore::isContinuousFocusDrive, "stageLabel"_a RGIL)
+        .def("fullFocus", &CMMCore::fullFocus RGIL)
+        .def("incrementalFocus", &CMMCore::incrementalFocus RGIL)
+        .def("setAutoFocusOffset", &CMMCore::setAutoFocusOffset, "offset"_a RGIL)
+        .def("getAutoFocusOffset", &CMMCore::getAutoFocusOffset RGIL)
 
         // State Device Control Methods
-        .def("setState", &CMMCore::setState, "stateDeviceLabel"_a, "state"_a, "Sets the state (position) on the specific device. The command will fail if the device does not support states." RGIL)
-        .def("getState", &CMMCore::getState, "stateDeviceLabel"_a, "Returns the current state (position) on the specific device. The command will fail if the device does not support states." RGIL)
-        .def("getNumberOfStates", &CMMCore::getNumberOfStates, "stateDeviceLabel"_a, "Returns the total number of available positions (states)." RGIL)
-        .def("setStateLabel", &CMMCore::setStateLabel, "stateDeviceLabel"_a, "stateLabel"_a, "Sets device state using the previously assigned label (string)." RGIL)
-        .def("getStateLabel", &CMMCore::getStateLabel, "stateDeviceLabel"_a, "Returns the current state as the label (string)." RGIL)
+        .def("setState", &CMMCore::setState, "stateDeviceLabel"_a, "state"_a RGIL)
+        .def("getState", &CMMCore::getState, "stateDeviceLabel"_a RGIL)
+        .def("getNumberOfStates", &CMMCore::getNumberOfStates, "stateDeviceLabel"_a RGIL)
+        .def("setStateLabel", &CMMCore::setStateLabel, "stateDeviceLabel"_a, "stateLabel"_a RGIL)
+        .def("getStateLabel", &CMMCore::getStateLabel, "stateDeviceLabel"_a RGIL)
         .def("defineStateLabel",
              &CMMCore::defineStateLabel,
              "stateDeviceLabel"_a,
              "state"_a,
-             "stateLabel"_a, "Defines a label for the specific state/" RGIL)
-        .def("getStateLabels", &CMMCore::getStateLabels, "stateDeviceLabel"_a, "Return labels for all states" RGIL)
+             "stateLabel"_a RGIL)
+        .def("getStateLabels", &CMMCore::getStateLabels, "stateDeviceLabel"_a RGIL)
         .def("getStateFromLabel",
              &CMMCore::getStateFromLabel,
              "stateDeviceLabel"_a,
-             "stateLabel"_a, "Obtain the state for a given label." RGIL)
+             "stateLabel"_a RGIL)
 
         // Stage Control Methods
         .def("setPosition",
@@ -1395,24 +1395,24 @@ MMCore will send notifications on internal events using this interface
              "newZUm"_a RGIL)
 
         // Focus Direction Methods
-        .def("setFocusDirection", &CMMCore::setFocusDirection, "stageLabel"_a, "sign"_a, "Set the focus direction of a stage.\n\nThe sign should be +1 (or any positive value), zero, or -1 (or any negative value), and is interpreted in the same way as the return value of getFocusDirection()." RGIL)
-        .def("getFocusDirection", &CMMCore::getFocusDirection, "stageLabel"_a, "Get the focus direction of a stage.\n\nReturns +1 if increasing position brings objective closer to sample, -1 if increasing position moves objective away from sample, or 0 if unknown. (Make sure to check for zero!)" RGIL)
+        .def("setFocusDirection", &CMMCore::setFocusDirection, "stageLabel"_a, "sign"_a RGIL)
+        .def("getFocusDirection", &CMMCore::getFocusDirection, "stageLabel"_a RGIL)
 
         // Stage Sequence Methods
-        .def("isStageSequenceable", &CMMCore::isStageSequenceable, "stageLabel"_a, "Queries stage if it can be used in a sequence" RGIL)
-        .def("isStageLinearSequenceable", &CMMCore::isStageLinearSequenceable, "stageLabel"_a, "Queries if the stage can be used in a linear sequence A linear sequence is defined by a stepsize and number of slices" RGIL)
-        .def("startStageSequence", &CMMCore::startStageSequence, "stageLabel"_a, "Starts an ongoing sequence of triggered events in a stage This should only be called for stages" RGIL)
-        .def("stopStageSequence", &CMMCore::stopStageSequence, "stageLabel"_a, "Stops an ongoing sequence of triggered events in a stage This should only be called for stages that are sequenceable" RGIL)
-        .def("getStageSequenceMaxLength", &CMMCore::getStageSequenceMaxLength, "stageLabel"_a, "Gets the maximum length of a stage's position sequence. This should only be called for stages that are sequenceable" RGIL)
+        .def("isStageSequenceable", &CMMCore::isStageSequenceable, "stageLabel"_a RGIL)
+        .def("isStageLinearSequenceable", &CMMCore::isStageLinearSequenceable, "stageLabel"_a RGIL)
+        .def("startStageSequence", &CMMCore::startStageSequence, "stageLabel"_a RGIL)
+        .def("stopStageSequence", &CMMCore::stopStageSequence, "stageLabel"_a RGIL)
+        .def("getStageSequenceMaxLength", &CMMCore::getStageSequenceMaxLength, "stageLabel"_a RGIL)
         .def("loadStageSequence",
              &CMMCore::loadStageSequence,
              "stageLabel"_a,
-             "positionSequence"_a, "Transfer a sequence of events/states/whatever to the device This should only be called for device-properties that are sequenceable" RGIL)
+             "positionSequence"_a RGIL)
         .def("setStageLinearSequence",
              &CMMCore::setStageLinearSequence,
              "stageLabel"_a,
              "dZ_um"_a,
-             "nSlices"_a, "Loads a linear sequence (defined by stepsize and nr. of steps) into the device. Why was it not called loadStageLinearSequence???" RGIL)
+             "nSlices"_a RGIL)
 
         // XY Stage Control Methods
         .def("setXYPosition",
@@ -1456,8 +1456,8 @@ MMCore will send notifications on internal events using this interface
              "xyStageLabel"_a RGIL)
         .def("getXPosition", nb::overload_cast<>(&CMMCore::getXPosition) RGIL)
         .def("getYPosition", nb::overload_cast<>(&CMMCore::getYPosition) RGIL)
-        .def("stop", &CMMCore::stop, "xyOrZStageLabel"_a, "Stop the XY or focus/Z stage motors" RGIL)
-        .def("home", &CMMCore::home, "xyOrZStageLabel"_a, "Perform a hardware homing operation for an XY or focus/Z stage." RGIL)
+        .def("stop", &CMMCore::stop, "xyOrZStageLabel"_a RGIL)
+        .def("home", &CMMCore::home, "xyOrZStageLabel"_a RGIL)
         .def("setOriginXY",
              nb::overload_cast<const char *>(&CMMCore::setOriginXY),
              "xyStageLabel"_a RGIL)
@@ -1481,17 +1481,17 @@ MMCore will send notifications on internal events using this interface
              "newYUm"_a RGIL)
 
         // XY Stage Sequence Methods
-        .def("isXYStageSequenceable", &CMMCore::isXYStageSequenceable, "xyStageLabel"_a, "Queries XY stage if it can be used in a sequence" RGIL)
-        .def("startXYStageSequence", &CMMCore::startXYStageSequence, "xyStageLabel"_a, "Starts an ongoing sequence of triggered events in an XY stage This should only be called for stages" RGIL)
-        .def("stopXYStageSequence", &CMMCore::stopXYStageSequence, "xyStageLabel"_a, "Stops an ongoing sequence of triggered events in an XY stage This should only be called for stages that are sequenceable" RGIL)
+        .def("isXYStageSequenceable", &CMMCore::isXYStageSequenceable, "xyStageLabel"_a RGIL)
+        .def("startXYStageSequence", &CMMCore::startXYStageSequence, "xyStageLabel"_a RGIL)
+        .def("stopXYStageSequence", &CMMCore::stopXYStageSequence, "xyStageLabel"_a RGIL)
         .def("getXYStageSequenceMaxLength",
              &CMMCore::getXYStageSequenceMaxLength,
-             "xyStageLabel"_a, "Gets the maximum length of an XY stage's position sequence. This should only be called for XY stages that are sequenceable" RGIL)
+             "xyStageLabel"_a RGIL)
         .def("loadXYStageSequence",
              &CMMCore::loadXYStageSequence,
              "xyStageLabel"_a,
              "xSequence"_a,
-             "ySequence"_a, "Transfer a sequence of stage positions to the xy stage. xSequence and ySequence must have the same length. This should only be called for XY stages that are sequenceable" RGIL)
+             "ySequence"_a RGIL)
 
         // Serial Port Control
         .def("setSerialProperties",
@@ -1502,15 +1502,15 @@ MMCore will send notifications on internal events using this interface
              "delayBetweenCharsMs"_a,
              "handshaking"_a,
              "parity"_a,
-             "stopBits"_a, "Sets all com port properties in a single call" RGIL)
+             "stopBits"_a RGIL)
         .def("setSerialPortCommand",
              &CMMCore::setSerialPortCommand,
              "portLabel"_a,
              "command"_a,
-             "term"_a, "Send string to the serial device and return an answer. This command blocks until it receives an answer from the device terminated by the specified sequence." RGIL)
-        .def("getSerialPortAnswer", &CMMCore::getSerialPortAnswer, "portLabel"_a, "term"_a, "Continuously read from the serial port until the terminating sequence is encountered." RGIL)
-        .def("writeToSerialPort", &CMMCore::writeToSerialPort, "portLabel"_a, "data"_a, "Sends an array of characters to the serial port and returns immediately." RGIL)
-        .def("readFromSerialPort", &CMMCore::readFromSerialPort, "portLabel"_a, "Reads the contents of the Rx buffer." RGIL)
+             "term"_a RGIL)
+        .def("getSerialPortAnswer", &CMMCore::getSerialPortAnswer, "portLabel"_a, "term"_a RGIL)
+        .def("writeToSerialPort", &CMMCore::writeToSerialPort, "portLabel"_a, "data"_a RGIL)
+        .def("readFromSerialPort", &CMMCore::readFromSerialPort, "portLabel"_a RGIL)
 
         // SLM Control
         // setSLMImage accepts a second argument (pixels) of either unsigned char* or unsigned
@@ -1541,17 +1541,17 @@ MMCore will send notifications on internal events using this interface
              "red"_a,
              "green"_a,
              "blue"_a RGIL)
-        .def("displaySLMImage", &CMMCore::displaySLMImage, "slmLabel"_a, "Display the waiting image on the SLM." RGIL)
-        .def("setSLMExposure", &CMMCore::setSLMExposure, "slmLabel"_a, "exposure_ms"_a, "For SLM devices with build-in light source (such as projectors) this will set the exposure time, but not (yet) start the illumination" RGIL)
-        .def("getSLMExposure", &CMMCore::getSLMExposure, "slmLabel"_a, "Returns the exposure time that will be used by the SLM for illumination" RGIL)
-        .def("getSLMWidth", &CMMCore::getSLMWidth, "slmLabel"_a, "Returns the width (in \"pixels\") of the SLM" RGIL)
-        .def("getSLMHeight", &CMMCore::getSLMHeight, "slmLabel"_a, "Returns the height (in \"pixels\") of the SLM" RGIL)
-        .def("getSLMNumberOfComponents", &CMMCore::getSLMNumberOfComponents, "slmLabel"_a, "Returns the number of components (usually these depict colors) of the SLM For instance, an RGB projector will return 3, but a grey scale SLM returns 1" RGIL)
-        .def("getSLMBytesPerPixel", &CMMCore::getSLMBytesPerPixel, "slmLabel"_a, "Returns the number of bytes per SLM pixel" RGIL)
+        .def("displaySLMImage", &CMMCore::displaySLMImage, "slmLabel"_a RGIL)
+        .def("setSLMExposure", &CMMCore::setSLMExposure, "slmLabel"_a, "exposure_ms"_a RGIL)
+        .def("getSLMExposure", &CMMCore::getSLMExposure, "slmLabel"_a RGIL)
+        .def("getSLMWidth", &CMMCore::getSLMWidth, "slmLabel"_a RGIL)
+        .def("getSLMHeight", &CMMCore::getSLMHeight, "slmLabel"_a RGIL)
+        .def("getSLMNumberOfComponents", &CMMCore::getSLMNumberOfComponents, "slmLabel"_a RGIL)
+        .def("getSLMBytesPerPixel", &CMMCore::getSLMBytesPerPixel, "slmLabel"_a RGIL)
         // SLM Sequence
-        .def("getSLMSequenceMaxLength", &CMMCore::getSLMSequenceMaxLength, "slmLabel"_a, "For SLMs that support sequences, returns the maximum length of the sequence that can be uploaded to the device" RGIL)
-        .def("startSLMSequence", &CMMCore::startSLMSequence, "slmLabel"_a, "Starts the sequence previously uploaded to the SLM" RGIL)
-        .def("stopSLMSequence", &CMMCore::stopSLMSequence, "slmLabel"_a, "Stops the SLM sequence if previously started" RGIL)
+        .def("getSLMSequenceMaxLength", &CMMCore::getSLMSequenceMaxLength, "slmLabel"_a RGIL)
+        .def("startSLMSequence", &CMMCore::startSLMSequence, "slmLabel"_a RGIL)
+        .def("stopSLMSequence", &CMMCore::stopSLMSequence, "slmLabel"_a RGIL)
         .def(
             "loadSLMSequence",
             [](CMMCore &self,
@@ -1576,12 +1576,12 @@ MMCore will send notifications on internal events using this interface
              "galvoLabel"_a,
              "x"_a,
              "y"_a,
-             "pulseTime_us"_a, "Set the Galvo to an x,y position and fire the laser for a predetermined duration." RGIL)
+             "pulseTime_us"_a RGIL)
         .def("setGalvoSpotInterval",
              &CMMCore::setGalvoSpotInterval,
              "galvoLabel"_a,
              "pulseTime_us"_a RGIL)
-        .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a, "Set the Galvo to an x,y position" RGIL)
+        .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a RGIL)
         .def("getGalvoPosition",
              [](CMMCore &self, const char *galvoLabel) -> std::tuple<double, double> {
                 double x, y;
@@ -1591,11 +1591,11 @@ MMCore will send notifications on internal events using this interface
         .def("setGalvoIlluminationState",
              &CMMCore::setGalvoIlluminationState,
              "galvoLabel"_a,
-             "on"_a, "Set the galvo's illumination state to on or off" RGIL)
-        .def("getGalvoXRange", &CMMCore::getGalvoXRange, "galvoLabel"_a, "Get the Galvo x range" RGIL)
-        .def("getGalvoXMinimum", &CMMCore::getGalvoXMinimum, "galvoLabel"_a, "Get the Galvo x minimum" RGIL)
-        .def("getGalvoYRange", &CMMCore::getGalvoYRange, "galvoLabel"_a, "Get the Galvo y range" RGIL)
-        .def("getGalvoYMinimum", &CMMCore::getGalvoYMinimum, "galvoLabel"_a, "Get the Galvo y minimum" RGIL)
+             "on"_a RGIL)
+        .def("getGalvoXRange", &CMMCore::getGalvoXRange, "galvoLabel"_a RGIL)
+        .def("getGalvoXMinimum", &CMMCore::getGalvoXMinimum, "galvoLabel"_a RGIL)
+        .def("getGalvoYRange", &CMMCore::getGalvoYRange, "galvoLabel"_a RGIL)
+        .def("getGalvoYMinimum", &CMMCore::getGalvoYMinimum, "galvoLabel"_a RGIL)
         .def("addGalvoPolygonVertex",
              &CMMCore::addGalvoPolygonVertex,
              "galvoLabel"_a,
@@ -1603,47 +1603,47 @@ MMCore will send notifications on internal events using this interface
              "x"_a,
              "y"_a,
              R"doc(Add a vertex to a galvo polygon.)doc" RGIL)
-        .def("deleteGalvoPolygons", &CMMCore::deleteGalvoPolygons, "galvoLabel"_a, "Remove all added polygons" RGIL)
-        .def("loadGalvoPolygons", &CMMCore::loadGalvoPolygons, "galvoLabel"_a, "Load a set of galvo polygons to the device" RGIL)
+        .def("deleteGalvoPolygons", &CMMCore::deleteGalvoPolygons, "galvoLabel"_a RGIL)
+        .def("loadGalvoPolygons", &CMMCore::loadGalvoPolygons, "galvoLabel"_a RGIL)
         .def("setGalvoPolygonRepetitions",
              &CMMCore::setGalvoPolygonRepetitions,
              "galvoLabel"_a,
-             "repetitions"_a, "Set the number of times to loop galvo polygons" RGIL)
-        .def("runGalvoPolygons", &CMMCore::runGalvoPolygons, "galvoLabel"_a, "Run a loop of galvo polygons" RGIL)
-        .def("runGalvoSequence", &CMMCore::runGalvoSequence, "galvoLabel"_a, "Run a sequence of galvo positions" RGIL)
-        .def("getGalvoChannel", &CMMCore::getGalvoChannel, "galvoLabel"_a, "Get the name of the active galvo channel (for a multi-laser galvo device)." RGIL)
+             "repetitions"_a RGIL)
+        .def("runGalvoPolygons", &CMMCore::runGalvoPolygons, "galvoLabel"_a RGIL)
+        .def("runGalvoSequence", &CMMCore::runGalvoSequence, "galvoLabel"_a RGIL)
+        .def("getGalvoChannel", &CMMCore::getGalvoChannel, "galvoLabel"_a RGIL)
         
         // PressurePump Control
-        .def("pressurePumpStop", &CMMCore::pressurePumpStop, "pumpLabel"_a, "Stops the pressure pump" RGIL)
+        .def("pressurePumpStop", &CMMCore::pressurePumpStop, "pumpLabel"_a RGIL)
         .def("pressurePumpCalibrate", &CMMCore::pressurePumpCalibrate, "pumpLabel"_a RGIL)
-        .def("pressurePumpRequiresCalibration", &CMMCore::pressurePumpRequiresCalibration, "pumpLabel"_a, "Returns boolean whether the pump is operational before calibration" RGIL)
-        .def("setPumpPressureKPa", &CMMCore::setPumpPressureKPa, "pumpLabel"_a, "pressure"_a, "Sets the pressure of the pump in kPa" RGIL)
-        .def("getPumpPressureKPa", &CMMCore::getPumpPressureKPa, "pumpLabel"_a, "Gets the pressure of the pump in kPa" RGIL)
+        .def("pressurePumpRequiresCalibration", &CMMCore::pressurePumpRequiresCalibration, "pumpLabel"_a RGIL)
+        .def("setPumpPressureKPa", &CMMCore::setPumpPressureKPa, "pumpLabel"_a, "pressure"_a RGIL)
+        .def("getPumpPressureKPa", &CMMCore::getPumpPressureKPa, "pumpLabel"_a RGIL)
         
         // VolumetricPump control
-        .def("volumetricPumpStop", &CMMCore::volumetricPumpStop, "pumpLabel"_a, "Stops the volumetric pump" RGIL)
+        .def("volumetricPumpStop", &CMMCore::volumetricPumpStop, "pumpLabel"_a RGIL)
         .def("volumetricPumpHome", &CMMCore::volumetricPumpHome, "pumpLabel"_a RGIL)
         .def("volumetricPumpRequiresHoming", &CMMCore::volumetricPumpRequiresHoming, "pumpLabel"_a RGIL)
-        .def("invertPumpDirection", &CMMCore::invertPumpDirection, "pumpLabel"_a, "invert"_a, "Sets whether the pump direction needs to be inverted" RGIL)
-        .def("isPumpDirectionInverted", &CMMCore::isPumpDirectionInverted, "pumpLabel"_a, "Gets whether the pump direction needs to be inverted" RGIL)
-        .def("setPumpVolume", &CMMCore::setPumpVolume, "pumpLabel"_a, "volume"_a, "Sets the volume of fluid in the pump in uL. Note it does not withdraw upto this amount. It is merely to inform MM of the volume in a prefilled pump." RGIL)
-        .def("getPumpVolume", &CMMCore::getPumpVolume, "pumpLabel"_a, "Get the fluid volume in the pump in uL" RGIL)
-        .def("setPumpMaxVolume", &CMMCore::setPumpMaxVolume, "pumpLabel"_a, "volume"_a, "Sets the max volume of the pump in uL" RGIL)
-        .def("getPumpMaxVolume", &CMMCore::getPumpMaxVolume, "pumpLabel"_a, "Gets the max volume of the pump in uL" RGIL)
-        .def("setPumpFlowrate", &CMMCore::setPumpFlowrate, "pumpLabel"_a, "volume"_a, "Sets the flowrate of the pump in uL per second" RGIL)
-        .def("getPumpFlowrate", &CMMCore::getPumpFlowrate, "pumpLabel"_a, "Gets the flowrate of the pump in uL per second" RGIL)
-        .def("pumpStart", &CMMCore::pumpStart, "pumpLabel"_a, "Start dispensing at the set flowrate until syringe is empty, or manually stopped (whichever occurs first)." RGIL)
-        .def("pumpDispenseDurationSeconds", &CMMCore::pumpDispenseDurationSeconds, "pumpLabel"_a, "seconds"_a, "Dispenses for the provided duration (in seconds) at the set flowrate" RGIL)
-        .def("pumpDispenseVolumeUl", &CMMCore::pumpDispenseVolumeUl, "pumpLabel"_a, "microLiter"_a, "Dispenses the provided volume (in uL) at the set flowrate" RGIL)
+        .def("invertPumpDirection", &CMMCore::invertPumpDirection, "pumpLabel"_a, "invert"_a RGIL)
+        .def("isPumpDirectionInverted", &CMMCore::isPumpDirectionInverted, "pumpLabel"_a RGIL)
+        .def("setPumpVolume", &CMMCore::setPumpVolume, "pumpLabel"_a, "volume"_a RGIL)
+        .def("getPumpVolume", &CMMCore::getPumpVolume, "pumpLabel"_a RGIL)
+        .def("setPumpMaxVolume", &CMMCore::setPumpMaxVolume, "pumpLabel"_a, "volume"_a RGIL)
+        .def("getPumpMaxVolume", &CMMCore::getPumpMaxVolume, "pumpLabel"_a RGIL)
+        .def("setPumpFlowrate", &CMMCore::setPumpFlowrate, "pumpLabel"_a, "volume"_a RGIL)
+        .def("getPumpFlowrate", &CMMCore::getPumpFlowrate, "pumpLabel"_a RGIL)
+        .def("pumpStart", &CMMCore::pumpStart, "pumpLabel"_a RGIL)
+        .def("pumpDispenseDurationSeconds", &CMMCore::pumpDispenseDurationSeconds, "pumpLabel"_a, "seconds"_a RGIL)
+        .def("pumpDispenseVolumeUl", &CMMCore::pumpDispenseVolumeUl, "pumpLabel"_a, "microLiter"_a RGIL)
 
         // Device Discovery
-        .def("supportsDeviceDetection", &CMMCore::supportsDeviceDetection, "deviceLabel"_a, "Return whether or not the device supports automatic device detection (i.e. whether or not detectDevice() may be safely called)." RGIL)
-        .def("detectDevice", &CMMCore::detectDevice, "deviceLabel"_a, "Tries to communicate to a device through a given serial port Used to automate discovery of correct serial port Also configures the serial port correctly" RGIL)
+        .def("supportsDeviceDetection", &CMMCore::supportsDeviceDetection, "deviceLabel"_a RGIL)
+        .def("detectDevice", &CMMCore::detectDevice, "deviceLabel"_a RGIL)
 
         // Hub and Peripheral Devices
         .def("getParentLabel", &CMMCore::getParentLabel, "peripheralLabel"_a RGIL)
-        .def("setParentLabel", &CMMCore::setParentLabel, "deviceLabel"_a, "parentHubLabel"_a, "Sets parent device label" RGIL)
-        .def("getInstalledDevices", &CMMCore::getInstalledDevices, "hubLabel"_a, "Performs auto-detection and loading of child devices that are attached to a Hub device. For example, if a motorized microscope is represented by a Hub device, it is capable of discovering what specific child devices are currently attached. In that case this call might report that Z-stage, filter changer and objective turret are currently installed and return three device names in the string list." RGIL)
+        .def("setParentLabel", &CMMCore::setParentLabel, "deviceLabel"_a, "parentHubLabel"_a RGIL)
+        .def("getInstalledDevices", &CMMCore::getInstalledDevices, "hubLabel"_a RGIL)
         .def("getInstalledDeviceDescription",
              &CMMCore::getInstalledDeviceDescription,
              "hubLabel"_a,

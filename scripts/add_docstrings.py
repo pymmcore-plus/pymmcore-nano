@@ -154,7 +154,9 @@ def collect_docstrings() -> dict[str, dict[int, str]]:
     return docs
 
 
-def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
+def _patch_def(
+    m: re.Match[str], docs: dict[str, dict[int, str]], stats: dict[str, list[str]]
+) -> str:
     """Return rewritten .def block with an inserted / updated docstring."""
     prefix, body, suffix = m.groups()
 
@@ -190,6 +192,10 @@ def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
     # escape quotes/newlines via JSON trick
     doc_escaped = json.dumps(doc)[1:-1]
 
+    # Create a display name with parameter count for clarity
+    method_name = cpp_name_match.group(1)
+    display_name = f"{method_name}({n_params} params)" if n_params > 0 else method_name
+
     # Check if we already have this exact docstring to avoid unnecessary changes
     # Look for the last string before RGIL, which should be the docstring
     if doc_match := DEF_DOC.search(body):
@@ -200,24 +206,28 @@ def _patch_def(m: re.Match[str], docs: dict[str, dict[int, str]]) -> str:
         # use a function replacement so backslashes in *doc_escaped* are emitted
         # verbatim (re.sub string replacements treat backslashes as escapes)
         body = DEF_DOC.sub(lambda _m: f', "{doc_escaped}" RGIL', body, count=1)
+        stats["updated"].append(display_name)
     else:
         body = body.replace(" RGIL", f', "{doc_escaped}" RGIL', 1)
+        stats["added"].append(display_name)
 
     log.debug("patched %-30s  (%d params)", cpp_name, n_params)
     return prefix + body + suffix
 
 
-def update_bindings(docs: dict[str, dict[int, str]]) -> bool:
+def update_bindings(docs: dict[str, dict[int, str]]) -> dict[str, list[str]]:
     """Update the bindings file with docstrings from the collected docs.
 
-    Returns True if the file was modified, False otherwise.
+    Returns a dict with lists of modified methods:
+    {"added": list[str], "updated": list[str]}.
     """
     text = BINDINGS_FILE.read_text()
-    new_text = DEF_RE.sub(lambda m: _patch_def(m, docs), text)
+    stats: dict[str, list[str]] = {"added": [], "updated": []}
+    new_text = DEF_RE.sub(lambda m: _patch_def(m, docs, stats), text)
 
     if new_text == text:
         log.info("🆗 No changes needed in %s", BINDINGS_FILE)
-        return False
+        return stats
 
     # Only run clang-format if we made actual content changes
     # try to run clang-format on the new text... to prevent unnecessary diffs
@@ -233,11 +243,31 @@ def update_bindings(docs: dict[str, dict[int, str]]) -> bool:
     # If clang-format made the text identical to original, don't write
     if formatted_text == text:
         log.info("🆗 No effective changes after formatting in %s", BINDINGS_FILE)
-        return False
+        return {"added": [], "updated": []}  # Reset stats since no actual changes
 
     BINDINGS_FILE.write_text(formatted_text)
-    log.info("✨ Updated %s", BINDINGS_FILE)
-    return True
+
+    # Report the changes with method names
+    total_added = len(stats["added"])
+    total_updated = len(stats["updated"])
+    log.info(
+        "✨ Updated %s (%d new, %d updated docstrings)",
+        BINDINGS_FILE,
+        total_added,
+        total_updated,
+    )
+
+    if stats["added"]:
+        log.info("  Added docstrings to:")
+        for method in stats["added"]:
+            log.info("    %s", method)
+
+    if stats["updated"]:
+        log.info("  Updated docstrings for:")
+        for method in stats["updated"]:
+            log.info("    %s", method)
+
+    return stats
 
 
 # --------------------------------------------------------------------------- #
@@ -257,7 +287,10 @@ def main() -> None:
         log.warning("❌ No docstrings collected - nothing to patch.")
         return
 
-    if update_bindings(docs):
+    stats = update_bindings(docs)
+    total_changes = len(stats["added"]) + len(stats["updated"])
+
+    if total_changes > 0:
         if "--check" in sys.argv:
             sys.exit(1)
 
