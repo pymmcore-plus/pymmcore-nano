@@ -27,6 +27,8 @@ clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
 	rm -rf *.gcov
+	rm -rf scripts/html
+	rm -rf scripts/xml
 	# remove all folders call MMDevice that are INSIDE of a subproject folder
 	find -L . -type d -path '*/subprojects/MMDevice' -exec rm -rf {} +
 	find -L . -type d -path '*/subprojects/packagecache' -exec rm -rf {} +
@@ -56,6 +58,11 @@ clean-cov:
 version:
 	meson rewrite kwargs set project / version $({{ python }} scripts/extract_version.py)
 	{{ python }} scripts/build_stubs.py
+
+# add docstrings from C++ to Python bindings
+add-docs:
+	uv run scripts/add_docstrings.py
+	just build
 
 # run pre-commit checks
 check:
