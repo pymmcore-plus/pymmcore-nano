@@ -37,6 +37,9 @@ def test_callback(core: pmn.CMMCore, demo_config: Path):
         def onExposureChanged(self, *args) -> None:
             mock("onExposureChanged")
 
+        def onShutterOpenChanged(self, *args) -> None:
+            mock("onShutterOpenChanged")
+
         def onStagePositionChanged(self, *args) -> None:
             mock("onStagePositionChanged")
 
@@ -87,3 +90,6 @@ def test_callback(core: pmn.CMMCore, demo_config: Path):
 
     core.setXYPosition(1, 2)
     mock.assert_called_with("onXYStagePositionChanged")
+
+    core.setShutterOpen(True)
+    mock.assert_called_with("onShutterOpenChanged")

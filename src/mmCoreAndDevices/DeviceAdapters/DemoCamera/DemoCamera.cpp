@@ -236,6 +236,9 @@ CDemoCamera::CDemoCamera() :
 	fractionOfPixelsToDropOrSaturate_(0.002),
    shouldRotateImages_(false),
    shouldDisplayImageNumber_(false),
+   busy_(false),
+   imageCounter_(0),
+   stopOnOverFlow_(true),
    stripeWidth_(1.0),
    supportsMultiROI_(false),
    multiROIFillValue_(0),
@@ -1112,18 +1115,7 @@ int CDemoCamera::InsertImage()
    unsigned int h = GetImageHeight();
    unsigned int b = GetImageBytesPerPixel();
 
-   int ret = GetCoreCallback()->InsertImage(this, pI, w, h, b, nComponents_, md.Serialize().c_str());
-   if (!stopOnOverflow_ && ret == DEVICE_BUFFER_OVERFLOW)
-   {
-      // do not stop on overflow - just reset the buffer
-      GetCoreCallback()->ClearImageBuffer(this);
-      // don't process this same image again...
-      return GetCoreCallback()->InsertImage(this, pI, w, h, b, nComponents_, md.Serialize().c_str(), false);
-   }
-   else
-   {
-      return ret;
-   }
+   return GetCoreCallback()->InsertImage(this, pI, w, h, b, nComponents_, md.Serialize().c_str());
 }
 
 /*
@@ -1157,13 +1149,7 @@ int CDemoCamera::RunSequenceOnThread()
       CDeviceUtils::SleepMs(1);
    }
 
-   ret = InsertImage();
-
-   if (ret != DEVICE_OK)
-   {
-      return ret;
-   }
-   return ret;
+   return InsertImage();
 };
 
 bool CDemoCamera::IsCapturing() {
@@ -3061,9 +3047,10 @@ int CDemoStateDevice::OnNumberOfStates(MM::PropertyBase* pProp, MM::ActionType e
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CDemoLightPath::CDemoLightPath() : 
-numPos_(3), 
-busy_(false), 
-initialized_(false)
+   position_(0),
+   numPos_(3), 
+   busy_(false), 
+   initialized_(false)
 {
    InitializeDefaultErrorMessages();
    // parent ID display
@@ -3180,10 +3167,12 @@ int CDemoLightPath::OnState(MM::PropertyBase* pProp, MM::ActionType eAct)
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CDemoObjectiveTurret::CDemoObjectiveTurret() : 
+   position_(0),
    numPos_(6), 
    busy_(false), 
    initialized_(false),
    sequenceRunning_(false),
+   sequenceIndex_(0),
    sequenceMaxSize_(10)
 {
    SetErrorText(ERR_IN_SEQUENCE, "Error occurred while executing sequence");
@@ -3594,6 +3583,11 @@ posX_um_(0.0),
 posY_um_(0.0),
 timeOutTimer_(0),
 velocity_(10.0), // in mm per second (= um/ms)
+moveDuration_ms_(100),
+startPosX_um_(0.0),
+startPosY_um_(0.),
+targetPosX_um_(0.0),
+targetPosY_um_(0.),
 initialized_(false),
 lowerLimit_(0.0),
 upperLimit_(20000.0)
@@ -3903,6 +3897,7 @@ int DemoShutter::OnState(MM::PropertyBase* pProp, MM::ActionType eAct)
 
       // apply the value
       state_ = pos == 0 ? false : true;
+      GetCoreCallback()->OnShutterOpenChanged(this, state_);
    }
 
    return DEVICE_OK;

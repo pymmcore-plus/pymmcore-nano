@@ -217,7 +217,7 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
 class PyMMEventCallback : public MMEventCallback {
   public:
     NB_TRAMPOLINE(MMEventCallback,
-                  14); // Total number of overridable virtual methods.
+                  15); // Total number of overridable virtual methods.
 
     void onPropertiesChanged() override { NB_OVERRIDE(onPropertiesChanged); }
 
@@ -255,6 +255,10 @@ class PyMMEventCallback : public MMEventCallback {
 
     void onExposureChanged(const char *name, double newExposure) override {
         NB_OVERRIDE(onExposureChanged, name, newExposure);
+    }
+
+    void onShutterOpenChanged(const char *name, bool open) override {
+        NB_OVERRIDE(onShutterOpenChanged, name, open);
     }
 
     void onSLMExposureChanged(const char *name, double newExposure) override {
@@ -744,51 +748,22 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
         .def("onPixelSizeAffineChanged", &MMEventCallback::onPixelSizeAffineChanged, "v0"_a,
              "v1"_a, "v2"_a, "v3"_a, "v4"_a, "v5"_a,
              "Called when the pixel size affine transformation changes")
-        // These bindings are ugly lambda workarounds because the original methods
-        // take char* instead of const char*
-        // https://github.com/micro-manager/mmCoreAndDevices/pull/530
-        .def(
-            "onSLMExposureChanged",
-            [](MMEventCallback &self, const std::string &name, double newExposure) {
-                self.onSLMExposureChanged(const_cast<char *>(name.c_str()), newExposure);
-            },
-            "name"_a, "newExposure"_a)
-        .def(
-            "onExposureChanged",
-            [&](MMEventCallback &self, const std::string &name, double newExposure) {
-                self.onExposureChanged(const_cast<char *>(name.c_str()), newExposure);
-            },
-            "name"_a, "newExposure"_a)
-        .def(
-            "onStagePositionChanged",
-            [&](MMEventCallback &self, const std::string &name, double pos) {
-                self.onStagePositionChanged(const_cast<char *>(name.c_str()), pos);
-            },
-            "name"_a, "pos"_a)
-        .def(
-            "onXYStagePositionChanged",
-            [&](MMEventCallback &self, const std::string &name, double xpos, double ypos) {
-                self.onXYStagePositionChanged(const_cast<char *>(name.c_str()), xpos, ypos);
-            },
-            "name"_a, "xpos"_a, "ypos"_a)
-        .def(
-            "onImageSnapped",
-            [&](MMEventCallback &self, const std::string &cameraLabel) {
-                self.onImageSnapped(const_cast<char *>(cameraLabel.c_str()));
-            },
-            "cameraLabel"_a, "Called when an image is snapped")
-        .def(
-            "onSequenceAcquisitionStarted",
-            [&](MMEventCallback &self, const std::string &cameraLabel) {
-                self.onSequenceAcquisitionStarted(const_cast<char *>(cameraLabel.c_str()));
-            },
-            "cameraLabel"_a, "Called when sequence acquisition starts")
-        .def(
-            "onSequenceAcquisitionStopped",
-            [&](MMEventCallback &self, const std::string &cameraLabel) {
-                self.onSequenceAcquisitionStopped(const_cast<char *>(cameraLabel.c_str()));
-            },
-            "cameraLabel"_a, "Called when sequence acquisition stops");
+        .def("onShutterOpenChanged", &MMEventCallback::onShutterOpenChanged, "name"_a, "open"_a,
+             "Called when the shutter is opened")
+        .def("onSLMExposureChanged", &MMEventCallback::onSLMExposureChanged, "name"_a,
+             "newExposure"_a)
+        .def("onExposureChanged", &MMEventCallback::onExposureChanged, "name"_a,
+             "newExposure"_a)
+        .def("onStagePositionChanged", &MMEventCallback::onStagePositionChanged, "name"_a,
+             "pos"_a)
+        .def("onXYStagePositionChanged", &MMEventCallback::onXYStagePositionChanged, "name"_a,
+             "xpos"_a, "ypos"_a)
+        .def("onImageSnapped", &MMEventCallback::onImageSnapped, "cameraLabel"_a,
+             "Called when an image is snapped")
+        .def("onSequenceAcquisitionStarted", &MMEventCallback::onSequenceAcquisitionStarted,
+             "cameraLabel"_a, "Called when sequence acquisition starts")
+        .def("onSequenceAcquisitionStopped", &MMEventCallback::onSequenceAcquisitionStopped,
+             "cameraLabel"_a, "Called when sequence acquisition stops");
 
     //////////////////// Exceptions ////////////////////
 
