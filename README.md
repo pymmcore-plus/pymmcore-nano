@@ -84,6 +84,16 @@ or, if the environment is active and you have already run `just install`
 pytest
 ```
 
+#### Testing wheel building locally
+
+Wheels are built (and tested) for releases using cibuildwheel.
+If you want to test this process locally run cibuildwheel,
+for example, to build just py39 on macos arm:
+
+```sh
+uvx cibuildwheel --only cp39-macosx_arm64
+```
+
 ### Releasing
 
 To release a new version:
