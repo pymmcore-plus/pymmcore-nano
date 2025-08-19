@@ -27,8 +27,8 @@ def adapter_paths() -> Iterable[list[str]]:
             # it affects the name of the device library in micromanager.
             lib_name = lib.name if os.name == "nt" else lib.stem
             shutil.copy2(lib, adapter_path / lib_name)
-    elif not adapter_path.is_dir():
-        pytest.skip(f"No adapters for {sys.platform}")
+    else:
+        pytest.fail(f"No adapters for {sys.platform}")
     yield [str(adapter_path)]
 
 

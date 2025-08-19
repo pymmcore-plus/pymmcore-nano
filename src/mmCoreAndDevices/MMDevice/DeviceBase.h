@@ -97,11 +97,6 @@ public:
    typedef MM::ActionEx<U> CPropertyActionEx;
 
    /**
-   * Returns the library handle (for use only by the calling code).
-   */
-   virtual HDEVMODULE GetModuleHandle() const {return module_;}
-
-   /**
    * Assigns a name for the module (for use only by the calling code).
    */
    virtual void SetModuleName(const char* name)
@@ -132,11 +127,6 @@ public:
    {
       CDeviceUtils::CopyLimitedString(name, description_.c_str());
    }
-
-   /**
-   * Sets the library handle (for use only by the calling code).
-   */
-   virtual void SetModuleHandle(HDEVMODULE hModule) {module_ = hModule;}
 
    /**
    * Sets the device label (for use only by the calling code).
@@ -809,7 +799,7 @@ public:
 
 protected:
 
-   CDeviceBase() : module_(0), delayMs_(0), usesDelay_(false), callback_(0)
+   CDeviceBase() : delayMs_(0), usesDelay_(false), callback_(0)
    {
       InitializeDefaultErrorMessages();
    }
@@ -1250,7 +1240,6 @@ private:
 
 
    MM::PropertyCollection properties_;
-   HDEVMODULE module_;
    std::string label_;
    std::string moduleName_;
    std::string description_;
@@ -1543,18 +1532,9 @@ protected:
       this->GetLabel(label);
       Metadata md;
       md.put(MM::g_Keyword_Metadata_CameraLabel, label);
-      int ret = GetCoreCallback()->InsertImage(this, GetImageBuffer(), GetImageWidth(),
+      return GetCoreCallback()->InsertImage(this, GetImageBuffer(), GetImageWidth(),
          GetImageHeight(), GetImageBytesPerPixel(),
          md.Serialize().c_str());
-      if (!stopWhenCBOverflows_ && ret == DEVICE_BUFFER_OVERFLOW)
-      {
-         // do not stop on overflow - just reset the buffer
-         GetCoreCallback()->ClearImageBuffer(this);
-         return GetCoreCallback()->InsertImage(this, GetImageBuffer(), GetImageWidth(),
-            GetImageHeight(), GetImageBytesPerPixel(),
-            md.Serialize().c_str());
-      } else
-         return ret;
    }
 
    virtual double GetIntervalMs() {return thd_->GetIntervalMs();}
