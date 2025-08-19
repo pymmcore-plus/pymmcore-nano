@@ -79,6 +79,7 @@ build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
 test-requires = ["pytest", 'libclang>=18.1.1']
 test-command = 'pytest "{project}/tests" -v'
 test-skip = ["*-macosx*", "*linux*"]                           # until we build device adapters locally
+config-settings = { "setup-args" = ["-Dbuild_device_adapters=true"] }
 
 [tool.cibuildwheel.macos]
 # https://cibuildwheel.readthedocs.io/en/stable/faq/#apple-silicon
