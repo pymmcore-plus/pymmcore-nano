@@ -76,10 +76,11 @@ build-verbosity = 1
 # is specific to glibc and not available in musl-libc
 skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "pp*"]
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
-test-requires = ["pytest", "libclang>=18.1.1", "meson-python", "ninja"]
+test-requires = ["pytest", "libclang>=18.1.1"]
 test-command = 'pytest "{project}/tests" -v'
 # build the extra, non-wheel shared libs before running pytest
 before-test = """
+pip install -U meson ninja
 meson setup builddir -Dbuild_pymmcore=false -Dbuild_device_adapters=true --wipe
 meson compile -C builddir
 """
