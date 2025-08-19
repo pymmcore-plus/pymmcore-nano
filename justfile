@@ -27,6 +27,8 @@ clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
 	rm -rf *.gcov
+	rm -rf wheelhouse
+	rm -rf tests/adapters
 	# remove all folders call MMDevice that are INSIDE of a subproject folder
 	find -L . -type d -path '*/subprojects/MMDevice' -exec rm -rf {} +
 	find -L . -type d -path '*/subprojects/packagecache' -exec rm -rf {} +

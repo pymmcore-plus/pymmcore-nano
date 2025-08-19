@@ -78,6 +78,11 @@ skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "pp*"]
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
 test-requires = ["pytest", 'libclang>=18.1.1']
 test-command = 'pytest "{project}/tests" -v'
+# build the extra, non-wheel shared libs before running pytest
+before-test = """
+meson setup builddir -Dbuild_pymmcore=false -Dbuild_device_adapters=true --wipe
+meson compile -C builddir
+"""
 
 [tool.cibuildwheel.macos]
 # https://cibuildwheel.readthedocs.io/en/stable/faq/#apple-silicon
