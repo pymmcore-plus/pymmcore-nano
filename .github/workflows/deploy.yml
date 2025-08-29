@@ -33,6 +33,7 @@ jobs:
       - shell: bash
         run: |
           pip install meson
+          meson subprojects download mmcore mmdevice
           VERSION=$(python scripts/extract_version.py)
           uvx meson rewrite kwargs set project / version $VERSION
 
