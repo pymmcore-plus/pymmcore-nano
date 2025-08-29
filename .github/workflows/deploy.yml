@@ -30,12 +30,10 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           toolset: "14.29"
-      - shell: bash
-        run: |
+      - run: |
           pip install meson
           meson subprojects download mmcore mmdevice
-          VERSION=$(python scripts/extract_version.py)
-          meson rewrite kwargs set project / version $VERSION
+          meson rewrite kwargs set project / version $(python scripts/extract_version.py)
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.1
