@@ -5,8 +5,37 @@ project(
   'cpp',
 version : '11.10.0.74.0',
   meson_version : '>=1.4.0',
-  default_options : ['cpp_std=c++17', 'warning_level=3']
-)if get_option('hold_gil')
+  default_options : ['cpp_std=c++17']
+)
+
+if host_machine.system() == 'darwin'
+    add_project_arguments('-U_LIBCPP_ENABLE_ASSERTIONS', language: 'cpp')
+endif
+
+py = import('python').find_installation(pure: false)
+nanobind_dep = dependency('nanobind', static: true)
+
+# Run a command to get the Python include path
+python_include_path = run_command(
+    py.full_path(),
+    ['-c', 'import sysconfig; print(sysconfig.get_paths()["include"])'],
+).stdout().strip()
+
+mmcore_proj = subproject(
+    'mmcore',
+    default_options: {'default_library': 'static', 'tests': 'disabled'},
+)
+mmcore_dep = mmcore_proj.get_variable('mmcore')
+
+# --------------------------
+
+cpp_args = ['-DMMDEVICE_CLIENT_BUILD']
+
+if host_machine.system() == 'windows'
+    cpp_args += ['-DNOMINMAX', '-D_CRT_SECURE_NO_WARNINGS']
+endif
+
+if get_option('hold_gil')
     cpp_args += ['-DHOLD_GIL']
 endif
 if get_option('match_swig')
