@@ -33,7 +33,7 @@ jobs:
         with:
           toolset: "14.29"
       - uses: astral-sh/setup-uv@v6
-      - run: uv run scripts/extract_version.py --update
+      - run: uv run --no-dev --group build scripts/extract_version.py --update
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.1
@@ -59,7 +59,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Build sdist
         run: |
-          uv run scripts/extract_version.py --update
+          uv run --no-dev --group build scripts/extract_version.py --update
           uv build --sdist
 
       - uses: actions/upload-artifact@v4
