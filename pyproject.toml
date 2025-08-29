@@ -34,17 +34,21 @@ dependencies = ["numpy>=1.25"]
 
 [dependency-groups]
 build = ["meson-python", "nanobind", "ninja", "ruff", "typing_extensions"]
+test = [
+    "pytest",
+    "pytest-cov",
+    "gcovr",
+    "libclang>=18.1.1",
+    "mm-test-adapters~=74.0",
+]
 dev = [
+    { include-group = "test" },
     { include-group = "build" },
     "clang-format>=19.1.7",
-    "libclang>=18.1.1",
-    "gcovr",
     "ipython",
     "mypy",
     "pdbpp; sys_platform != 'win32'",
     "pre-commit-uv",
-    "pytest-cov",
-    "pytest",
     "rich",
     "rust-just",
 ]
