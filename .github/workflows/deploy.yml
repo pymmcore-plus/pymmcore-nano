@@ -35,7 +35,7 @@ jobs:
           pip install meson
           meson subprojects download mmcore mmdevice
           VERSION=$(python scripts/extract_version.py)
-          uvx meson rewrite kwargs set project / version $VERSION
+          meson rewrite kwargs set project / version $VERSION
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.1
