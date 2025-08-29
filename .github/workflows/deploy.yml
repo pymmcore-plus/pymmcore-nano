@@ -62,6 +62,7 @@ jobs:
       - name: Build sdist
         run: |
           pip install -U pip build meson
+          meson setup builddir
           meson rewrite kwargs set project / version $(python scripts/extract_version.py)
           python -m build --sdist
 
