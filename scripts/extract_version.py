@@ -11,7 +11,7 @@ def extract_version():
     if not MMCORE.exists() or not MMDEVICE.exists():
         raise FileNotFoundError(
             "MMCore or MMDevice directories not found. "
-            "Please run `meson setup builddir`."
+            "Please run `meson subprojects download mmcore mmdevice`."
         )
 
     content = (MMCORE / "MMCore.cpp").read_text(encoding="utf-8")
