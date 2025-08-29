@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.fixture(scope="session")
-def adapter_paths(tmp_path_factory: pytest.TempPathFactory) -> Iterable[list[str]]:
+def adapter_paths() -> Iterable[list[str]]:
     # find all built libraries in the builddir
     from mm_test_adapters import device_adapter_path
 
