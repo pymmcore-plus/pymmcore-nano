@@ -80,9 +80,8 @@ build-verbosity = 1
 # is specific to glibc and not available in musl-libc
 skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "pp*"]
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
-test-requires = ["pytest", 'libclang>=18.1.1']
+test-requires = ["pytest", 'libclang>=18.1.1', 'mm-test-adapters~=74']
 test-command = 'pytest "{project}/tests" -v'
-test-skip = ["*-macosx*", "*linux*"]                           # until we build device adapters locally
 
 [tool.cibuildwheel.macos]
 # https://cibuildwheel.readthedocs.io/en/stable/faq/#apple-silicon
