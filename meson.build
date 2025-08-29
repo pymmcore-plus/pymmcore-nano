@@ -1,54 +1,12 @@
 # replace the version by running:
 # meson rewrite kwargs set project / version $(python scripts/extract_version.py)
 project(
-    'pymmcore-nano',
-    'cpp',
-    version: '11.10.0.74.1.dev0',
-    meson_version: '>=1.4.0',
-    default_options: [
-        'cpp_std=c++17',
-        'warning_level=3',
-    ],
-)
-
-if host_machine.system() == 'darwin'
-    add_project_arguments('-U_LIBCPP_ENABLE_ASSERTIONS', language: 'cpp')
-endif
-
-py = import('python').find_installation(pure: false)
-nanobind_dep = dependency('nanobind', static: true)
-
-# Run a command to get the Python include path
-python_include_path = run_command(
-    py.full_path(),
-    ['-c', 'import sysconfig; print(sysconfig.get_paths()["include"])'],
-).stdout().strip()
-
-# Include the subprojects.
-# subdir('src/mmCoreAndDevices/MMDevice')
-# subdir('src/mmCoreAndDevices/MMCore')
-# if get_option('build_device_adapters')
-#     subdir('src/mmCoreAndDevices/DeviceAdapters')
-# endif
-
-mmcore_proj = subproject(
-    'mmcore',
-    default_options: {
-        'default_library': 'static',
-        'tests': 'disabled',  # Avoid Catch2 subproject in sdist
-    },
-)
-mmcore_dep = mmcore_proj.get_variable('mmcore')
-
-# --------------------------
-
-cpp_args = ['-DMMDEVICE_CLIENT_BUILD']
-
-if host_machine.system() == 'windows'
-    cpp_args += ['-DNOMINMAX', '-D_CRT_SECURE_NO_WARNINGS']
-endif
-
-if get_option('hold_gil')
+  'pymmcore-nano',
+  'cpp',
+version : '11.10.0.74.0',
+  meson_version : '>=1.4.0',
+  default_options : ['cpp_std=c++17', 'warning_level=3']
+)if get_option('hold_gil')
     cpp_args += ['-DHOLD_GIL']
 endif
 if get_option('match_swig')

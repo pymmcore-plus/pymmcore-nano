@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import numpy.testing as npt
-import pymmcore_nano as pmn
-import pytest
+
+if TYPE_CHECKING:
+    import pymmcore_nano as pmn
 
 
 def test_image_ramps(demo_core: pmn.CMMCore):

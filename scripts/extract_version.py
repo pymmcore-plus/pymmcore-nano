@@ -1,9 +1,10 @@
 import re
 from pathlib import Path
 
-SRC = Path(__file__).parent.parent / "src"
-MMCORE = SRC / "mmCoreAndDevices" / "MMCore"
-MMDEVICE = SRC / "mmCoreAndDevices" / "MMDevice"
+ROOT = Path(__file__).parent.parent
+SRC = ROOT / "src"
+MMCORE = ROOT / "subprojects" / "mmcore"
+MMDEVICE = ROOT / "subprojects" / "mmdevice"
 
 
 def extract_version():
