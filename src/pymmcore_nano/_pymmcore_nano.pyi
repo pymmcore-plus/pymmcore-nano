@@ -4,10 +4,10 @@ from typing import Annotated, overload
 
 from numpy.typing import ArrayLike
 
-DEVICE_INTERFACE_VERSION: int = 73
+DEVICE_INTERFACE_VERSION: int = 74
 MODULE_INTERFACE_VERSION: int = 10
-MMCore_version: str = "11.9.0"
-MMCore_version_info: tuple = (11, 9, 0)
+MMCore_version: str = "11.10.0"
+MMCore_version_info: tuple = (11, 10, 0)
 PYMMCORE_NANO_VERSION: str = "2"
 MM_CODE_OK: int = 0
 MM_CODE_ERR: int = 1
@@ -239,11 +239,11 @@ HIDPort: int = 3
 class FocusDirection(enum.IntEnum):
     FocusDirectionUnknown = 0
     FocusDirectionTowardSample = 1
-    FocusDirectionAwayFromSample = 2
+    FocusDirectionAwayFromSample = -1
 
 FocusDirectionUnknown: int = 0
 FocusDirectionTowardSample: int = 1
-FocusDirectionAwayFromSample: int = 2
+FocusDirectionAwayFromSample: int = -1
 
 class DeviceNotification(enum.IntEnum):
     Attention = 0

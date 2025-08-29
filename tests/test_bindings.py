@@ -10,9 +10,11 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
 ROOT = Path(__file__).parent.parent
-MMCORE_H = ROOT / "src/mmCoreAndDevices/MMCore/MMCore.h"
-MMDEVICE_CALLBACK_H = ROOT / "src/mmCoreAndDevices/MMCore/MMEventCallback.h"
-MMDEVICE_CONSTANTS_H = ROOT / "src/mmCoreAndDevices/MMDevice/MMDeviceConstants.h"
+MMCORE_SRC = ROOT / "subprojects/mmcore"
+MMDEVICE_SRC = ROOT / "subprojects/mmdevice"
+MMCORE_H = MMCORE_SRC / "MMCore.h"
+MMDEVICE_CALLBACK_H = MMCORE_SRC / "MMEventCallback.h"
+MMDEVICE_CONSTANTS_H = MMDEVICE_SRC / "MMDeviceConstants.h"
 BINDINGS = ROOT / "src/_pymmcore_nano.cc"
 IGNORE_MEMBERS = {"noop"}
 
