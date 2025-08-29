@@ -13,8 +13,10 @@ ROOT = Path(__file__).parent.parent
 MMCORE_SRC = ROOT / "subprojects/mmcore"
 MMDEVICE_SRC = ROOT / "subprojects/mmdevice"
 MMCORE_H = MMCORE_SRC / "MMCore.h"
+MMCORE_CONFIG_H = MMCORE_SRC / "Configuration.h"
 MMDEVICE_CALLBACK_H = MMCORE_SRC / "MMEventCallback.h"
 MMDEVICE_CONSTANTS_H = MMDEVICE_SRC / "MMDeviceConstants.h"
+
 BINDINGS = ROOT / "src/_pymmcore_nano.cc"
 IGNORE_MEMBERS = {"noop"}
 
@@ -423,8 +425,9 @@ def test_mmevent_callback_members():
 
 def test_configuration_members():
     """Test that the bindings for Configuration are complete."""
+    assert MMCORE_CONFIG_H.exists()
     members = public_members(
-        str(ROOT / "src/mmCoreAndDevices/MMCore/Configuration.h"),
+        MMCORE_CONFIG_H,
         "Configuration",
         extra_args=[
             "-Isrc/mmCoreAndDevices",
@@ -443,7 +446,7 @@ def test_configuration_members():
 def test_property_setting_members():
     """Test that the bindings for PropertySetting are complete."""
     members = public_members(
-        str(ROOT / "src/mmCoreAndDevices/MMCore/Configuration.h"),
+        str(MMCORE_CONFIG_H),
         "PropertySetting",
         extra_args=[
             "-Isrc/mmCoreAndDevices",
