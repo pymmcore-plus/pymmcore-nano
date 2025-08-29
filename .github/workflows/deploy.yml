@@ -27,17 +27,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          submodules: "recursive"
-
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           toolset: "14.29"
-
-      - run: |
+      - shell: bash
+        run: |
           pip install meson
-          meson rewrite kwargs set project / version $(python scripts/extract_version.py)
+          VERSION=$(python scripts/extract_version.py)
+          uvx meson rewrite kwargs set project / version $VERSION
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.1

@@ -8,6 +8,12 @@ MMDEVICE = ROOT / "subprojects" / "mmdevice"
 
 
 def extract_version():
+    if not MMCORE.exists() or not MMDEVICE.exists():
+        raise FileNotFoundError(
+            "MMCore or MMDevice directories not found. "
+            "Please run `meson setup builddir`."
+        )
+
     content = (MMCORE / "MMCore.cpp").read_text(encoding="utf-8")
 
     # Regex to find version constants

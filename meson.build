@@ -3,7 +3,7 @@
 project(
   'pymmcore-nano',
   'cpp',
-version : '11.10.0.74.0',
+version : 'VERSION=',
   meson_version : '>=1.4.0',
   default_options : ['cpp_std=c++17']
 )
