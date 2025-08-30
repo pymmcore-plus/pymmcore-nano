@@ -1,3 +1,0 @@
-option('tests', type: 'feature', value: 'enabled',
-    description: 'Build unit tests',
-)

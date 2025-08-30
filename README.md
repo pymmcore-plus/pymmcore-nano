@@ -10,18 +10,22 @@ Experimental python bindings for [CMMCore](https://github.com/micro-manager/mmCo
 (the device abstraction layer for micro-manager) using [nanobind](https://nanobind.readthedocs.io/en/latest/).
 
 This package can be used as a (mostly) drop-in replacement for [`pymmcore`](https://pypi.org/project/pymmcore/).
-There are a few slight differences in behavior.  You are encouraged to try it where you might use 
+There are a few slight differences in behavior.  You are encouraged to try it where you might use
 pymmcore; and [let us know](https://github.com/pymmcore-plus/pymmcore-nano/issues) if you run into any issues!
 
 ## Installation
 
 ```sh
 pip install pymmcore-nano
+
+# optionally include device adapters commonly used for demos and testing
+# (DemoCamera, Utilities, etc...)
+pip install 'pymmcore-nano[test-devices]'
 ```
 
 Versioning is the same as for pymmcore.  
 
-```
+```txt
 MMCoreMajor.MMCoreMinor.MMCorePatch.DeviceInterface.pymmcore-nano-build
 ```
 
@@ -31,7 +35,6 @@ For example, the version `11.3.0.71.2` refers to:
 - Device interface 71
 - pymmcore-nano build number of 2 (this is a zero indexed version that resets each time
 the MMCore or Device Interface versions increment)
-
 
 ## For Developers
 

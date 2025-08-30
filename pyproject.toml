@@ -32,19 +32,26 @@ classifiers = [
 ]
 dependencies = ["numpy>=1.25"]
 
+[project.optional-dependencies]
+test-devices = ["mm-test-adapters~=74.0"]
+
 [dependency-groups]
 build = ["meson-python", "nanobind", "ninja", "ruff", "typing_extensions"]
+test = [
+    "pytest",
+    "pytest-cov",
+    "gcovr",
+    "libclang>=18.1.1",
+    "pymmcore-nano[test-devices]",
+]
 dev = [
+    { include-group = "test" },
     { include-group = "build" },
     "clang-format>=19.1.7",
-    "libclang>=18.1.1",
-    "gcovr",
     "ipython",
     "mypy",
     "pdbpp; sys_platform != 'win32'",
     "pre-commit-uv",
-    "pytest-cov",
-    "pytest",
     "rich",
     "rust-just",
 ]
@@ -67,7 +74,7 @@ show_missing = true
 
 [tool.coverage.run]
 omit = ['subprojects/']
-source = ["pymmcore_nano", "mmCoreAndDevices"]
+source = ["pymmcore_nano"]
 
 [tool.cibuildwheel]
 build-verbosity = 1
@@ -76,9 +83,8 @@ build-verbosity = 1
 # is specific to glibc and not available in musl-libc
 skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "pp*"]
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
-test-requires = ["pytest", 'libclang>=18.1.1']
+test-groups = ["test"]
 test-command = 'pytest "{project}/tests" -v'
-test-skip = ["*-macosx*", "*linux*"]                           # until we build device adapters locally
 
 [tool.cibuildwheel.macos]
 # https://cibuildwheel.readthedocs.io/en/stable/faq/#apple-silicon

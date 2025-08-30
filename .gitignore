@@ -15,4 +15,4 @@ __pycache__
 .coverage
 coverage/
 coverage*
-tests/adapters/
+wheelhouse/

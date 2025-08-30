@@ -8,11 +8,5 @@ option(
     'match_swig',
     type: 'boolean',
     value: true,
-    description: 'Define MATCH_SWIG, to export all enum instances as top level names'
-)
-option('client_interface', type: 'boolean', value: false,
-    description: 'Build for use by MMCore, as opposed to by a device adapter',
-)
-option('build_device_adapters', type: 'boolean', value: false,
-  description: 'Build device adapters in addition to the core library',
+    description: 'Define MATCH_SWIG, to export all enum instances as top level names',
 )

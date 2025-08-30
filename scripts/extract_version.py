@@ -1,12 +1,25 @@
 import re
+import subprocess
+import sys
 from pathlib import Path
 
-SRC = Path(__file__).parent.parent / "src"
-MMCORE = SRC / "mmCoreAndDevices" / "MMCore"
-MMDEVICE = SRC / "mmCoreAndDevices" / "MMDevice"
+ROOT = Path(__file__).parent.parent
+SRC = ROOT / "src"
+MMCORE = ROOT / "subprojects" / "mmcore"
+MMDEVICE = ROOT / "subprojects" / "mmdevice"
 
 
 def extract_version():
+    if not MMCORE.exists() or not MMDEVICE.exists():
+        subprocess.run(
+            ["meson", "subprojects", "download", "mmcore", "mmdevice"], check=True
+        )
+    if not MMCORE.exists() or not MMDEVICE.exists():
+        raise FileNotFoundError(
+            "MMCore or MMDevice directories not found. "
+            "Please run `meson subprojects download mmcore mmdevice`."
+        )
+
     content = (MMCORE / "MMCore.cpp").read_text(encoding="utf-8")
 
     # Regex to find version constants
@@ -30,4 +43,12 @@ def extract_version():
 
 
 if __name__ == "__main__":
-    print(extract_version())
+    version = extract_version()
+    print(version)
+
+    if "--update" in sys.argv:
+        subprocess.run(
+            ["meson", "rewrite", "kwargs", "set", "project", "/", "version", version],
+            check=True,
+        )
+        print(f"Updated version to {version} in meson.build")
