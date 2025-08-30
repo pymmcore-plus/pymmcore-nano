@@ -21,7 +21,7 @@ build:
 
 # clean up all build artifacts
 clean:
-	rm -rf build dist {{ builddir }}
+	rm -rf build dist wheelhouse {{ builddir }}
 	rm -rf .coverage coverage coverage.info coverage.xml coverage_cpp.xml
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
