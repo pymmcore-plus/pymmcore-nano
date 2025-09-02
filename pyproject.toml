@@ -32,6 +32,9 @@ classifiers = [
 ]
 dependencies = ["numpy>=1.25"]
 
+[project.optional-dependencies]
+test-devices = ["mm-test-adapters~=74.0"]
+
 [dependency-groups]
 build = ["meson-python", "nanobind", "ninja", "ruff", "typing_extensions"]
 test = [
@@ -39,7 +42,7 @@ test = [
     "pytest-cov",
     "gcovr",
     "libclang>=18.1.1",
-    "mm-test-adapters~=74.0",
+    "pymmcore-nano[test-devices]",
 ]
 dev = [
     { include-group = "test" },
@@ -80,7 +83,7 @@ build-verbosity = 1
 # is specific to glibc and not available in musl-libc
 skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "pp*"]
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
-test-requires = ["pytest", 'libclang>=18.1.1', 'mm-test-adapters~=74.0']
+test-groups = ["test"]
 test-command = 'pytest "{project}/tests" -v'
 
 [tool.cibuildwheel.macos]
