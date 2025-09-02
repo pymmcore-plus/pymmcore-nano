@@ -44,6 +44,9 @@ jobs:
           # distribute.
           CIBW_ENVIRONMENT_LINUX: "LDFLAGS=-Wl,--strip-debug"
 
+      - name: check-wheel-contents
+        run: uvx check-wheel-contents ./wheelhouse
+
       - uses: actions/upload-artifact@v4
         with:
           name: artifact-wheels-${{ matrix.os }}${{ matrix.macos_arch }}
