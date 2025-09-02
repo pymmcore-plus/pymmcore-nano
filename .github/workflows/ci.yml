@@ -71,6 +71,11 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
+          enable-cache: true
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.os == 'windows-latest'
+        with:
+          toolset: "14.29"
       - name: Setup MM test adapters
         uses: pymmcore-plus/setup-mm-test-adapters@main
         with:
