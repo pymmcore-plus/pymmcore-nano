@@ -74,7 +74,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --no-dev --group test
-          uv pip install --no-dev --group test --no-build-isolation --no-deps ./pymmcore-nano
+          uv pip install --group test --no-build-isolation --no-deps ./pymmcore-nano
           uv pip list
 
       - run: uv run pytest -v --color=yes -W ignore
