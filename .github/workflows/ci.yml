@@ -71,10 +71,15 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
+      - name: Setup MM test adapters
+        uses: pymmcore-plus/setup-mm-test-adapters@main
+        with:
+          version: 74
       - name: Install dependencies
         run: |
           uv sync --no-dev --group test
-          uv pip install --group test --no-deps ./pymmcore-nano
+          uv pip install ./pymmcore-nano
+          uv pip uninstall pymmcore
           uv pip list
 
       - run: uv run pytest -v --color=yes -W ignore
