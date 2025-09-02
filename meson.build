@@ -1,11 +1,11 @@
 # replace the version by running:
 # meson rewrite kwargs set project / version $(python scripts/extract_version.py)
 project(
-  'pymmcore-nano',
-  'cpp',
-version : '11.10.0.74.0',
-  meson_version : '>=1.4.0',
-  default_options : ['cpp_std=c++17']
+    'pymmcore-nano',
+    'cpp',
+    version: '11.10.0.74.0',
+    meson_version: '>=1.4.0',
+    default_options: ['cpp_std=c++17'],
 )
 
 if host_machine.system() == 'darwin'
@@ -52,32 +52,45 @@ ext_module = py.extension_module(
 )
 
 # Create stubs using nanobind.stubgen
-custom_target(
+stub_target = custom_target(
     'generate_stubs',
-    build_by_default: true,
     input: [ext_module],
     output: '_pymmcore_nano.pyi',
     command: [
         py.full_path(),
-        meson.project_source_root() + '/scripts/build_stubs.py',
-        ext_module.full_path(),
-        meson.project_source_root()
-        + '/src/pymmcore_nano/_pymmcore_nano.pyi',
+        meson.project_source_root() / 'scripts' / 'build_stubs.py',
+        '@INPUT@', # path to built extension
+        '@OUTPUT@', # write stub to this path
     ],
+    build_by_default: true,
+    install: true,
+    install_dir: py.get_install_dir() / 'pymmcore_nano',
     depends: ext_module,
 )
 
-# install the Python package into the site-packages directory
-install_subdir(
-    'src/pymmcore_nano',
-    install_dir: py.get_install_dir() / 'pymmcore_nano',
-    strip_directory: true,
+# Copy stub to source tree for development (so Pyright can find it)
+custom_target(
+    'copy_stubs_to_src',
+    input: stub_target,
+    output: 'stub_copied_marker',
+    command: [
+        py.full_path(),
+        '-c',
+        'import shutil; shutil.copy(r"@INPUT@", r"@0@")'.format(
+            meson.project_source_root() / 'src' / 'pymmcore_nano' / '_pymmcore_nano.pyi'
+        )
+    ],
+    build_by_default: true,
+    depends: stub_target,
 )
 
-# also install the stubs into the site-packages directory
-install_data(
-    'src/pymmcore_nano/_pymmcore_nano.pyi',
-    install_dir: py.get_install_dir() / 'pymmcore_nano',
+# Install the pure-Python package bits
+py.install_sources(
+    files(
+        'src/pymmcore_nano/__init__.py',
+        'src/pymmcore_nano/py.typed',
+    ),
+    subdir: 'pymmcore_nano',
 )
 
 test(

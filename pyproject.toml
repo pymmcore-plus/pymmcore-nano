@@ -86,8 +86,8 @@ build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
 test-requires = ["check-wheel-contents"]
 test-groups = ["test"]
 test-command = [
-  "check-wheel-contents {project}/wheelhouse",
-  "pytest {project}/tests -v",
+    "check-wheel-contents {project}/wheelhouse",
+    "pytest {project}/tests -v",
 ]
 
 [tool.cibuildwheel.macos]
@@ -132,3 +132,8 @@ ignore = [
 "examples/*.py" = ["D"]
 "_cli.py" = ["B008"]
 "docs/*.py" = ["A", "D"]
+
+[tool.check-wheel-contents]
+toplevel = "pymmcore_nano"
+package = "src/pymmcore_nano"
+ignore = ["W102"]
