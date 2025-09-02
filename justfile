@@ -60,9 +60,6 @@ version:
 check:
 	pre-commit run --all-files --hook-stage manual
 
-pull-mmcore:
-	git subtree pull --prefix=src/mmCoreAndDevices https://github.com/micro-manager/mmCoreAndDevices main --squash
-
 # MUST run just version and commit changes before.
 release:
 	git branch --show-current | grep -q main || (echo "Not on main branch" && exit 1)
