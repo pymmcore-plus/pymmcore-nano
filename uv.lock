@@ -349,11 +349,11 @@ wheels = [
 
 [[package]]
 name = "executing"
-version = "2.2.0"
+version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/91/50/a9d80c47ff289c611ff12e63f7c5d13942c65d68125160cefd768c73e6e4/executing-2.2.0.tar.gz", hash = "sha256:5d108c028108fe2551d1a7b2e8b713341e2cb4fc0aa7dcf966fa4327a5226755", size = 978693, upload-time = "2025-01-22T15:41:29.403Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/28/c14e053b6762b1044f34a13aab6859bbf40456d37d23aa286ac24cfd9a5d/executing-2.2.1.tar.gz", hash = "sha256:3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4", size = 1129488, upload-time = "2025-09-01T09:48:10.866Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7b/8f/c4d9bafc34ad7ad5d8dc16dd1347ee0e507a52c3adb6bfa8887e1c6a26ba/executing-2.2.0-py2.py3-none-any.whl", hash = "sha256:11387150cad388d62750327a53d3339fad4888b39a6fe233c3afbb54ecffd3aa", size = 26702, upload-time = "2025-01-22T15:41:25.929Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/ea/53f2148663b321f21b5a606bd5f191517cf40b7072c0497d3c92c4a13b1e/executing-2.2.1-py2.py3-none-any.whl", hash = "sha256:760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017", size = 28317, upload-time = "2025-09-01T09:48:08.5Z" },
 ]
 
 [[package]]
@@ -1019,14 +1019,14 @@ wheels = [
 
 [[package]]
 name = "mm-test-adapters"
-version = "74.20250827"
+version = "74.20250829"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/16/0f/e18aab11d0caea13a280bb961248367737e6c017fed18245d919cf7fc569/mm_test_adapters-74.20250827.tar.gz", hash = "sha256:a1c7707bc5bce794397ce8f539d173cd682e8cd3b3fdc8ab4f7c76a19e449013", size = 131922, upload-time = "2025-08-27T17:13:06.343Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/ad/b4f99318d5ca29c477dbc53e28e5565f21c30b32d4efb8ed287b942c440c/mm_test_adapters-74.20250829.tar.gz", hash = "sha256:c4d8a3431f042d1f3edc7acc81c6cb82852a4f2a46962b441a303b8198231d5e", size = 134692, upload-time = "2025-08-29T22:47:23.897Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/7e/de2df3f5754494edf29c379aafd7f3d3767927e134b23722eab6827f404b/mm_test_adapters-74.20250827-cp39-none-macosx_10_9_x86_64.whl", hash = "sha256:1820347cb12c7af81e9d3421672f98005ba599a1c9e6c7430310c2cc95652351", size = 569754, upload-time = "2025-08-27T17:12:59.958Z" },
-    { url = "https://files.pythonhosted.org/packages/de/d5/c6dfd8c9335e743685e822ae5db02b18926ab07bb662c522aa2db3118867/mm_test_adapters-74.20250827-cp39-none-macosx_11_0_arm64.whl", hash = "sha256:c8b64b672846abd0d21e33e99b4188fc810ee8c24e09455c0ea2a91638c56ae0", size = 549383, upload-time = "2025-08-27T17:13:01.873Z" },
-    { url = "https://files.pythonhosted.org/packages/7c/df/f3be6054199c4f33b89cf78db04c453623b2aa4ffcfa3217c5da61b329ae/mm_test_adapters-74.20250827-cp39-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1bf233241fb4fb5e4f7190df440d89022e713bf9c3a248de235dbec8d4ad1e44", size = 1039432, upload-time = "2025-08-27T17:13:03.307Z" },
-    { url = "https://files.pythonhosted.org/packages/a1/53/59d85980b6d53e4904639085d5335c6ebd61eb9519ca7a4764a274e63094/mm_test_adapters-74.20250827-cp39-none-win_amd64.whl", hash = "sha256:670c5d7815e3b34b57f20cd1302bdcbeed635c14450388733257a447a125c9c0", size = 393025, upload-time = "2025-08-27T17:13:05.086Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/8e/c10b2e949ebac3f81e3b7778ad1fef6bb65df3ea5e2d7266a1abf6d6e1d2/mm_test_adapters-74.20250829-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:cd1f1ce8605eb667473f6b060fa6aeb8ae6748e556275008674c8e9fae926c6f", size = 576265, upload-time = "2025-08-29T22:47:17.932Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/d0/216a5caf1064987f22e011ebce1e52d8f94283134de8391edc4f488bb6a8/mm_test_adapters-74.20250829-py3-none-macosx_11_0_arm64.whl", hash = "sha256:207c772731e1cca9fb097d9e8c51f62957b7de4b5e2856171d2ca3f03881fdbe", size = 556057, upload-time = "2025-08-29T22:47:19.553Z" },
+    { url = "https://files.pythonhosted.org/packages/34/90/7cde26af3d9480e5267043126ed37970bf42cb33eaf0d9ddfa25e97b1459/mm_test_adapters-74.20250829-py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a0bd6b31ff2495237a757e2550963e15885bd9ea07d11e1209ce9e45b2fec2b6", size = 1062449, upload-time = "2025-08-29T22:47:21.1Z" },
+    { url = "https://files.pythonhosted.org/packages/88/e7/a81d4864ce446357bfe295d683ad42a76272d5ac1f33355c6b702438dcab/mm_test_adapters-74.20250829-py3-none-win_amd64.whl", hash = "sha256:048828e9f1155d34d4479bee552f6f133ee36822bdb1ee787ba525d94a2d5cbb", size = 395994, upload-time = "2025-08-29T22:47:22.628Z" },
 ]
 
 [[package]]
@@ -1507,6 +1507,11 @@ dependencies = [
     { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
+[package.optional-dependencies]
+test-devices = [
+    { name = "mm-test-adapters" },
+]
+
 [package.dev-dependencies]
 build = [
     { name = "meson-python" },
@@ -1523,12 +1528,12 @@ dev = [
     { name = "ipython", version = "9.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "libclang" },
     { name = "meson-python" },
-    { name = "mm-test-adapters" },
     { name = "mypy" },
     { name = "nanobind" },
     { name = "ninja" },
     { name = "pdbpp", marker = "sys_platform != 'win32'" },
     { name = "pre-commit-uv" },
+    { name = "pymmcore-nano", extra = ["test-devices"] },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "rich" },
@@ -1545,13 +1550,17 @@ docs = [
 test = [
     { name = "gcovr" },
     { name = "libclang" },
-    { name = "mm-test-adapters" },
+    { name = "pymmcore-nano", extra = ["test-devices"] },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "numpy", specifier = ">=1.25" }]
+requires-dist = [
+    { name = "mm-test-adapters", marker = "extra == 'test-devices'", specifier = "~=74.0" },
+    { name = "numpy", specifier = ">=1.25" },
+]
+provides-extras = ["test-devices"]
 
 [package.metadata.requires-dev]
 build = [
@@ -1567,12 +1576,12 @@ dev = [
     { name = "ipython" },
     { name = "libclang", specifier = ">=18.1.1" },
     { name = "meson-python" },
-    { name = "mm-test-adapters", specifier = "~=74.0" },
     { name = "mypy" },
     { name = "nanobind" },
     { name = "ninja" },
     { name = "pdbpp", marker = "sys_platform != 'win32'" },
     { name = "pre-commit-uv" },
+    { name = "pymmcore-nano", extras = ["test-devices"] },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "rich" },
@@ -1589,7 +1598,7 @@ docs = [
 test = [
     { name = "gcovr" },
     { name = "libclang", specifier = ">=18.1.1" },
-    { name = "mm-test-adapters", specifier = "~=74.0" },
+    { name = "pymmcore-nano", extras = ["test-devices"] },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]

@@ -53,7 +53,7 @@ clean-cov:
 
 # update version in meson.build
 version:
-	meson rewrite kwargs set project / version $({{ python }} scripts/extract_version.py)
+	{{ python }} scripts/extract_version.py --update
 	{{ python }} scripts/build_stubs.py
 
 # run pre-commit checks

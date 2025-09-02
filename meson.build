@@ -1,11 +1,11 @@
 # replace the version by running:
 # meson rewrite kwargs set project / version $(python scripts/extract_version.py)
 project(
-    'pymmcore-nano',
-    'cpp',
-    version: '11.10.0.74.0',
-    meson_version: '>=1.4.0',
-    default_options: ['cpp_std=c++17'],
+  'pymmcore-nano',
+  'cpp',
+version : '11.10.0.74.0',
+  meson_version : '>=1.4.0',
+  default_options : ['cpp_std=c++17']
 )
 
 if host_machine.system() == 'darwin'
