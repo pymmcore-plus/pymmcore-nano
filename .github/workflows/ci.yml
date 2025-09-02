@@ -36,14 +36,10 @@ jobs:
         if: matrix.platform == 'windows-latest'
         with:
           toolset: "14.29"
-      
-      # - name: install boost
-      #   if: matrix.platform == 'windows-latest'
-      #   run: choco install boost-msvc-14.2
 
       - name: install
-        # install with devices=true coverage=true
-        run: just install true true
+        # install with coverage=true
+        run: just install true
 
       - name: test
         run: uv run --no-sync pytest --color=yes -v --cov --cov-report=xml
@@ -55,3 +51,40 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml,./coverage_cpp.xml
+
+  test-pymmcore-plus:
+    name: test pymmcore-plus ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      UV_NO_SYNC: "1"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: pymmcore-plus/pymmcore-plus
+      - uses: actions/checkout@v5
+        with:
+          path: pymmcore-nano
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.os == 'windows-latest'
+        with:
+          toolset: "14.29"
+      - name: Setup MM test adapters
+        uses: pymmcore-plus/setup-mm-test-adapters@main
+        with:
+          version: 74
+      - name: Install dependencies
+        run: |
+          uv sync --no-dev --group test
+          uv pip install ./pymmcore-nano
+          uv pip uninstall pymmcore
+          uv pip list
+
+      - run: uv run pytest -v --color=yes -W ignore

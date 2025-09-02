@@ -1,35 +1,16 @@
-import atexit
-import os
-import shutil
-import sys
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 import pymmcore_nano as pmn
 import pytest
 
-BUILDDIR = Path(__file__).parent.parent / "builddir"
-BUILT_ADAPTERS = BUILDDIR / "src" / "mmcoreAndDevices" / "DeviceAdapters"
-
 
 @pytest.fixture(scope="session")
 def adapter_paths() -> Iterable[list[str]]:
-    lib_ext = {"linux": "so", "darwin": "dylib", "win32": "dll"}[sys.platform]
-    adapter_path = Path(__file__).parent / "adapters" / sys.platform
     # find all built libraries in the builddir
-    if BUILT_ADAPTERS.is_dir() and (libs := list(BUILT_ADAPTERS.rglob(f"*.{lib_ext}"))):
-        adapter_path.mkdir(exist_ok=True, parents=True)
-        # NOTE: on windows this WILL leave .dll files in the adapter_path
-        # after the test is over, since they are locked by the python process.
-        atexit.register(lambda: shutil.rmtree(adapter_path, ignore_errors=True))
-        for lib in libs:
-            # removing extension (using stem) is important,
-            # it affects the name of the device library in micromanager.
-            lib_name = lib.name if os.name == "nt" else lib.stem
-            shutil.copy2(lib, adapter_path / lib_name)
-    elif not adapter_path.is_dir():
-        pytest.skip(f"No adapters for {sys.platform}")
-    yield [str(adapter_path)]
+    from mm_test_adapters import device_adapter_path
+
+    yield [str(device_adapter_path())]
 
 
 @pytest.fixture

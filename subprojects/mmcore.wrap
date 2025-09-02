@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/micro-manager/mmcore.git
+revision = 6036384efdd2da0f878ea022d26577012b126535
+depth = 1
+
+[provide]
+dependency_names = mmcore

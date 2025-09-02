@@ -4,13 +4,12 @@ set windows-shell := ["pwsh", "-NoLogo", "-NoProfileLoadTime", "-Command"]
 builddir := "builddir"
 
 # install deps and editable package for development
-install devices="true" coverage="false" verbose="true":
+install coverage="false" verbose="true":
 	uv sync --no-install-project
 	uv pip install -e . \
 		--no-build-isolation \
 		--no-deps \
 		--force-reinstall \
-		-C=setup-args="-Dbuild_device_adapters={{devices}}" \
 		-C=setup-args="-Db_coverage={{coverage}}" \
 		-C=setup-args="-Dbuildtype=debugoptimized" \
 		-C=build-dir={{builddir}} \
@@ -22,7 +21,7 @@ build:
 
 # clean up all build artifacts
 clean:
-	rm -rf build dist {{ builddir }}
+	rm -rf build dist wheelhouse {{ builddir }}
 	rm -rf .coverage coverage coverage.info coverage.xml coverage_cpp.xml
 	rm -rf .ruff_cache .mypy_cache .pytest_cache
 	rm -rf .mesonpy-*
@@ -42,7 +41,7 @@ test:
 # run tests with coverage
 test-cov:
 	just clean-cov
-	just install true true true
+	just install true true
 	rm -rf coverage coverage.xml coverage_cpp.xml
 	{{ python }} -m pytest -v --color=yes --cov --cov-report=xml
 	gcovr
