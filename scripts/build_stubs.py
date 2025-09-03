@@ -24,17 +24,29 @@ def _windows_dll_dirs(module_path: Path):
         return
     stack = ExitStack()
     try:
-        # Prefer the extension's directory first
+        # Prefer the extension's directory first (absolute paths only)
+        parent = module_path.parent.resolve()
         candidates = [
-            module_path.parent,
-            Path(sys.base_prefix, "DLLs"),
-            Path(sys.base_prefix),  # vcruntime*, pythonXY.dll
+            parent,
+            Path(sys.base_prefix, "DLLs").resolve(),
+            Path(sys.base_prefix).resolve(),  # vcruntime*, pythonXY.dll
         ]
-        # Add any known extra dirs that may contain deps (uncomment/extend as needed)
-        # candidates += [Path("path", "to", "external", "dlls")]
-
+        # Deduplicate while preserving order, and filter to existing directories
+        seen = set()
+        abs_dirs = []
         for d in candidates:
-            if d.exists():
+            try:
+                d = d.resolve()
+            except Exception:
+                continue
+            if not d.exists() or not d.is_dir():
+                continue
+            if str(d) in seen:
+                continue
+            seen.add(str(d))
+            abs_dirs.append(d)
+
+        for d in abs_dirs:
                 stack.enter_context(os.add_dll_directory(str(d)))
         yield
     finally:
@@ -53,6 +65,7 @@ def load_module_from_filepath(name: str, filepath: str) -> ModuleType:
 
 
 def build_stub(module_path: Path, output_path: str):
+    module_path = module_path.resolve()
     module_name = module_path.stem.split(".")[0]
     # Ensure DLLs are discoverable on Windows before importing the extension
     with _windows_dll_dirs(module_path):
