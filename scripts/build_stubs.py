@@ -5,13 +5,40 @@ circumventing any calls to `import _pymmcore_nano` in the process.
 """
 
 import importlib.util
+import os
 import re
 import subprocess
 import sys
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from types import ModuleType
 
 from nanobind.stubgen import StubGen
+
+
+@contextmanager
+def _windows_dll_dirs(module_path: Path):
+    """Ensure Windows can resolve dependent DLLs for the extension import."""
+    if os.name != "nt":
+        yield
+        return
+    stack = ExitStack()
+    try:
+        # Prefer the extension's directory first
+        candidates = [
+            module_path.parent,
+            Path(sys.base_prefix, "DLLs"),
+            Path(sys.base_prefix),  # vcruntime*, pythonXY.dll
+        ]
+        # Add any known extra dirs that may contain deps (uncomment/extend as needed)
+        # candidates += [Path("path", "to", "external", "dlls")]
+
+        for d in candidates:
+            if d.exists():
+                stack.enter_context(os.add_dll_directory(str(d)))
+        yield
+    finally:
+        stack.close()
 
 
 def load_module_from_filepath(name: str, filepath: str) -> ModuleType:
@@ -27,7 +54,10 @@ def load_module_from_filepath(name: str, filepath: str) -> ModuleType:
 
 def build_stub(module_path: Path, output_path: str):
     module_name = module_path.stem.split(".")[0]
-    module = load_module_from_filepath(module_name, str(module_path))
+    # Ensure DLLs are discoverable on Windows before importing the extension
+    with _windows_dll_dirs(module_path):
+        module = load_module_from_filepath(module_name, str(module_path))
+
     s = StubGen(module, include_docstrings=True, include_private=False)
     s.put(module)
     dest = Path(output_path)
