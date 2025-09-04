@@ -5,13 +5,52 @@ circumventing any calls to `import _pymmcore_nano` in the process.
 """
 
 import importlib.util
+import os
 import re
 import subprocess
 import sys
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from types import ModuleType
 
 from nanobind.stubgen import StubGen
+
+
+@contextmanager
+def _windows_dll_dirs(module_path: Path):
+    """Ensure Windows can resolve dependent DLLs for the extension import."""
+    if os.name != "nt":
+        yield
+        return
+    stack = ExitStack()
+    try:
+        # Prefer the extension's directory first (absolute paths only)
+        parent = module_path.parent.resolve()
+        candidates = [
+            parent,
+            Path(sys.base_prefix, "DLLs").resolve(),
+            Path(sys.base_prefix).resolve(),  # vcruntime*, pythonXY.dll
+        ]
+        # Deduplicate while preserving order, and filter to existing directories
+        seen = set()
+        abs_dirs = []
+        for d in candidates:
+            try:
+                d = d.resolve()
+            except Exception:
+                continue
+            if not d.exists() or not d.is_dir():
+                continue
+            if str(d) in seen:
+                continue
+            seen.add(str(d))
+            abs_dirs.append(d)
+
+        for d in abs_dirs:
+                stack.enter_context(os.add_dll_directory(str(d)))
+        yield
+    finally:
+        stack.close()
 
 
 def load_module_from_filepath(name: str, filepath: str) -> ModuleType:
@@ -26,8 +65,12 @@ def load_module_from_filepath(name: str, filepath: str) -> ModuleType:
 
 
 def build_stub(module_path: Path, output_path: str):
+    module_path = module_path.resolve()
     module_name = module_path.stem.split(".")[0]
-    module = load_module_from_filepath(module_name, str(module_path))
+    # Ensure DLLs are discoverable on Windows before importing the extension
+    with _windows_dll_dirs(module_path):
+        module = load_module_from_filepath(module_name, str(module_path))
+
     s = StubGen(module, include_docstrings=True, include_private=False)
     s.put(module)
     dest = Path(output_path)
