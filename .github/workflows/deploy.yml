@@ -36,7 +36,7 @@ jobs:
       - run: uv run --no-dev --group build scripts/extract_version.py --update
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.1
+        uses: pypa/cibuildwheel@v3.2
         env:
           CIBW_ARCHS_MACOS: "${{ matrix.macos_arch }}"
           # Python on Linux is usually configured to add debug information,
