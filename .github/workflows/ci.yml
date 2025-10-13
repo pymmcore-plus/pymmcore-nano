@@ -29,7 +29,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: extractions/setup-just@v3
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - uses: ilammy/msvc-dev-cmd@v1
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: pymmcore-nano
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.13"
           enable-cache: true
