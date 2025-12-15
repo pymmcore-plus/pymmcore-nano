@@ -47,7 +47,7 @@ jobs:
       - name: check-wheel-contents
         run: uvx check-wheel-contents ./wheelhouse
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: artifact-wheels-${{ matrix.os }}${{ matrix.macos_arch }}
           path: ./wheelhouse/*.whl
@@ -65,7 +65,7 @@ jobs:
           uv run --no-dev --group build scripts/extract_version.py --update
           uv build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: artifact-sdist
           path: dist/*.tar.gz
