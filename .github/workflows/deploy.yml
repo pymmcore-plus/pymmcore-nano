@@ -26,7 +26,7 @@ jobs:
             macos_arch: "arm64"
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: ilammy/msvc-dev-cmd@v1
@@ -36,7 +36,7 @@ jobs:
       - run: uv run --no-dev --group build scripts/extract_version.py --update
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.2
+        uses: pypa/cibuildwheel@v3.3
         env:
           CIBW_ARCHS_MACOS: "${{ matrix.macos_arch }}"
           # Python on Linux is usually configured to add debug information,
@@ -47,7 +47,7 @@ jobs:
       - name: check-wheel-contents
         run: uvx check-wheel-contents ./wheelhouse
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: artifact-wheels-${{ matrix.os }}${{ matrix.macos_arch }}
           path: ./wheelhouse/*.whl
@@ -56,7 +56,7 @@ jobs:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
@@ -65,7 +65,7 @@ jobs:
           uv run --no-dev --group build scripts/extract_version.py --update
           uv build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: artifact-sdist
           path: dist/*.tar.gz
@@ -82,7 +82,7 @@ jobs:
       contents: write # allows writing releases
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           pattern: artifact-*
           merge-multiple: true
