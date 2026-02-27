@@ -25,7 +25,7 @@ mmcore_proj = subproject(
     'mmcore',
     default_options: {'default_library': 'static', 'tests': 'disabled'},
 )
-mmcore_dep = mmcore_proj.get_variable('mmcore')
+mmcore_dep = mmcore_proj.get_variable('mmcore_dep')
 
 # --------------------------
 

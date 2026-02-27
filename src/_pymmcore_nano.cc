@@ -7,6 +7,7 @@
 #include <nanobind/trampoline.h>
 
 #include "MMCore.h"
+#include "ImageMetadata.h"
 #include "MMEventCallback.h"
 #include "ModuleInterface.h"
 
@@ -1121,6 +1122,19 @@ MMCore will send notifications on internal events using this interface
              "dExp"_a RGIL)
         .def("getExposure", nb::overload_cast<>(&CMMCore::getExposure) RGIL)
         .def("getExposure", nb::overload_cast<const char *>(&CMMCore::getExposure), "label"_a RGIL)
+
+        .def("getBinning", nb::overload_cast<>(&CMMCore::getBinning) RGIL)
+        .def("getBinning", nb::overload_cast<const char *>(&CMMCore::getBinning), "label"_a RGIL)
+        .def("getAllowedBinningValues", nb::overload_cast<>(&CMMCore::getAllowedBinningValues) RGIL)
+        .def("getAllowedBinningValues",
+             nb::overload_cast<const char *>(&CMMCore::getAllowedBinningValues),
+             "label"_a RGIL)
+        .def("setBinning", nb::overload_cast<long>(&CMMCore::setBinning), "binning"_a RGIL)
+        .def("setBinning",
+             nb::overload_cast<const char *, long>(&CMMCore::setBinning),
+             "label"_a,
+             "binning"_a RGIL)
+
         .def("snapImage", &CMMCore::snapImage RGIL)
         .def(
             "getImage",
@@ -1373,6 +1387,8 @@ MMCore will send notifications on internal events using this interface
         .def("setFocusDirection", &CMMCore::setFocusDirection, "stageLabel"_a, "sign"_a RGIL)
         .def("getFocusDirection", &CMMCore::getFocusDirection, "stageLabel"_a RGIL)
 
+        .def("isStageUsingCallbacks", &CMMCore::isStageUsingCallbacks, "stageLabel"_a RGIL)
+
         // Stage Sequence Methods
         .def("isStageSequenceable", &CMMCore::isStageSequenceable, "stageLabel"_a RGIL)
         .def("isStageLinearSequenceable", &CMMCore::isStageLinearSequenceable, "stageLabel"_a RGIL)
@@ -1454,6 +1470,8 @@ MMCore will send notifications on internal events using this interface
              nb::overload_cast<double, double>(&CMMCore::setAdapterOriginXY),
              "newXUm"_a,
              "newYUm"_a RGIL)
+
+        .def("isXYStageUsingCallbacks", &CMMCore::isXYStageUsingCallbacks, "xyStageLabel"_a RGIL)
 
         // XY Stage Sequence Methods
         .def("isXYStageSequenceable", &CMMCore::isXYStageSequenceable, "xyStageLabel"_a RGIL)

@@ -33,7 +33,7 @@ classifiers = [
 dependencies = ["numpy>=1.25"]
 
 [project.optional-dependencies]
-test-devices = ["mm-test-adapters~=74.0"]
+test-devices = ["mm-test-adapters~=75.0"]
 
 [dependency-groups]
 build = ["meson-python", "nanobind", "ninja", "ruff", "typing_extensions"]
