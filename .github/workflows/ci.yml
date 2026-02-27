@@ -79,7 +79,7 @@ jobs:
       - name: Setup MM test adapters
         uses: pymmcore-plus/setup-mm-test-adapters@main
         with:
-          version: 74
+          version: 75
       - name: Install dependencies
         run: |
           uv sync --no-dev --group test
