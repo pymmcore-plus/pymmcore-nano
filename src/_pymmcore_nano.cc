@@ -6,8 +6,8 @@
 #include <nanobind/stl/vector.h>
 #include <nanobind/trampoline.h>
 
-#include "MMCore.h"
 #include "ImageMetadata.h"
+#include "MMCore.h"
 #include "MMEventCallback.h"
 #include "ModuleInterface.h"
 

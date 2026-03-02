@@ -47,7 +47,7 @@ def _windows_dll_dirs(module_path: Path):
             abs_dirs.append(d)
 
         for d in abs_dirs:
-                stack.enter_context(os.add_dll_directory(str(d)))
+            stack.enter_context(os.add_dll_directory(str(d)))
         yield
     finally:
         stack.close()
