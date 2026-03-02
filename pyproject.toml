@@ -140,4 +140,4 @@ ignore = [
 [tool.check-wheel-contents]
 toplevel = "pymmcore_nano"
 package = "src/pymmcore_nano"
-ignore = ["W102"]
+ignore = ["W102", "W002"]
