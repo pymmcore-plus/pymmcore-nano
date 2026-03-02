@@ -46,7 +46,7 @@ jobs:
         with:
           vsversion: "2022"
       - uses: astral-sh/setup-uv@v7
-      - run: uv run --no-dev --group build scripts/extract_version.py --update
+      - run: uv run scripts/extract_version.py --update
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.2
@@ -76,7 +76,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - name: Build sdist
         run: |
-          uv run --no-dev --group build scripts/extract_version.py --update
+          uv run scripts/extract_version.py --update
           uv build --sdist
 
       - uses: actions/upload-artifact@v6

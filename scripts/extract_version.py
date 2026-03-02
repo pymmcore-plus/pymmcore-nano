@@ -1,3 +1,7 @@
+# /// script
+# dependencies = ["meson"]
+# ///
+
 import re
 import subprocess
 import sys
