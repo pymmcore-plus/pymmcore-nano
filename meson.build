@@ -23,7 +23,7 @@ python_include_path = run_command(
 
 mmcore_proj = subproject(
     'mmcore',
-    default_options: {'default_library': 'static', 'tests': 'disabled'},
+    default_options: {'default_library': 'static', 'tests': 'disabled', 'docs': 'disabled'},
 )
 mmcore_dep = mmcore_proj.get_variable('mmcore_dep')
 
