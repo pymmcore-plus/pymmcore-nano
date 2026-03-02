@@ -34,6 +34,8 @@ jobs:
           enable-cache: true
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.platform == 'windows-latest'
+        with:
+          vsversion: "2022"
 
       - name: install
         # install with coverage=true
@@ -72,6 +74,8 @@ jobs:
           enable-cache: true
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.os == 'windows-latest'
+        with:
+          vsversion: "2022"
       - name: Setup MM test adapters
         uses: pymmcore-plus/setup-mm-test-adapters@main
         with:
