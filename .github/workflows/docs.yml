@@ -19,7 +19,7 @@ jobs:
         UV_FROZEN: 1
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
@@ -32,7 +32,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: uv run --group docs --no-editable -C=setup-args="-Dmatch_swig=false" mkdocs build --strict
       
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: docs
           path: site
