@@ -1019,14 +1019,14 @@ wheels = [
 
 [[package]]
 name = "mm-test-adapters"
-version = "74.20250829"
+version = "75.20260226"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/55/ad/b4f99318d5ca29c477dbc53e28e5565f21c30b32d4efb8ed287b942c440c/mm_test_adapters-74.20250829.tar.gz", hash = "sha256:c4d8a3431f042d1f3edc7acc81c6cb82852a4f2a46962b441a303b8198231d5e", size = 134692, upload-time = "2025-08-29T22:47:23.897Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/e8/b8cca7cf1effd35a920d2002ca9a6abd2e3e1356683fe963fb9f84abe605/mm_test_adapters-75.20260226.tar.gz", hash = "sha256:2a22d01fa15608a6a1ead518e5db38020b039e7913d3a26a9b11a5449b5b94b7", size = 141233, upload-time = "2026-02-26T21:44:08.344Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/8e/c10b2e949ebac3f81e3b7778ad1fef6bb65df3ea5e2d7266a1abf6d6e1d2/mm_test_adapters-74.20250829-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:cd1f1ce8605eb667473f6b060fa6aeb8ae6748e556275008674c8e9fae926c6f", size = 576265, upload-time = "2025-08-29T22:47:17.932Z" },
-    { url = "https://files.pythonhosted.org/packages/c7/d0/216a5caf1064987f22e011ebce1e52d8f94283134de8391edc4f488bb6a8/mm_test_adapters-74.20250829-py3-none-macosx_11_0_arm64.whl", hash = "sha256:207c772731e1cca9fb097d9e8c51f62957b7de4b5e2856171d2ca3f03881fdbe", size = 556057, upload-time = "2025-08-29T22:47:19.553Z" },
-    { url = "https://files.pythonhosted.org/packages/34/90/7cde26af3d9480e5267043126ed37970bf42cb33eaf0d9ddfa25e97b1459/mm_test_adapters-74.20250829-py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a0bd6b31ff2495237a757e2550963e15885bd9ea07d11e1209ce9e45b2fec2b6", size = 1062449, upload-time = "2025-08-29T22:47:21.1Z" },
-    { url = "https://files.pythonhosted.org/packages/88/e7/a81d4864ce446357bfe295d683ad42a76272d5ac1f33355c6b702438dcab/mm_test_adapters-74.20250829-py3-none-win_amd64.whl", hash = "sha256:048828e9f1155d34d4479bee552f6f133ee36822bdb1ee787ba525d94a2d5cbb", size = 395994, upload-time = "2025-08-29T22:47:22.628Z" },
+    { url = "https://files.pythonhosted.org/packages/44/18/e039b6ba7e98f60331ebe9f3050a6e6bfccf8db4518d22e7f8b829eb676a/mm_test_adapters-75.20260226-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:ffdfa92cce2a1c855caf1e06c110a82c66096a39e34797ef352b7b9f665452ad", size = 561765, upload-time = "2026-02-26T21:44:01.588Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/f8/cadbcf54be22b65fe0d30b53b64d55c7f84fd0315ee3e1e201b4b5fe922b/mm_test_adapters-75.20260226-py3-none-macosx_11_0_arm64.whl", hash = "sha256:d7317f5324f672a0a1facaef5d7037a720eaa3752902b6cb9ce51c6d3f372a2d", size = 533754, upload-time = "2026-02-26T21:44:03.186Z" },
+    { url = "https://files.pythonhosted.org/packages/22/b0/499aa9e5c76f714f95ca4ea9eb162c52a55322e6f15c02bfa3538b53a35d/mm_test_adapters-75.20260226-py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:237ac97e3126504da638a2a22945f690e5a13acdd52ed8047933a5593d8ae84c", size = 1089457, upload-time = "2026-02-26T21:44:05.075Z" },
+    { url = "https://files.pythonhosted.org/packages/02/83/6c3e6e60c7be3c748e46e62d6c4c55bf46669d09b8a150153b38d27a0432/mm_test_adapters-75.20260226-py3-none-win_amd64.whl", hash = "sha256:7d3e46a2df956768133f8f5b4183a79b2d2e5961e8a7737ca61bc8962abe3990", size = 390317, upload-time = "2026-02-26T21:44:07.147Z" },
 ]
 
 [[package]]
@@ -1557,7 +1557,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mm-test-adapters", marker = "extra == 'test-devices'", specifier = "~=74.0" },
+    { name = "mm-test-adapters", marker = "extra == 'test-devices'", specifier = "~=75.0" },
     { name = "numpy", specifier = ">=1.25" },
 ]
 provides-extras = ["test-devices"]

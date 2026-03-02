@@ -1,4 +1,10 @@
 option(
+    'tests',
+    type: 'feature',
+    value: 'disabled',
+    description: 'Build unit tests for subprojects',
+)
+option(
     'hold_gil',
     type: 'boolean',
     value: false,

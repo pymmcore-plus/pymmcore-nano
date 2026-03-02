@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _wait_until(predicate: Callable[[], bool], timeout: float = 1.0, interval=0.05):
+def _wait_until(predicate: Callable[[], bool], timeout: float = 2.0, interval=0.05):
     start_time = time.perf_counter()
     while time.perf_counter() - start_time < timeout:
         if predicate():

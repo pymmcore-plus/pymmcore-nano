@@ -1,11 +1,11 @@
 # replace the version by running:
 # meson rewrite kwargs set project / version $(python scripts/extract_version.py)
 project(
-    'pymmcore-nano',
-    'cpp',
-    version: '11.10.0.74.0',
-    meson_version: '>=1.4.0',
-    default_options: ['cpp_std=c++17'],
+  'pymmcore-nano',
+  'cpp',
+version : '11.14.0.75.0',
+  meson_version : '>=1.4.0',
+  default_options : ['cpp_std=c++17']
 )
 
 if host_machine.system() == 'darwin'
@@ -23,9 +23,9 @@ python_include_path = run_command(
 
 mmcore_proj = subproject(
     'mmcore',
-    default_options: {'default_library': 'static', 'tests': 'disabled'},
+    default_options: {'default_library': 'static', 'tests': 'disabled', 'docs': 'disabled'},
 )
-mmcore_dep = mmcore_proj.get_variable('mmcore')
+mmcore_dep = mmcore_proj.get_variable('mmcore_dep')
 
 # --------------------------
 
