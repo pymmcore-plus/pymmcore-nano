@@ -96,6 +96,11 @@ archs = ["x86_64", "arm64"]
 # Needed for full C++17 support on macOS
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.14" }
 
+[tool.cibuildwheel.windows]
+# Let meson find MSVC itself, rather than relying on PATH from ilammy/msvc-dev-cmd.
+# Workaround for https://github.com/pypa/cibuildwheel/issues/2663
+config-settings = { "setup-args" = "--vsenv" }
+
 
 # https://docs.astral.sh/ruff/rules/
 [tool.ruff]
