@@ -47,8 +47,13 @@ def test_property_sequenceable(demo_core: pmn.CMMCore) -> None:
 def test_set_property_numeric_overloads(demo_core: pmn.CMMCore) -> None:
     demo_core.setProperty("Camera", "Exposure", 25.0)
     assert demo_core.getProperty("Camera", "Exposure") == "25.0000"
-    demo_core.setProperty("Camera", "Exposure", 10.0)
-    demo_core.setProperty("Camera", "Exposure", True)  # bool overload
+    demo_core.setProperty("Camera", "Exposure", float(10.0))
+    assert demo_core.getProperty("Camera", "Exposure") == "10.0000"
+    # bool overload maps True -> "1"
+    demo_core.setProperty("Camera", "TransposeCorrection", True)
+    assert demo_core.getProperty("Camera", "TransposeCorrection") == "1"
+    demo_core.setProperty("Camera", "TransposeCorrection", False)
+    assert demo_core.getProperty("Camera", "TransposeCorrection") == "0"
 
 
 # ── Exposure and binning ────────────────────────────────────────────────────
@@ -339,8 +344,10 @@ def test_loaded_peripheral_devices(demo_core: pmn.CMMCore) -> None:
 
 
 def test_save_load_system_state(demo_core: pmn.CMMCore, tmp_path: Path) -> None:
-    state_file = str(tmp_path / "state.cfg")
-    demo_core.saveSystemState(state_file)
+    state_file = tmp_path / "state.cfg"
+    demo_core.saveSystemState(str(state_file))
+    assert state_file.exists()
+    assert state_file.stat().st_size > 0
 
 
 def test_save_load_system_configuration(demo_core: pmn.CMMCore, tmp_path: Path) -> None:
@@ -644,5 +651,11 @@ def test_get_config_state_overloads(demo_core: pmn.CMMCore) -> None:
 
 
 def test_multi_roi_set_get(demo_core: pmn.CMMCore) -> None:
+    demo_core.setProperty("Camera", "AllowMultiROI", "1")
+    assert demo_core.isMultiROISupported()
+
     demo_core.setMultiROI([0], [0], [100], [100])
+    assert demo_core.isMultiROIEnabled()
     assert demo_core.getMultiROI() == ([0], [0], [100], [100])
+
+    demo_core.setProperty("Camera", "AllowMultiROI", "0")
