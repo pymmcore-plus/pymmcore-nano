@@ -21,6 +21,19 @@ def _wait_until(predicate: Callable[[], bool], timeout: float = 2.0, interval=0.
     raise TimeoutError("Timed out waiting for condition")
 
 
+def _wait_until_stderr(
+    capfd: pytest.CaptureFixture, expected: str, timeout: float = 2.0, interval=0.05
+):
+    accumulated = ""
+    start = time.perf_counter()
+    while time.perf_counter() - start < timeout:
+        accumulated += capfd.readouterr().err
+        if expected in accumulated:
+            return True
+        time.sleep(interval)
+    raise TimeoutError("Timed out waiting for condition")
+
+
 def test_version():
     device_version = pmn.DEVICE_INTERFACE_VERSION
     assert isinstance(device_version, int)
@@ -145,7 +158,7 @@ def test_core_logging(capfd: pytest.CaptureFixture, tmp_path: Path) -> None:
     msg = "test logging"
     mmc.logMessage(msg)
     with pytest.raises(TimeoutError):
-        _wait_until(lambda: msg in capfd.readouterr().err, timeout=0.1)
+        _wait_until_stderr(capfd, msg, timeout=0.1)
 
     # test file logging
     logfile = tmp_path / "test.log"
@@ -176,7 +189,7 @@ def test_core_logging(capfd: pytest.CaptureFixture, tmp_path: Path) -> None:
     assert mmc.stderrLogEnabled()
     msg = "test stderr logging"
     mmc.logMessage(msg)
-    _wait_until(lambda: f"[IFO,App] {msg}" in capfd.readouterr().err)
+    _wait_until_stderr(capfd, f"[IFO,App] {msg}")
 
     # test debug logging
     assert not mmc.debugLogEnabled()
@@ -184,7 +197,7 @@ def test_core_logging(capfd: pytest.CaptureFixture, tmp_path: Path) -> None:
     assert mmc.debugLogEnabled()
     msg = "test debug logging"
     mmc.logMessage(msg, True)  # log only in debug mode
-    _wait_until(lambda: f"[dbg,App] {msg}" in capfd.readouterr().err)
+    _wait_until_stderr(capfd, f"[dbg,App] {msg}")
 
     mmc.enableStderrLog(False)
     assert not mmc.stderrLogEnabled()
