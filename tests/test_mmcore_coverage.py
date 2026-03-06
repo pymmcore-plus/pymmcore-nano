@@ -103,14 +103,12 @@ def test_z_stage_origin_operations(demo_core: pmn.CMMCore) -> None:
     demo_core.setPosition("Z", 50.0)
     demo_core.waitForDevice("Z")
     demo_core.setOrigin("Z")
-    # default overload
     demo_core.setOrigin()
 
 
 def test_xy_stage_origin_operations(demo_core: pmn.CMMCore) -> None:
     demo_core.setOriginXY("XY")
     demo_core.setOriginXY()
-    # demo XY stage doesn't support these, but calling still covers the function
     with pytest.raises(pmn.CMMError):
         demo_core.setOriginX("XY")
     with pytest.raises(pmn.CMMError):
@@ -124,7 +122,6 @@ def test_xy_stage_origin_operations(demo_core: pmn.CMMCore) -> None:
 
 
 def test_stage_home(demo_core: pmn.CMMCore) -> None:
-    # demo stage doesn't support home, but the call still covers the function
     with pytest.raises(pmn.CMMError):
         demo_core.home("Z")
 
@@ -133,7 +130,6 @@ def test_stage_home(demo_core: pmn.CMMCore) -> None:
 
 
 def test_stage_sequencing(demo_core: pmn.CMMCore) -> None:
-    # Enable sequencing on the demo stage
     demo_core.setProperty("Z", "UseSequences", "Yes")
 
     assert demo_core.isStageSequenceable("Z")
@@ -192,9 +188,7 @@ def test_config_crud(demo_core: pmn.CMMCore) -> None:
     assert "renamedPreset" in configs
     assert "preset1" not in configs
 
-    # delete a property from a config
     demo_core.deleteConfig(group, "preset2", "Camera", "Binning")
-    # delete whole config
     demo_core.deleteConfig(group, "renamedPreset")
     demo_core.deleteConfigGroup(group)
 
@@ -286,7 +280,6 @@ def test_pixel_size_dxdz_dydz(demo_core: pmn.CMMCore) -> None:
     oz = demo_core.getPixelSizeOptimalZUm(name)
     assert oz == pytest.approx(5.0)
 
-    # default device overloads (use current pixel size config)
     demo_core.setPixelSizeConfig(name)
     demo_core.getPixelSizedxdz()
     demo_core.getPixelSizedxdz(True)
@@ -348,8 +341,6 @@ def test_loaded_peripheral_devices(demo_core: pmn.CMMCore) -> None:
 def test_save_load_system_state(demo_core: pmn.CMMCore, tmp_path: Path) -> None:
     state_file = str(tmp_path / "state.cfg")
     demo_core.saveSystemState(state_file)
-    # loadSystemState fails on empty property values from demo adapter
-    # but saveSystemState already covers the save path
 
 
 def test_save_load_system_configuration(demo_core: pmn.CMMCore, tmp_path: Path) -> None:
@@ -612,7 +603,6 @@ def test_serial_port_errors(demo_core: pmn.CMMCore) -> None:
 
 
 def test_property_sequence_on_core_device(demo_core: pmn.CMMCore) -> None:
-    # Core device properties are not sequenceable; these hit the early returns
     assert not demo_core.isPropertySequenceable("Core", "Initialize")
     assert demo_core.getPropertySequenceMaxLength("Core", "Initialize") == 0
     demo_core.startPropertySequence("Core", "Initialize")
