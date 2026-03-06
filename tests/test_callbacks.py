@@ -1,95 +1,117 @@
-from pathlib import Path
-from unittest.mock import Mock, call
+from __future__ import annotations
+
+import threading
+from collections import defaultdict
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any
 
 import pymmcore_nano as pmn
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+class CallbackEvent(threading.Event):
+    args: tuple = ()
+
+    def resolve(self, *args: Any) -> None:
+        self.args = args
+        self.set()
+
+    def reset(self) -> None:
+        self.args = ()
+        self.clear()
 
 
 def test_callback(core: pmn.CMMCore, demo_config: Path):
     """Test that the callback is called."""
 
-    mock = Mock()
+    events: defaultdict[str, CallbackEvent] = defaultdict(CallbackEvent)
+
+    @contextmanager
+    def assert_called(name: str, *args: Any, timeout: float = 2):
+        events[name].reset()
+        yield
+        ev = events[name]
+        assert ev.wait(timeout), f"{name} was not called"
+        if args:
+            assert ev.args == args, f"{name} called with {ev.args}, expected {args}"
 
     class MyCallback(pmn.MMEventCallback):
         def onPropertiesChanged(self) -> None:
-            mock("onPropertiesChanged")
+            events["onPropertiesChanged"].resolve()
 
-        def onPropertyChanged(self, *args) -> None:
-            mock("onPropertyChanged")
+        def onPropertyChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onPropertyChanged"].resolve(*args)
 
-        def onChannelGroupChanged(self, *args) -> None:
-            mock("onChannelGroupChanged")
+        def onChannelGroupChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onChannelGroupChanged"].resolve(*args)
 
-        def onConfigGroupChanged(self, *args) -> None:
-            mock("onConfigGroupChanged")
+        def onConfigGroupChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onConfigGroupChanged"].resolve(*args)
 
         def onSystemConfigurationLoaded(self) -> None:
-            mock("onSystemConfigurationLoaded")
+            events["onSystemConfigurationLoaded"].resolve()
 
-        def onPixelSizeChanged(self, *args) -> None:
-            mock("onPixelSizeChanged")
+        def onPixelSizeChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onPixelSizeChanged"].resolve(*args)
 
-        def onPixelSizeAffineChanged(self, *args) -> None:
-            mock("onPixelSizeAffineChanged")
+        def onPixelSizeAffineChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onPixelSizeAffineChanged"].resolve(*args)
 
-        def onSLMExposureChanged(self, *args) -> None:
-            mock("onSLMExposureChanged")
+        def onSLMExposureChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onSLMExposureChanged"].resolve(*args)
 
-        def onExposureChanged(self, *args) -> None:
-            mock("onExposureChanged")
+        def onExposureChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onExposureChanged"].resolve(*args)
 
-        def onShutterOpenChanged(self, *args) -> None:
-            mock("onShutterOpenChanged")
+        def onShutterOpenChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onShutterOpenChanged"].resolve(*args)
 
-        def onStagePositionChanged(self, *args) -> None:
-            mock("onStagePositionChanged")
+        def onStagePositionChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onStagePositionChanged"].resolve(*args)
 
-        def onXYStagePositionChanged(self, *args) -> None:
-            mock("onXYStagePositionChanged")
+        def onXYStagePositionChanged(self, *args: Any) -> None:  # pyright: ignore
+            events["onXYStagePositionChanged"].resolve(*args)
 
     cb = MyCallback()
     core.registerCallback(cb)
 
-    core.loadSystemConfiguration(demo_config)
-    mock.assert_called_with("onSystemConfigurationLoaded")
+    with assert_called("onSystemConfigurationLoaded"):
+        core.loadSystemConfiguration(demo_config)
 
-    mock.reset_mock()
-    core.setProperty("Camera", "Binning", "2")
-    mock.assert_has_calls(
-        [
-            call("onPropertyChanged"),
-            call("onConfigGroupChanged"),
-        ]
-    )
+    with (
+        assert_called("onConfigGroupChanged"),
+        assert_called("onPropertyChanged", "Camera", "Binning", "2"),
+    ):
+        core.setProperty("Camera", "Binning", "2")
 
-    core.setProperty("Camera", "ScanMode", "2")
-    mock.assert_has_calls([call("onPropertiesChanged")])
+    with assert_called("onPropertiesChanged"):
+        core.setProperty("Camera", "ScanMode", "2")
 
-    core.setChannelGroup("LightPath")
-    mock.assert_called_with("onChannelGroupChanged")
+    with assert_called("onChannelGroupChanged", "LightPath"):
+        core.setChannelGroup("LightPath")
 
     resgroup = core.getAvailablePixelSizeConfigs()[1]
-    core.setPixelSizeConfig(resgroup)
-    mock.assert_has_calls(
-        [
-            call("onConfigGroupChanged"),
-            call("onPixelSizeAffineChanged"),
-            call("onPixelSizeChanged"),
-        ]
-    )
+    with (
+        assert_called("onPixelSizeChanged"),
+        assert_called("onPixelSizeAffineChanged"),
+        assert_called("onConfigGroupChanged"),
+    ):
+        core.setPixelSizeConfig(resgroup)
 
     if dev := core.getSLMDevice():
-        core.setSLMExposure(dev, 10)
-        mock.assert_called_with("onSLMExposureChanged")
+        with assert_called("onSLMExposureChanged", dev, 10.0):
+            core.setSLMExposure(dev, 10)
 
-    core.setExposure(10)
-    mock.assert_called_with("onExposureChanged")
+    with assert_called("onExposureChanged", core.getCameraDevice(), 10.0):
+        core.setExposure(10)
 
-    mock.reset_mock()
-    core.setPosition(12)
-    mock.assert_called_with("onStagePositionChanged")
+    with assert_called("onStagePositionChanged", core.getFocusDevice(), 12.0):
+        core.setPosition(12)
 
-    core.setXYPosition(1, 2)
-    mock.assert_called_with("onXYStagePositionChanged")
+    with assert_called("onXYStagePositionChanged"):
+        core.setXYPosition(1, 2)
 
-    core.setShutterOpen(True)
-    mock.assert_called_with("onShutterOpenChanged")
+    with assert_called("onShutterOpenChanged", core.getShutterDevice(), True):
+        core.setShutterOpen(True)
