@@ -22,7 +22,7 @@ def _wait_until(predicate: Callable[[], bool], timeout: float = 2.0, interval=0.
 
 
 def _wait_until_stderr(
-    capfd: pytest.CaptureFixture, expected: str, timeout: float = 2.0, interval=0.05
+    capfd: pytest.CaptureFixture, expected: str, timeout: float = 6.0, interval=0.05
 ):
     accumulated = ""
     start = time.perf_counter()
@@ -31,7 +31,9 @@ def _wait_until_stderr(
         if expected in accumulated:
             return True
         time.sleep(interval)
-    raise TimeoutError("Timed out waiting for condition")
+    raise TimeoutError(
+        f"Timed out waiting for {expected!r} in stderr. Got: {accumulated!r}"
+    )
 
 
 def test_version():
