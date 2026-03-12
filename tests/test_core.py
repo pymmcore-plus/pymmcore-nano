@@ -62,7 +62,7 @@ def test_bare_core() -> None:
     assert api_version_info.startswith("Device API version")
     assert str(pmn.DEVICE_INTERFACE_VERSION) in api_version_info
     assert mmc.getVersionInfo().startswith("MMCore version")
-    assert mmc.getLoadedDevices() == ["Core"]
+    assert mmc.getLoadedDevices() == ("Core",)
     timeout = mmc.getTimeoutMs()
     assert timeout > 0
     mmc.setTimeoutMs(1000)
@@ -125,7 +125,7 @@ def test_device_loading(core: pmn.CMMCore) -> None:
     assert core.getDeviceInitializationState(LABEL)
     core.reset()
     assert LABEL not in core.getLoadedDevices()
-    assert core.getLoadedDevices() == ["Core"]
+    assert core.getLoadedDevices() == ("Core",)
     with pytest.raises(pmn.CMMError, match=f'No device with label "{LABEL}"'):
         assert core.getDeviceInitializationState(LABEL)
 
