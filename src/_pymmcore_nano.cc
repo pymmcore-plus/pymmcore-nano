@@ -797,7 +797,9 @@ programming.
             [](CMMCore &self, nb::object fileName) {
                 self.loadSystemConfiguration(nb::str(fileName).c_str());
             },
-            "fileName"_a, "Loads a system configuration from a file.")
+            "fileName"_a,
+            nb::sig("def loadSystemConfiguration(self, fileName: str | os.PathLike) -> None"),
+            "Loads a system configuration from a file.")
         .def("saveSystemConfiguration", &CMMCore::saveSystemConfiguration, "fileName"_a RGIL)
         .def_static("enableFeature", &CMMCore::enableFeature, "name"_a, "enable"_a RGIL)
         .def_static("isFeatureEnabled", &CMMCore::isFeatureEnabled, "name"_a RGIL)
@@ -1030,11 +1032,27 @@ MMCore will send notifications on internal events using this interface
         .def("getPixelSizeUm", nb::overload_cast<>(&CMMCore::getPixelSizeUm) RGIL)
         .def("getPixelSizeUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeUm), "cached"_a RGIL)
         .def("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID, "resolutionID"_a RGIL)
-        .def("getPixelSizeAffine", nb::overload_cast<>(&CMMCore::getPixelSizeAffine) RGIL)
         .def("getPixelSizeAffine",
-             nb::overload_cast<bool>(&CMMCore::getPixelSizeAffine),
-             "cached"_a RGIL)
-        .def("getPixelSizeAffineByID", &CMMCore::getPixelSizeAffineByID, "resolutionID"_a RGIL)
+             [](CMMCore &self) {
+                std::vector<double> v;
+                { nb::gil_scoped_release gil; v = self.getPixelSizeAffine(); }
+                return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
+             },
+             nb::sig("def getPixelSizeAffine(self) -> tuple[float, float, float, float, float, float]"))
+        .def("getPixelSizeAffine",
+             [](CMMCore &self, bool cached) {
+                std::vector<double> v;
+                { nb::gil_scoped_release gil; v = self.getPixelSizeAffine(cached); }
+                return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
+             }, "cached"_a,
+             nb::sig("def getPixelSizeAffine(self, cached: bool) -> tuple[float, float, float, float, float, float]"))
+        .def("getPixelSizeAffineByID",
+             [](CMMCore &self, const char *resolutionID) {
+                std::vector<double> v;
+                { nb::gil_scoped_release gil; v = self.getPixelSizeAffineByID(resolutionID); }
+                return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
+             }, "resolutionID"_a,
+             nb::sig("def getPixelSizeAffineByID(self, resolutionID: str) -> tuple[float, float, float, float, float, float]"))
 
         .def("getPixelSizedxdz", nb::overload_cast<>(&CMMCore::getPixelSizedxdz) RGIL)
         .def("getPixelSizedxdz", nb::overload_cast<bool>(&CMMCore::getPixelSizedxdz), "cached"_a RGIL)
@@ -1143,7 +1161,7 @@ MMCore will send notifications on internal events using this interface
         .def("getImage",
              [](CMMCore &self, unsigned channel) -> np_array {
                 return create_image_array(self, self.getImage(channel));
-             } RGIL)
+             }, "numChannel"_a RGIL)
         .def("getImageWidth", &CMMCore::getImageWidth RGIL)
         .def("getImageHeight", &CMMCore::getImageHeight RGIL)
         .def("getBytesPerPixel", &CMMCore::getBytesPerPixel RGIL)
@@ -1503,7 +1521,12 @@ MMCore will send notifications on internal events using this interface
              "term"_a RGIL)
         .def("getSerialPortAnswer", &CMMCore::getSerialPortAnswer, "portLabel"_a, "term"_a RGIL)
         .def("writeToSerialPort", &CMMCore::writeToSerialPort, "portLabel"_a, "data"_a RGIL)
-        .def("readFromSerialPort", &CMMCore::readFromSerialPort, "portLabel"_a RGIL)
+        .def("readFromSerialPort",
+            [](CMMCore &self, const char *portLabel) -> nb::bytes {
+                auto vec = self.readFromSerialPort(portLabel);
+                return nb::bytes(vec.data(), vec.size());
+            },
+            "portLabel"_a RGIL)
 
         // SLM Control
         // setSLMImage accepts a second argument (pixels) of either unsigned char* or unsigned
@@ -1578,9 +1601,9 @@ MMCore will send notifications on internal events using this interface
         .def("getGalvoPosition",
              [](CMMCore &self, const char *galvoLabel) -> std::tuple<double, double> {
                 double x, y;
-                self.getGalvoPosition(galvoLabel, x, y); // Call C++ method
-                return std::make_tuple(x, y);            // Return a tuple
-             } RGIL)
+                self.getGalvoPosition(galvoLabel, x, y);
+                return std::make_tuple(x, y);
+             }, "galvoLabel"_a RGIL)
         .def("setGalvoIlluminationState",
              &CMMCore::setGalvoIlluminationState,
              "galvoLabel"_a,

@@ -252,11 +252,11 @@ def test_current_pixel_size(demo_core: pmn.CMMCore) -> None:
     assert isinstance(um, float)
 
     affine = demo_core.getPixelSizeAffine()
-    assert isinstance(affine, list)
+    assert isinstance(affine, tuple)
     assert len(affine) == 6
 
     cached_affine = demo_core.getPixelSizeAffine(True)
-    assert isinstance(cached_affine, list)
+    assert isinstance(cached_affine, tuple)
 
 
 def test_pixel_size_by_id(demo_core: pmn.CMMCore) -> None:
@@ -266,7 +266,7 @@ def test_pixel_size_by_id(demo_core: pmn.CMMCore) -> None:
         um = demo_core.getPixelSizeUmByID(name)
         assert isinstance(um, float)
         affine = demo_core.getPixelSizeAffineByID(name)
-        assert isinstance(affine, list)
+        assert isinstance(affine, tuple)
         assert len(affine) == 6
 
 
