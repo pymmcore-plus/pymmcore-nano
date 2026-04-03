@@ -113,7 +113,7 @@ public:
         nb::gil_scoped_acquire gil;
         py_.attr("snap_image")();
         nb::object arr = py_.attr("get_image_buffer")();
-        auto nd = nb::cast<nb::ndarray<nb::c_contig>>(arr);
+        auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
         size_t nbytes = nd.nbytes();
         buf_.resize(nbytes);
         std::memcpy(buf_.data(), nd.data(), nbytes);
