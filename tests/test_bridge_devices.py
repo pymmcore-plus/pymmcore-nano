@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from pymmcore_nano import CMMCore, DeviceType
+from pymmcore_nano import CMMCore, DeviceType, PropertyBridge
 
 
 class MinimalCamera:
@@ -14,12 +14,33 @@ class MinimalCamera:
         self._height = height
         self._exposure = 10.0
         self._buf: np.ndarray | None = None
+        self._gain: float = 1.0
+        self._mode: str = "Normal"
 
     def name(self) -> str:
         return "MinimalCamera"
 
-    def initialize(self) -> None:
-        pass
+    def initialize(self, bridge: PropertyBridge | None = None) -> None:
+        if bridge is None:
+            return
+        bridge.create_property(
+            "Gain",
+            "1.0",
+            2,
+            False,
+            getter=lambda: self._gain,
+            setter=lambda v: setattr(self, "_gain", float(v)),
+        )
+        bridge.set_property_limits("Gain", 0.0, 100.0)
+        bridge.create_property(
+            "Mode",
+            "Normal",
+            1,
+            False,
+            getter=lambda: self._mode,
+            setter=lambda v: setattr(self, "_mode", str(v)),
+        )
+        bridge.set_allowed_values("Mode", ["Normal", "Fast", "Slow"])
 
     def shutdown(self) -> None:
         pass
@@ -29,9 +50,9 @@ class MinimalCamera:
 
     def snap_image(self) -> None:
         # Fill with a recognizable pattern
-        self._buf = np.arange(
-            self._width * self._height, dtype=np.uint8
-        ).reshape(self._height, self._width)
+        self._buf = np.arange(self._width * self._height, dtype=np.uint8).reshape(
+            self._height, self._width
+        )
 
     def get_image_buffer(self) -> np.ndarray:
         assert self._buf is not None
@@ -91,7 +112,7 @@ class MinimalShutter:
     def name(self) -> str:
         return "MinimalShutter"
 
-    def initialize(self) -> None:
+    def initialize(self, bridge=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -174,3 +195,40 @@ def test_unload_py_device() -> None:
 
     core.unloadDevice("Cam")
     assert "Cam" not in core.getLoadedDevices()
+
+
+def test_device_properties() -> None:
+    core = CMMCore()
+    cam = MinimalCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+
+    # Properties should be visible through CMMCore
+    names = core.getDevicePropertyNames("Cam")
+    # CCameraBase adds Transpose_* properties automatically
+    assert "Gain" in names
+    assert "Mode" in names
+
+    # Read property through CMMCore
+    # FloatProperty stores 4 decimal places (MM convention)
+    assert float(core.getProperty("Cam", "Gain")) == 1.0
+    assert core.getProperty("Cam", "Mode") == "Normal"
+
+    # Write property through CMMCore → Python device updated
+    core.setProperty("Cam", "Gain", "42.5")
+    assert cam._gain == 42.5
+    assert float(core.getProperty("Cam", "Gain")) == 42.5
+
+    core.setProperty("Cam", "Mode", "Fast")
+    assert cam._mode == "Fast"
+    assert core.getProperty("Cam", "Mode") == "Fast"
+
+    # Limits should be enforced by CDeviceBase
+    assert core.hasPropertyLimits("Cam", "Gain")
+    assert core.getPropertyLowerLimit("Cam", "Gain") == 0.0
+    assert core.getPropertyUpperLimit("Cam", "Gain") == 100.0
+
+    # Allowed values
+    allowed = core.getAllowedPropertyValues("Cam", "Mode")
+    assert set(allowed) == {"Normal", "Fast", "Slow"}

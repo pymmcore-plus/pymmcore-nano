@@ -295,6 +295,22 @@ NB_MODULE(_pymmcore_nano, m) {
     // Created here so loadPyDevice never races on initialization.
     m.attr("_bridge_adapters") = nb::dict();
 
+    // PropertyBridge — capability token passed to Python's initialize()
+    nb::class_<PropertyBridge>(
+        m, "PropertyBridge",
+        "Handle for registering MM properties during device initialization.")
+        .def("create_property", &PropertyBridge::createProperty, "name"_a, "default_value"_a,
+             "mm_type"_a, "read_only"_a, "getter"_a = nb::none(), "setter"_a = nb::none(),
+             "pre_init"_a = false,
+             nb::sig("def create_property(self, name: str, default_value: str,"
+                     " mm_type: int, read_only: bool,"
+                     " getter: typing.Callable[[], str | int | float] | None = None,"
+                     " setter: typing.Callable[[str], None] | None = None,"
+                     " pre_init: bool = False) -> None"))
+        .def("set_property_limits", &PropertyBridge::setPropertyLimits, "name"_a, "lower"_a,
+             "upper"_a)
+        .def("set_allowed_values", &PropertyBridge::setAllowedValues, "name"_a, "values"_a);
+
     /////////////////// Module Attributes ///////////////////
 
     m.attr("DEVICE_INTERFACE_VERSION") = CMMCore::getMMDeviceDeviceInterfaceVersion();
@@ -1041,21 +1057,30 @@ MMCore will send notifications on internal events using this interface
         .def("getPixelSizeAffine",
              [](CMMCore &self) {
                 std::vector<double> v;
-                { nb::gil_scoped_release gil; v = self.getPixelSizeAffine(); }
+                {
+                    nb::gil_scoped_release gil;
+                    v = self.getPixelSizeAffine();
+                }
                 return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
              },
              nb::sig("def getPixelSizeAffine(self) -> tuple[float, float, float, float, float, float]"))
         .def("getPixelSizeAffine",
              [](CMMCore &self, bool cached) {
                 std::vector<double> v;
-                { nb::gil_scoped_release gil; v = self.getPixelSizeAffine(cached); }
+                {
+                    nb::gil_scoped_release gil;
+                    v = self.getPixelSizeAffine(cached);
+                }
                 return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
              }, "cached"_a,
              nb::sig("def getPixelSizeAffine(self, cached: bool) -> tuple[float, float, float, float, float, float]"))
         .def("getPixelSizeAffineByID",
              [](CMMCore &self, const char *resolutionID) {
                 std::vector<double> v;
-                { nb::gil_scoped_release gil; v = self.getPixelSizeAffineByID(resolutionID); }
+                {
+                    nb::gil_scoped_release gil;
+                    v = self.getPixelSizeAffineByID(resolutionID);
+                }
                 return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
              }, "resolutionID"_a,
              nb::sig("def getPixelSizeAffineByID(self, resolutionID: str) -> tuple[float, float, float, float, float, float]"))
@@ -1689,20 +1714,15 @@ MMCore will send notifications on internal events using this interface
                 // outlive the CMMCore that references the adapter.
                 // Ideally MMCore would take ownership or provide a
                 // callback on unloadDevice / CMMCore destruction.
-                auto* raw = adapter.release();
-                nb::capsule cap(raw,
-                    [](void* p) noexcept {
-                        delete static_cast<PyBridgeAdapter*>(p);
-                    });
-                nb::dict reg = nb::cast<nb::dict>(
-                    nb::module_::import_("pymmcore_nano._pymmcore_nano")
-                        .attr("_bridge_adapters"));
-                reg[nb::make_tuple(
-                    nb::int_(reinterpret_cast<uintptr_t>(&self)),
-                    label)] = cap;
+                auto *raw = adapter.release();
+                nb::capsule cap(
+                    raw, [](void *p) noexcept { delete static_cast<PyBridgeAdapter *>(p); });
+                nb::dict reg =
+                    nb::cast<nb::dict>(nb::module_::import_("pymmcore_nano._pymmcore_nano")
+                                           .attr("_bridge_adapters"));
+                reg[nb::make_tuple(nb::int_(reinterpret_cast<uintptr_t>(&self)), label)] = cap;
 
-                std::string adapterName =
-                    std::string("_PyBridge_") + label;
+                std::string adapterName = std::string("_PyBridge_") + label;
                 self.loadMockDeviceAdapter(adapterName.c_str(), raw);
                 self.loadDevice(label, adapterName.c_str(), label);
             },
