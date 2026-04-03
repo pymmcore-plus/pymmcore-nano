@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -46,20 +47,15 @@ int py_call(const nb::object &py, const char *attr, Args &&...args) {
 // PropertyBridge — passed to Python's initialize(bridge) as a capability
 // token for registering MM properties on the C++ device.
 //
-// Exposed to Python as a nanobind class (registered in NB_MODULE).
-// Wraps a raw CDeviceBase pointer that is only valid during Initialize().
+// Heap-allocated and passed to Python with take_ownership so Python manages
+// its lifetime. Invalidated after Initialize() returns via a shared flag,
+// so even if Python stores a reference, methods fail cleanly.
 // ============================================================================
 
 class PropertyBridge {
-    // Type-erased pointer to the CDeviceBase. Valid only during Initialize().
     MM::Device *dev_ = nullptr;
+    std::shared_ptr<bool> valid_;
 
-    // Helper: access CDeviceBase methods via the raw MM::Device pointer.
-    // CDeviceBase is a template, but the property methods we need are
-    // inherited from its non-template base. We cast through the known
-    // CDeviceBase interface using the MM::Device virtual methods directly,
-    // but CreateProperty etc. are not virtual on MM::Device — they're on
-    // CDeviceBase. So we use a function pointer table set during construction.
     struct Vtable {
         int (*createProperty)(MM::Device *, const char *, const char *, MM::PropertyType, bool,
                               MM::ActionFunctor *, bool);
@@ -68,10 +64,17 @@ class PropertyBridge {
     };
     Vtable vt_{};
 
-  public:
-    PropertyBridge() = default;
+    void checkValid() const {
+        if (!valid_ || !*valid_ || !dev_)
+            throw std::runtime_error("PropertyBridge is only valid during initialize()");
+    }
 
-    template <typename TDevice> explicit PropertyBridge(TDevice *dev) : dev_(dev) {
+  public:
+    PropertyBridge() : valid_(std::make_shared<bool>(false)) {}
+
+    template <typename TDevice>
+    explicit PropertyBridge(TDevice *dev, std::shared_ptr<bool> valid)
+        : dev_(dev), valid_(std::move(valid)) {
         vt_.createProperty = [](MM::Device *d, const char *name, const char *val,
                                 MM::PropertyType t, bool ro, MM::ActionFunctor *act,
                                 bool preInit) -> int {
@@ -87,21 +90,16 @@ class PropertyBridge {
         };
     }
 
-    // Invalidate after Initialize() returns.
-    void invalidate() { dev_ = nullptr; }
-
     // -- Python-facing API --
 
     void createProperty(const std::string &name, const std::string &defaultValue, int mmType,
                         bool readOnly, nb::object getter, nb::object setter, bool preInit) {
-        if (!dev_)
-            throw std::runtime_error("PropertyBridge is only valid during initialize()");
+        checkValid();
 
-        MM::ActionFunctor *action = nullptr;
+        std::unique_ptr<MM::ActionFunctor> action;
         if (!getter.is_none() || !setter.is_none()) {
-            // Wrap getter/setter in a shared_ptr so the ActionLambda
-            // destructor (called by ~CDeviceBase, potentially without
-            // GIL) safely releases via the ref-guard destructor.
+            // Wrap getter/setter so the ActionLambda destructor (called
+            // by ~CDeviceBase, potentially without GIL) releases safely.
             struct PyCallbacks {
                 nb::object getter;
                 nb::object setter;
@@ -116,7 +114,7 @@ class PropertyBridge {
             };
             auto cbs = std::make_shared<PyCallbacks>(PyCallbacks{getter, setter});
 
-            action = new MM::ActionLambda(
+            action = std::make_unique<MM::ActionLambda>(
                 [cbs](MM::PropertyBase *pProp, MM::ActionType eAct) -> int {
                     nb::gil_scoped_acquire gil;
                     if (eAct == MM::BeforeGet && !cbs->getter.is_none()) {
@@ -131,22 +129,44 @@ class PropertyBridge {
                 });
         }
 
-        vt_.createProperty(dev_, name.c_str(), defaultValue.c_str(),
-                           static_cast<MM::PropertyType>(mmType), readOnly, action, preInit);
+        int ret = vt_.createProperty(dev_, name.c_str(), defaultValue.c_str(),
+                                     static_cast<MM::PropertyType>(mmType), readOnly,
+                                     action.get(), preInit);
+        if (ret == DEVICE_OK)
+            action.release(); // CDeviceBase now owns the functor
     }
 
     void setPropertyLimits(const std::string &name, double lo, double hi) {
-        if (!dev_)
-            throw std::runtime_error("PropertyBridge is only valid during initialize()");
+        checkValid();
         vt_.setPropertyLimits(dev_, name.c_str(), lo, hi);
     }
 
     void setAllowedValues(const std::string &name, std::vector<std::string> values) {
-        if (!dev_)
-            throw std::runtime_error("PropertyBridge is only valid during initialize()");
+        checkValid();
         vt_.setAllowedValues(dev_, name.c_str(), values);
     }
 };
+
+// ============================================================================
+// Helper: RAII guard for PropertyBridge initialization.
+// Creates a heap-allocated PropertyBridge, passes it to Python's initialize(),
+// and invalidates it when the guard is destroyed (even on exception).
+// ============================================================================
+
+template <typename TDevice> int initializeWithBridge(TDevice *dev, nb::object &py) {
+    auto valid = std::make_shared<bool>(true);
+    auto *bridge = new PropertyBridge(dev, valid);
+    // Python takes ownership of the bridge object
+    nb::object py_bridge = nb::cast(bridge, nb::rv_policy::take_ownership);
+    try {
+        py.attr("initialize")(py_bridge);
+    } catch (...) {
+        *valid = false;
+        throw;
+    }
+    *valid = false;
+    return DEVICE_OK;
+}
 
 // ============================================================================
 // PyBridgeCamera
@@ -154,11 +174,13 @@ class PropertyBridge {
 
 class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
     nb::object py_;
+    std::string deviceName_;
     std::vector<unsigned char> buf_;
     std::atomic<bool> capturing_{false};
 
   public:
-    explicit PyBridgeCamera(nb::object py_dev) : py_(std::move(py_dev)) {}
+    PyBridgeCamera(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
 
     ~PyBridgeCamera() {
         try {
@@ -171,19 +193,14 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
     // -- MM::Device --
     int Initialize() override {
         nb::gil_scoped_acquire gil;
-        PropertyBridge bridge(this);
-        py_.attr("initialize")(nb::cast(bridge, nb::rv_policy::reference));
-        bridge.invalidate();
-        return DEVICE_OK;
+        return initializeWithBridge(this, py_);
     }
 
     int Shutdown() override { return py_call(py_, "shutdown"); }
     bool Busy() override { return py_get<bool>(py_, "busy"); }
 
     void GetName(char *name) const override {
-        nb::gil_scoped_acquire gil;
-        auto s = nb::cast<std::string>(py_.attr("name")());
-        CDeviceUtils::CopyLimitedString(name, s.c_str());
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
     }
 
     // -- MM::Camera: getters --
@@ -269,9 +286,11 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
 
 class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
     nb::object py_;
+    std::string deviceName_;
 
   public:
-    explicit PyBridgeShutter(nb::object py_dev) : py_(std::move(py_dev)) {}
+    PyBridgeShutter(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
 
     ~PyBridgeShutter() {
         try {
@@ -284,19 +303,14 @@ class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
     // -- MM::Device --
     int Initialize() override {
         nb::gil_scoped_acquire gil;
-        PropertyBridge bridge(this);
-        py_.attr("initialize")(nb::cast(bridge, nb::rv_policy::reference));
-        bridge.invalidate();
-        return DEVICE_OK;
+        return initializeWithBridge(this, py_);
     }
 
     int Shutdown() override { return py_call(py_, "shutdown"); }
     bool Busy() override { return py_get<bool>(py_, "busy"); }
 
     void GetName(char *name) const override {
-        nb::gil_scoped_acquire gil;
-        auto s = nb::cast<std::string>(py_.attr("name")());
-        CDeviceUtils::CopyLimitedString(name, s.c_str());
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
     }
 
     // -- MM::Shutter --
@@ -311,19 +325,57 @@ class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
 };
 
 // ============================================================================
-// PyBridgeAdapter — implements MockDeviceAdapter for Python bridge devices
+// Helper: create the right bridge device for a given MM::DeviceType
+// ============================================================================
+
+inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
+                                      const std::string &name) {
+    switch (type) {
+    case MM::CameraDevice: return new PyBridgeCamera(py_dev, name);
+    case MM::ShutterDevice: return new PyBridgeShutter(py_dev, name);
+    // TODO: Stage, XYStage, State, SLM, Hub
+    default: return nullptr;
+    }
+}
+
+// ============================================================================
+// PyBridgeAdapter — implements MockDeviceAdapter for Python bridge devices.
+//
+// Supports two modes:
+//   1. Pre-instantiated: addDevice(name, py_instance, type)
+//      CreateDevice returns a bridge wrapping the existing instance.
+//   2. Class-based: addDeviceClass(name, py_class, type, description)
+//      CreateDevice instantiates the Python class on demand.
+//
+// Both modes can be mixed in the same adapter, and all devices from
+// one adapter share the same LoadedDeviceAdapter mutex.
 // ============================================================================
 
 class PyBridgeAdapter : public MockDeviceAdapter {
-    struct DeviceInfo {
+    struct DeviceEntry {
         std::string name;
-        nb::object py_dev;
+        std::string description;
+        nb::object py_obj; // either an instance or a class
         MM::DeviceType type;
+        bool is_class; // true = call py_obj() to instantiate
     };
 
-    std::vector<DeviceInfo> devices_;
+    std::vector<DeviceEntry> devices_;
+    bool loaded_ = false;
 
   public:
+    PyBridgeAdapter() = default;
+
+    // Move constructor: leaves the source marked as loaded so it
+    // rejects further modifications.
+    PyBridgeAdapter(PyBridgeAdapter &&other) noexcept
+        : devices_(std::move(other.devices_)), loaded_(other.loaded_) {
+        other.loaded_ = true;
+    }
+    PyBridgeAdapter &operator=(PyBridgeAdapter &&) = delete;
+    PyBridgeAdapter(const PyBridgeAdapter &) = delete;
+    PyBridgeAdapter &operator=(const PyBridgeAdapter &) = delete;
+
     ~PyBridgeAdapter() {
         try {
             nb::gil_scoped_acquire gil;
@@ -332,13 +384,29 @@ class PyBridgeAdapter : public MockDeviceAdapter {
         }
     }
 
+    // Register a pre-instantiated Python device (for loadPyDevice).
     void addDevice(const std::string &name, nb::object py_dev, MM::DeviceType type) {
-        devices_.push_back({name, std::move(py_dev), type});
+        if (loaded_)
+            throw std::runtime_error("Cannot add devices after adapter has been loaded");
+        devices_.push_back({name, "Python bridge device", std::move(py_dev), type, false});
     }
+
+    // Register a Python device class (for loadPyDeviceAdapter).
+    // CreateDevice will call py_cls() to instantiate.
+    void addDeviceClass(const std::string &name, nb::object py_cls, MM::DeviceType type,
+                        const std::string &description) {
+        if (loaded_)
+            throw std::runtime_error("Cannot add devices after adapter has been loaded");
+        devices_.push_back({name, description, std::move(py_cls), type, true});
+    }
+
+    // Mark as loaded — called by registerAndStoreBridgeAdapter after
+    // the adapter has been registered with CMMCore.
+    void markLoaded() { loaded_ = true; }
 
     void InitializeModuleData(RegisterDeviceFunc registerDevice) override {
         for (auto &d : devices_) {
-            registerDevice(d.name.c_str(), d.type, "Python bridge device");
+            registerDevice(d.name.c_str(), d.type, d.description.c_str());
         }
     }
 
@@ -346,11 +414,15 @@ class PyBridgeAdapter : public MockDeviceAdapter {
         nb::gil_scoped_acquire gil;
         for (auto &d : devices_) {
             if (d.name == name) {
-                switch (d.type) {
-                case MM::CameraDevice: return new PyBridgeCamera(d.py_dev);
-                case MM::ShutterDevice: return new PyBridgeShutter(d.py_dev);
-                // TODO: Stage, XYStage, State, SLM, Hub
-                default: return nullptr;
+                try {
+                    nb::object py_dev = d.is_class ? d.py_obj() : d.py_obj;
+                    return createBridgeDevice(py_dev, d.type, d.name);
+                } catch (nb::python_error &e) {
+                    e.restore();
+                    PyErr_Clear();
+                    return nullptr;
+                } catch (...) {
+                    return nullptr;
                 }
             }
         }

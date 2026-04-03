@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from pymmcore_nano import CMMCore, DeviceType, PropertyBridge
+from pymmcore_nano import CMMCore, DeviceAdapter, DeviceType, PropertyBridge
 
 
 class MinimalCamera:
@@ -16,9 +16,6 @@ class MinimalCamera:
         self._buf: np.ndarray | None = None
         self._gain: float = 1.0
         self._mode: str = "Normal"
-
-    def name(self) -> str:
-        return "MinimalCamera"
 
     def initialize(self, bridge: PropertyBridge | None = None) -> None:
         if bridge is None:
@@ -108,9 +105,6 @@ class MinimalShutter:
 
     def __init__(self) -> None:
         self._open = False
-
-    def name(self) -> str:
-        return "MinimalShutter"
 
     def initialize(self, bridge=None) -> None:
         pass
@@ -232,3 +226,64 @@ def test_device_properties() -> None:
     # Allowed values
     allowed = core.getAllowedPropertyValues("Cam", "Mode")
     assert set(allowed) == {"Normal", "Fast", "Slow"}
+
+
+def test_load_py_device_adapter() -> None:
+    """Test building a DeviceAdapter in Python and registering it."""
+
+    class MyCam(MinimalCamera):
+        """A test camera."""
+
+        _TYPE = DeviceType.CameraDevice
+
+    class MyShutter(MinimalShutter):
+        """A test shutter."""
+
+        _TYPE = DeviceType.ShutterDevice
+
+    # Build the adapter in Python — scanning logic is Python's job
+    # ultimately, pymmcore-plus would likely have conveniences to accept a ModuleType
+    # and protocols to define device name, type, and description...
+    # but this is the low level API:
+    adapter = DeviceAdapter()
+    adapter.add_device_class(MyCam.__name__, MyCam, MyCam._TYPE, MyCam.__doc__)
+    adapter.add_device_class(
+        MyShutter.__name__, MyShutter, MyShutter._TYPE, MyShutter.__doc__
+    )
+
+    core = CMMCore()
+    core.loadPyDeviceAdapter("MyHardware", adapter)
+
+    # Device discovery should work
+    available = core.getAvailableDevices("MyHardware")
+    assert "MyCam" in available
+    assert "MyShutter" in available
+
+    # Descriptions should work
+    descs = core.getAvailableDeviceDescriptions("MyHardware")
+    assert "A test camera." in descs
+    assert "A test shutter." in descs
+
+    # Load devices through normal CMMCore flow
+    core.loadDevice("Cam1", "MyHardware", "MyCam")
+    core.loadDevice("Shutter1", "MyHardware", "MyShutter")
+    core.initializeDevice("Cam1")
+    core.initializeDevice("Shutter1")
+
+    assert "Cam1" in core.getLoadedDevices()
+    assert "Shutter1" in core.getLoadedDevices()
+
+    # Devices should work normally
+    core.setCameraDevice("Cam1")
+    core.snapImage()
+    img = core.getImage()
+    assert img.shape == (32, 64)  # MinimalCamera defaults
+
+    core.setShutterDevice("Shutter1")
+    core.setShutterOpen(True)
+    assert core.getShutterOpen() is True
+
+    # Can load a second instance of the same device class
+    core.loadDevice("Cam2", "MyHardware", "MyCam")
+    core.initializeDevice("Cam2")
+    assert "Cam2" in core.getLoadedDevices()

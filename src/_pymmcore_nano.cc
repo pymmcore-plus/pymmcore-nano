@@ -282,6 +282,27 @@ class PyMMEventCallback : public MMEventCallback {
 };
 
 ////////////////////////////////////////////////////////////////////////////
+///////////////// Bridge adapter storage helper ////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+
+// Store a PyBridgeAdapter in a module-level dict (so Python GC handles
+// cleanup rather than static destruction) and register it with CMMCore.
+// TODO(upstream): MockDeviceAdapter has no unload notification or ownership
+// transfer. The capsule may outlive the CMMCore that references the adapter.
+void registerAndStoreBridgeAdapter(CMMCore &core, const std::string &adapterName,
+                                   std::unique_ptr<PyBridgeAdapter> adapter) {
+    adapter->markLoaded();
+    auto *raw = adapter.release();
+    nb::capsule cap(raw, [](void *p) noexcept { delete static_cast<PyBridgeAdapter *>(p); });
+    nb::dict reg = nb::cast<nb::dict>(
+        nb::module_::import_("pymmcore_nano._pymmcore_nano").attr("_bridge_adapters"));
+    reg[nb::make_tuple(nb::int_(reinterpret_cast<uintptr_t>(&core)), adapterName.c_str())] =
+        cap;
+
+    core.loadMockDeviceAdapter(adapterName.c_str(), raw);
+}
+
+////////////////////////////////////////////////////////////////////////////
 ///////////////// main _pymmcore_nano module definition  ///////////////////
 ////////////////////////////////////////////////////////////////////////////
 
@@ -294,6 +315,20 @@ NB_MODULE(_pymmcore_nano, m) {
     // Registry for bridge adapter capsules (see loadPyDevice).
     // Created here so loadPyDevice never races on initialization.
     m.attr("_bridge_adapters") = nb::dict();
+
+    // DeviceAdapter — Python-visible wrapper for PyBridgeAdapter.
+    // Allows Python to build an adapter by adding device classes, then
+    // register it with CMMCore. This keeps device discovery logic in Python.
+    nb::class_<PyBridgeAdapter>(
+        m, "DeviceAdapter",
+        "A collection of Python device classes that acts as an MM device "
+        "adapter library. Add device classes with add_device_class(), then "
+        "register with core.loadPyDeviceAdapter(name, adapter).")
+        .def(nb::init<>())
+        .def("add_device_class", &PyBridgeAdapter::addDeviceClass, "name"_a, "device_class"_a,
+             "device_type"_a, "description"_a,
+             nb::sig("def add_device_class(self, name: str, device_class: type,"
+                     " device_type: DeviceType, description: str) -> None"));
 
     // PropertyBridge — capability token passed to Python's initialize()
     nb::class_<PropertyBridge>(
@@ -1702,31 +1737,27 @@ MMCore will send notifications on internal events using this interface
         .def("loadPyDevice",
             [](CMMCore& self, const char* label, nb::object py_device,
                MM::DeviceType type) {
+                // Convenience: create a single-device adapter and load it
                 auto adapter = std::make_unique<PyBridgeAdapter>();
                 adapter->addDevice(label, py_device, type);
 
-                // The adapter must outlive the device. Store it in
-                // the module-level _bridge_adapters dict (initialized
-                // at module load) so Python GC handles cleanup rather
-                // than static destruction (which hangs at shutdown).
-                // TODO(upstream): MockDeviceAdapter has no unload
-                // notification or ownership transfer. The capsule may
-                // outlive the CMMCore that references the adapter.
-                // Ideally MMCore would take ownership or provide a
-                // callback on unloadDevice / CMMCore destruction.
-                auto *raw = adapter.release();
-                nb::capsule cap(
-                    raw, [](void *p) noexcept { delete static_cast<PyBridgeAdapter *>(p); });
-                nb::dict reg =
-                    nb::cast<nb::dict>(nb::module_::import_("pymmcore_nano._pymmcore_nano")
-                                           .attr("_bridge_adapters"));
-                reg[nb::make_tuple(nb::int_(reinterpret_cast<uintptr_t>(&self)), label)] = cap;
-
                 std::string adapterName = std::string("_PyBridge_") + label;
-                self.loadMockDeviceAdapter(adapterName.c_str(), raw);
+                registerAndStoreBridgeAdapter(self, adapterName, std::move(adapter));
                 self.loadDevice(label, adapterName.c_str(), label);
             },
             "label"_a, "py_device"_a, "type"_a)
+
+        .def("loadPyDeviceAdapter",
+            [](CMMCore& self, const char* adapterName,
+               PyBridgeAdapter* adapter) {
+                // Move the adapter contents into a new owned instance.
+                // The Python-side DeviceAdapter is left in a "loaded"
+                // state — add_device/add_device_class will raise if
+                // called again.
+                auto owned = std::make_unique<PyBridgeAdapter>(std::move(*adapter));
+                registerAndStoreBridgeAdapter(self, adapterName, std::move(owned));
+            },
+            "adapter_name"_a, "adapter"_a)
 
         ;
 }
