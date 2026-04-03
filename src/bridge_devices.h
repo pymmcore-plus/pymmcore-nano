@@ -11,6 +11,7 @@
 #include "MMDevice.h"
 #include "MockDeviceAdapter.h"
 
+#include <atomic>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -54,14 +55,17 @@ int py_call(const nb::object& py, const char* attr, Args&&... args) {
 class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
     nb::object py_;
     std::vector<unsigned char> buf_;
-    bool capturing_ = false;
+    std::atomic<bool> capturing_{false};
 
 public:
     explicit PyBridgeCamera(nb::object py_dev) : py_(std::move(py_dev)) {}
 
     ~PyBridgeCamera() {
-        nb::gil_scoped_acquire gil;
-        py_.reset();
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
     }
 
     // -- MM::Device --
@@ -109,8 +113,8 @@ public:
         nb::gil_scoped_acquire gil;
         py_.attr("snap_image")();
         nb::object arr = py_.attr("get_image_buffer")();
-        auto nd = nb::cast<nb::ndarray<uint8_t, nb::c_contig>>(arr);
-        size_t nbytes = nd.size();
+        auto nd = nb::cast<nb::ndarray<nb::c_contig>>(arr);
+        size_t nbytes = nd.nbytes();
         buf_.resize(nbytes);
         std::memcpy(buf_.data(), nd.data(), nbytes);
         return DEVICE_OK;
@@ -145,9 +149,9 @@ public:
     int StartSequenceAcquisition(long numImages, double interval_ms,
                                  bool stopOnOverflow) override {
         nb::gil_scoped_acquire gil;
-        capturing_ = true;
         py_.attr("start_sequence_acquisition")(numImages, interval_ms,
                                                stopOnOverflow);
+        capturing_ = true;  // set after success
         return DEVICE_OK;
     }
 
@@ -174,8 +178,11 @@ public:
     explicit PyBridgeShutter(nb::object py_dev) : py_(std::move(py_dev)) {}
 
     ~PyBridgeShutter() {
-        nb::gil_scoped_acquire gil;
-        py_.reset();
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
     }
 
     // -- MM::Device --
@@ -218,6 +225,14 @@ class PyBridgeAdapter : public MockDeviceAdapter {
     std::vector<DeviceInfo> devices_;
 
 public:
+    ~PyBridgeAdapter() {
+        try {
+            nb::gil_scoped_acquire gil;
+            devices_.clear();
+        } catch (...) {
+        }
+    }
+
     void addDevice(const std::string& name, nb::object py_dev,
                    MM::DeviceType type) {
         devices_.push_back({name, std::move(py_dev), type});
@@ -230,6 +245,7 @@ public:
     }
 
     MM::Device* CreateDevice(const char* name) override {
+        nb::gil_scoped_acquire gil;
         for (auto& d : devices_) {
             if (d.name == name) {
                 switch (d.type) {
