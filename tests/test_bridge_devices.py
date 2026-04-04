@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from pymmcore_nano import CMMCore, DeviceAdapter, DeviceType, PropertyBridge
+from pymmcore_nano import CMMCore, DeviceAdapter, DeviceType
 
 
 class MinimalCamera:
@@ -17,10 +17,10 @@ class MinimalCamera:
         self._gain: float = 1.0
         self._mode: str = "Normal"
 
-    def initialize(self, bridge: PropertyBridge | None = None) -> None:
-        if bridge is None:
+    def initialize(self, create_property=None) -> None:
+        if create_property is None:
             return
-        bridge.create_property(
+        self._gain_prop = create_property(
             "Gain",
             "1.0",
             2,
@@ -29,7 +29,7 @@ class MinimalCamera:
             setter=lambda v: setattr(self, "_gain", float(v)),
             limits=(0.0, 100.0),
         )
-        bridge.create_property(
+        create_property(
             "Mode",
             "Normal",
             1,
@@ -106,7 +106,7 @@ class MinimalShutter:
     def __init__(self) -> None:
         self._open = False
 
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -299,7 +299,7 @@ class MinimalStage:
         self._pos_um = 0.0
         self._pos_steps = 0
 
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -333,7 +333,7 @@ class MinimalXYStage:
         self._x_steps = 0
         self._y_steps = 0
 
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -376,7 +376,7 @@ class MinimalState:
     def __init__(self, n_positions: int = 4) -> None:
         self._n = n_positions
 
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -394,7 +394,7 @@ class MinimalAutoFocus:
         self._continuous = False
         self._offset = 0.0
 
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -432,7 +432,7 @@ class MinimalAutoFocus:
 
 
 class MinimalGeneric:
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -443,7 +443,7 @@ class MinimalGeneric:
 
 
 class MinimalHub:
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -463,7 +463,7 @@ class MinimalSLM:
         self._exposure = 0.0
         self._image: np.ndarray | None = None
 
-    def initialize(self, bridge=None) -> None:
+    def initialize(self, create_property=None) -> None:
         pass
 
     def shutdown(self) -> None:

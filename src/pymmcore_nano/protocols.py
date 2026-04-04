@@ -11,16 +11,36 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     import numpy as np
 
-    from . import PropertyBridge
+    from . import PropertyHandle
+
+
+class CreatePropertyFn(Protocol):
+    """Callable passed to initialize() for registering MM properties."""
+
+    def __call__(
+        self,
+        name: str,
+        default_value: str,
+        mm_type: int,
+        read_only: bool,
+        *,
+        getter: Callable[[], str | int | float] | None = None,
+        setter: Callable[[str], None] | None = None,
+        pre_init: bool = False,
+        limits: tuple[float, float] | None = None,
+        allowed_values: Sequence[str] | None = None,
+    ) -> PropertyHandle: ...
 
 
 @runtime_checkable
 class PyDevice(Protocol):
     """Base protocol for all Python bridge devices."""
 
-    def initialize(self, bridge: PropertyBridge) -> None: ...
+    def initialize(self, create_property: CreatePropertyFn) -> None: ...
     def shutdown(self) -> None: ...
     def busy(self) -> bool: ...
 

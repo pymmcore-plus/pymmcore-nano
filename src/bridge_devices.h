@@ -44,178 +44,201 @@ int py_call(const nb::object &py, const char *attr, Args &&...args) {
 }
 
 // ============================================================================
-// PropertyBridge — passed to Python's initialize(bridge) as a capability
-// token for registering MM properties on the C++ device.
-//
-// Heap-allocated and passed to Python with take_ownership so Python manages
-// its lifetime. Invalidated after Initialize() returns via a shared flag,
-// so even if Python stores a reference, methods fail cleanly.
+// PropertyHandle — returned by create_property(), allows dynamic updates
+// to a single property's limits and allowed values. Valid for the device's
+// entire lifetime (the dev_ pointer lives as long as CMMCore owns the device).
 // ============================================================================
 
-class PropertyBridge {
+class PropertyHandle {
     MM::Device *dev_ = nullptr;
-    std::shared_ptr<bool> valid_;
+    std::string name_;
 
     struct Vtable {
-        int (*createProperty)(MM::Device *, const char *, const char *, MM::PropertyType, bool,
-                              MM::ActionFunctor *, bool);
         int (*setPropertyLimits)(MM::Device *, const char *, double, double);
         int (*setAllowedValues)(MM::Device *, const char *, std::vector<std::string> &);
     };
     Vtable vt_{};
 
-    void checkValid() const {
-        if (!valid_ || !*valid_ || !dev_)
-            throw std::runtime_error("PropertyBridge is only valid during initialize()");
-    }
-
   public:
-    PropertyBridge() : valid_(std::make_shared<bool>(false)) {}
+    PropertyHandle() = default;
 
     template <typename TDevice>
-    explicit PropertyBridge(TDevice *dev, std::shared_ptr<bool> valid)
-        : dev_(dev), valid_(std::move(valid)) {
-        vt_.createProperty = [](MM::Device *d, const char *name, const char *val,
-                                MM::PropertyType t, bool ro, MM::ActionFunctor *act,
-                                bool preInit) -> int {
-            return static_cast<TDevice *>(d)->CreateProperty(name, val, t, ro, act, preInit);
+    PropertyHandle(TDevice *dev, std::string name) : dev_(dev), name_(std::move(name)) {
+        vt_.setPropertyLimits = [](MM::Device *d, const char *n, double lo, double hi) -> int {
+            return static_cast<TDevice *>(d)->SetPropertyLimits(n, lo, hi);
         };
-        vt_.setPropertyLimits = [](MM::Device *d, const char *name, double lo,
-                                   double hi) -> int {
-            return static_cast<TDevice *>(d)->SetPropertyLimits(name, lo, hi);
-        };
-        vt_.setAllowedValues = [](MM::Device *d, const char *name,
+        vt_.setAllowedValues = [](MM::Device *d, const char *n,
                                   std::vector<std::string> &vals) -> int {
-            return static_cast<TDevice *>(d)->SetAllowedValues(name, vals);
+            return static_cast<TDevice *>(d)->SetAllowedValues(n, vals);
         };
     }
 
-    // -- Python-facing API --
+    void setLimits(double lo, double hi) { vt_.setPropertyLimits(dev_, name_.c_str(), lo, hi); }
 
-    void createProperty(const std::string &name, const std::string &defaultValue, int mmType,
-                        bool readOnly, nb::object getter, nb::object setter, bool preInit,
-                        nb::object limits, nb::object allowedValues) {
-        checkValid();
-
-        std::unique_ptr<MM::ActionFunctor> action;
-        if (!getter.is_none() || !setter.is_none()) {
-            // Wrap getter/setter so the ActionLambda destructor (called
-            // by ~CDeviceBase, potentially without GIL) releases safely.
-            struct PyCallbacks {
-                nb::object getter;
-                nb::object setter;
-                ~PyCallbacks() {
-                    try {
-                        nb::gil_scoped_acquire gil;
-                        getter.reset();
-                        setter.reset();
-                    } catch (...) {
-                    }
-                }
-            };
-            auto cbs = std::make_shared<PyCallbacks>(PyCallbacks{getter, setter});
-
-            action = std::make_unique<MM::ActionLambda>(
-                [cbs](MM::PropertyBase *pProp, MM::ActionType eAct) -> int {
-                    nb::gil_scoped_acquire gil;
-                    if (eAct == MM::BeforeGet && !cbs->getter.is_none()) {
-                        auto val = cbs->getter();
-                        pProp->Set(nb::cast<std::string>(nb::str(val)).c_str());
-                    } else if (eAct == MM::AfterSet && !cbs->setter.is_none()) {
-                        std::string val;
-                        pProp->Get(val);
-                        cbs->setter(nb::str(val.c_str()));
-                    }
-                    return DEVICE_OK;
-                });
-        }
-
-        int ret = vt_.createProperty(dev_, name.c_str(), defaultValue.c_str(),
-                                     static_cast<MM::PropertyType>(mmType), readOnly,
-                                     action.get(), preInit);
-        if (ret == DEVICE_OK)
-            action.release(); // CDeviceBase now owns the functor
-
-        // Apply optional constraints
-        if (!limits.is_none()) {
-            double lo = nb::cast<double>(limits[nb::int_(0)]);
-            double hi = nb::cast<double>(limits[nb::int_(1)]);
-            vt_.setPropertyLimits(dev_, name.c_str(), lo, hi);
-        }
-        if (!allowedValues.is_none()) {
-            std::vector<std::string> vals;
-            for (auto v : allowedValues)
-                vals.push_back(nb::cast<std::string>(nb::str(v)));
-            vt_.setAllowedValues(dev_, name.c_str(), vals);
-        }
-    }
-
-    void setPropertyLimits(const std::string &name, double lo, double hi) {
-        checkValid();
-        vt_.setPropertyLimits(dev_, name.c_str(), lo, hi);
-    }
-
-    void setAllowedValues(const std::string &name, std::vector<std::string> values) {
-        checkValid();
-        vt_.setAllowedValues(dev_, name.c_str(), values);
+    void setAllowedValues(std::vector<std::string> values) {
+        vt_.setAllowedValues(dev_, name_.c_str(), values);
     }
 };
 
 // ============================================================================
-// Helper: RAII guard for PropertyBridge initialization.
-// Creates a heap-allocated PropertyBridge, passes it to Python's initialize(),
-// and invalidates it when the guard is destroyed (even on exception).
+// createPropertyFactory — builds the create_property callable that is passed
+// to Python's initialize(create_property).
+//
+// Each call to create_property registers an MM property on the C++ device
+// with an ActionLambda for get/set, and returns a PropertyHandle for
+// dynamic constraint updates.
 // ============================================================================
 
-template <typename TDevice> int initializeWithBridge(TDevice *dev, nb::object &py) {
-    auto valid = std::make_shared<bool>(true);
-    auto *bridge = new PropertyBridge(dev, valid);
-    // Python takes ownership of the bridge object
-    nb::object py_bridge = nb::cast(bridge, nb::rv_policy::take_ownership);
+// GIL-safe destructor for getter/setter captured in ActionLambda.
+// CDeviceBase may destroy the ActionLambda without the GIL held.
+struct PyCallbacks {
+    nb::object getter;
+    nb::object setter;
+    ~PyCallbacks() {
+        try {
+            nb::gil_scoped_acquire gil;
+            getter.reset();
+            setter.reset();
+        } catch (...) {
+        }
+    }
+};
+
+// Build an ActionLambda that forwards BeforeGet/AfterSet to Python callables.
+inline std::unique_ptr<MM::ActionFunctor> makePropertyAction(nb::object getter,
+                                                             nb::object setter) {
+    if (getter.is_none() && setter.is_none())
+        return nullptr;
+
+    auto cbs = std::make_shared<PyCallbacks>(PyCallbacks{getter, setter});
+    return std::make_unique<MM::ActionLambda>(
+        [cbs](MM::PropertyBase *pProp, MM::ActionType eAct) -> int {
+            nb::gil_scoped_acquire gil;
+            if (eAct == MM::BeforeGet && !cbs->getter.is_none()) {
+                auto val = cbs->getter();
+                pProp->Set(nb::cast<std::string>(nb::str(val)).c_str());
+            } else if (eAct == MM::AfterSet && !cbs->setter.is_none()) {
+                std::string val;
+                pProp->Get(val);
+                cbs->setter(nb::str(val.c_str()));
+            }
+            return DEVICE_OK;
+        });
+}
+
+// ============================================================================
+// createPropertyFactory — builds the create_property callable that is passed
+// to Python's initialize(create_property).
+//
+// Each call registers an MM property and returns a PropertyHandle for
+// dynamic constraint updates. The factory is invalidated after initialize()
+// returns — calling it later raises RuntimeError.
+// ============================================================================
+
+template <typename TDevice>
+nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<bool> canCreate) {
+    // Type-erased CreateProperty
+    auto doCreate = [](MM::Device *d, const char *name, const char *val, MM::PropertyType t,
+                       bool ro, MM::ActionFunctor *act, bool preInit) -> int {
+        return static_cast<TDevice *>(d)->CreateProperty(name, val, t, ro, act, preInit);
+    };
+
+    return nb::cpp_function(
+        [dev, doCreate, canCreate](const std::string &name, const std::string &defaultValue,
+                                   int mmType, bool readOnly, nb::object getter,
+                                   nb::object setter, bool preInit, nb::object limits,
+                                   nb::object allowedValues) -> PropertyHandle {
+            if (!*canCreate)
+                throw std::runtime_error("create_property() can only be called during "
+                                         "initialize()");
+
+            auto action = makePropertyAction(getter, setter);
+
+            int ret = doCreate(dev, name.c_str(), defaultValue.c_str(),
+                               static_cast<MM::PropertyType>(mmType), readOnly, action.get(),
+                               preInit);
+            if (ret == DEVICE_OK)
+                action.release();
+
+            PropertyHandle handle(dev, name);
+
+            if (!limits.is_none()) {
+                double lo = nb::cast<double>(limits[nb::int_(0)]);
+                double hi = nb::cast<double>(limits[nb::int_(1)]);
+                handle.setLimits(lo, hi);
+            }
+            if (!allowedValues.is_none()) {
+                std::vector<std::string> vals;
+                for (auto v : allowedValues)
+                    vals.push_back(nb::cast<std::string>(nb::str(v)));
+                handle.setAllowedValues(vals);
+            }
+
+            return handle;
+        },
+        nb::arg("name"), nb::arg("default_value"), nb::arg("mm_type"), nb::arg("read_only"),
+        nb::kw_only(), nb::arg("getter") = nb::none(), nb::arg("setter") = nb::none(),
+        nb::arg("pre_init") = false, nb::arg("limits") = nb::none(),
+        nb::arg("allowed_values") = nb::none());
+}
+
+// ============================================================================
+// initializeWithPropertyFactory — calls Python's initialize(create_property).
+// The create_property callable is invalidated after initialize() returns.
+// ============================================================================
+
+template <typename TDevice> int initializeWithPropertyFactory(TDevice *dev, nb::object &py) {
+    auto canCreate = std::make_shared<bool>(true);
+    nb::object factory = createPropertyFactory(dev, canCreate);
     try {
-        py.attr("initialize")(py_bridge);
+        py.attr("initialize")(factory);
     } catch (...) {
-        *valid = false;
+        *canCreate = false;
         throw;
     }
-    *valid = false;
+    *canCreate = false;
     return DEVICE_OK;
 }
+
+// ============================================================================
+// Common members for all bridge device classes.
+// Provides: py_, deviceName_, constructor, destructor,
+//           Initialize, Shutdown, Busy, GetName.
+// ============================================================================
+
+#define PYBRIDGE_DEVICE_BOILERPLATE(ClassName)                                                 \
+    nb::object py_;                                                                            \
+    std::string deviceName_;                                                                   \
+                                                                                               \
+  public:                                                                                      \
+    ClassName(nb::object py_dev, std::string name)                                             \
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}                              \
+    ~ClassName() {                                                                             \
+        try {                                                                                  \
+            nb::gil_scoped_acquire gil;                                                        \
+            py_.reset();                                                                       \
+        } catch (...) {                                                                        \
+        }                                                                                      \
+    }                                                                                          \
+    int Initialize() override {                                                                \
+        nb::gil_scoped_acquire gil;                                                            \
+        return initializeWithPropertyFactory(this, py_);                                       \
+    }                                                                                          \
+    int Shutdown() override { return py_call(py_, "shutdown"); }                               \
+    bool Busy() override { return py_get<bool>(py_, "busy"); }                                 \
+    void GetName(char *name) const override {                                                  \
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());                            \
+    }
 
 // ============================================================================
 // PyBridgeCamera
 // ============================================================================
 
 class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
-    nb::object py_;
-    std::string deviceName_;
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeCamera)
+
     std::vector<unsigned char> buf_;
     std::atomic<bool> capturing_{false};
-
-  public:
-    PyBridgeCamera(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeCamera() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    // -- MM::Device --
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
 
     // -- MM::Camera: getters --
     unsigned GetImageWidth() const override { return py_get<unsigned>(py_, "get_image_width"); }
@@ -299,33 +322,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
 // ============================================================================
 
 class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeShutter(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeShutter() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    // -- MM::Device --
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeShutter)
 
     // -- MM::Shutter --
     int SetOpen(bool open) override { return py_call(py_, "set_open", open); }
@@ -343,30 +340,7 @@ class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
 // ============================================================================
 
 class PyBridgeStage : public CStageBase<PyBridgeStage> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeStage(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeStage() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeStage)
 
     // -- MM::Stage (pure virtuals only — base provides defaults for rest) --
     int SetPositionUm(double pos) override { return py_call(py_, "set_position_um", pos); }
@@ -401,30 +375,7 @@ class PyBridgeStage : public CStageBase<PyBridgeStage> {
 // ============================================================================
 
 class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeXYStage(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeXYStage() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeXYStage)
 
     // -- MM::XYStage (pure virtuals — base provides Um/relative/origin defaults) --
     int SetPositionSteps(long x, long y) override {
@@ -471,30 +422,7 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage> {
 // ============================================================================
 
 class PyBridgeState : public CStateDeviceBase<PyBridgeState> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeState(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeState() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeState)
 
     // -- MM::State --
     // CStateDeviceBase provides defaults for SetPosition, GetPosition,
@@ -512,30 +440,7 @@ class PyBridgeState : public CStateDeviceBase<PyBridgeState> {
 // ============================================================================
 
 class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeAutoFocus(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeAutoFocus() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeAutoFocus)
 
     // -- MM::AutoFocus --
     int SetContinuousFocusing(bool state) override {
@@ -570,30 +475,7 @@ class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus> {
 // ============================================================================
 
 class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeGeneric(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeGeneric() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeGeneric)
 };
 
 // ============================================================================
@@ -601,30 +483,7 @@ class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric> {
 // ============================================================================
 
 class PyBridgeHub : public HubBase<PyBridgeHub> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeHub(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeHub() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeHub)
 
     // HubBase provides defaults for DetectInstalledDevices,
     // GetNumberOfInstalledDevices, GetInstalledDevice, ClearInstalledDevices.
@@ -637,30 +496,7 @@ class PyBridgeHub : public HubBase<PyBridgeHub> {
 // ============================================================================
 
 class PyBridgeSLM : public CSLMBase<PyBridgeSLM> {
-    nb::object py_;
-    std::string deviceName_;
-
-  public:
-    PyBridgeSLM(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
-
-    ~PyBridgeSLM() {
-        try {
-            nb::gil_scoped_acquire gil;
-            py_.reset();
-        } catch (...) {
-        }
-    }
-
-    int Initialize() override {
-        nb::gil_scoped_acquire gil;
-        return initializeWithBridge(this, py_);
-    }
-    int Shutdown() override { return py_call(py_, "shutdown"); }
-    bool Busy() override { return py_get<bool>(py_, "busy"); }
-    void GetName(char *name) const override {
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
-    }
+    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeSLM)
 
     // -- MM::SLM --
     int SetImage(unsigned char *pixels) override {
