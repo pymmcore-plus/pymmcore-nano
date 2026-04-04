@@ -52,6 +52,7 @@ int py_call(const nb::object &py, const char *attr, Args &&...args) {
 class PropertyHandle {
     MM::Device *dev_ = nullptr;
     std::string name_;
+    std::shared_ptr<std::atomic<bool>> alive_;
 
     struct Vtable {
         int (*setPropertyLimits)(MM::Device *, const char *, double, double);
@@ -59,11 +60,17 @@ class PropertyHandle {
     };
     Vtable vt_{};
 
+    void checkAlive() const {
+        if (!alive_ || !*alive_)
+            throw std::runtime_error("Device has been unloaded");
+    }
+
   public:
     PropertyHandle() = delete;
 
     template <typename TDevice>
-    PropertyHandle(TDevice *dev, std::string name) : dev_(dev), name_(std::move(name)) {
+    PropertyHandle(TDevice *dev, std::string name, std::shared_ptr<std::atomic<bool>> alive)
+        : dev_(dev), name_(std::move(name)), alive_(std::move(alive)) {
         vt_.setPropertyLimits = [](MM::Device *d, const char *n, double lo, double hi) -> int {
             return static_cast<TDevice *>(d)->SetPropertyLimits(n, lo, hi);
         };
@@ -73,9 +80,13 @@ class PropertyHandle {
         };
     }
 
-    void setLimits(double lo, double hi) { vt_.setPropertyLimits(dev_, name_.c_str(), lo, hi); }
+    void setLimits(double lo, double hi) {
+        checkAlive();
+        vt_.setPropertyLimits(dev_, name_.c_str(), lo, hi);
+    }
 
     void setAllowedValues(std::vector<std::string> values) {
+        checkAlive();
         vt_.setAllowedValues(dev_, name_.c_str(), values);
     }
 };
@@ -136,7 +147,8 @@ inline std::unique_ptr<MM::ActionFunctor> makePropertyAction(nb::object getter,
 // ============================================================================
 
 template <typename TDevice>
-nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>> canCreate) {
+nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>> canCreate,
+                                 std::shared_ptr<std::atomic<bool>> alive) {
     // Type-erased CreateProperty
     auto doCreate = [](MM::Device *d, const char *name, const char *val, MM::PropertyType t,
                        bool ro, MM::ActionFunctor *act, bool preInit) -> int {
@@ -144,10 +156,10 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
     };
 
     return nb::cpp_function(
-        [dev, doCreate, canCreate](const std::string &name, const std::string &defaultValue,
-                                   int mmType, bool readOnly, nb::object getter,
-                                   nb::object setter, bool preInit, nb::object limits,
-                                   nb::object allowedValues) -> PropertyHandle {
+        [dev, doCreate, canCreate,
+         alive](const std::string &name, const std::string &defaultValue, int mmType,
+                bool readOnly, nb::object getter, nb::object setter, bool preInit,
+                nb::object limits, nb::object allowedValues) -> PropertyHandle {
             if (!*canCreate)
                 throw std::runtime_error("create_property() can only be called during "
                                          "initialize()");
@@ -160,7 +172,7 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
             if (ret == DEVICE_OK)
                 action.release();
 
-            PropertyHandle handle(dev, name);
+            PropertyHandle handle(dev, name, alive);
 
             if (!limits.is_none()) {
                 double lo = nb::cast<double>(limits[nb::int_(0)]);
@@ -187,9 +199,11 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
 // The create_property callable is invalidated after initialize() returns.
 // ============================================================================
 
-template <typename TDevice> int initializeWithPropertyFactory(TDevice *dev, nb::object &py) {
+template <typename TDevice>
+int initializeWithPropertyFactory(TDevice *dev, nb::object &py,
+                                  std::shared_ptr<std::atomic<bool>> alive) {
     auto canCreate = std::make_shared<std::atomic<bool>>(true);
-    nb::object factory = createPropertyFactory(dev, canCreate);
+    nb::object factory = createPropertyFactory(dev, canCreate, alive);
     try {
         py.attr("initialize")(factory);
     } catch (...) {
@@ -209,6 +223,7 @@ template <typename TDevice> class PyBridgeDeviceBase {
   protected:
     nb::object py_;
     std::string deviceName_;
+    std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
 
     PyBridgeDeviceBase(nb::object py_dev, std::string name)
         : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
@@ -223,10 +238,13 @@ template <typename TDevice> class PyBridgeDeviceBase {
 
     int initializeCommon(TDevice *dev) {
         nb::gil_scoped_acquire gil;
-        return initializeWithPropertyFactory(dev, py_);
+        return initializeWithPropertyFactory(dev, py_, alive_);
     }
 
-    int shutdownCommon() { return py_call(py_, "shutdown"); }
+    int shutdownCommon() {
+        *alive_ = false;
+        return py_call(py_, "shutdown");
+    }
 
     bool busyCommon() { return py_get<bool>(py_, "busy"); }
 
