@@ -970,6 +970,65 @@ class PyBridgeSignalIO : public CSignalIOBase<PyBridgeSignalIO>,
 };
 
 // ============================================================================
+// PyBridgeGalvo
+// ============================================================================
+
+class PyBridgeGalvo : public CGalvoBase<PyBridgeGalvo>,
+                      private PyBridgeDeviceBase<PyBridgeGalvo> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeGalvo)
+
+    // -- MM::Galvo: position + illumination --
+    int PointAndFire(double x, double y, double time_us) override {
+        return py_call(py_, "point_and_fire", x, y, time_us);
+    }
+    int SetSpotInterval(double pulseInterval_us) override {
+        return py_call(py_, "set_spot_interval", pulseInterval_us);
+    }
+    int SetPosition(double x, double y) override { return py_call(py_, "set_position", x, y); }
+    int GetPosition(double &x, double &y) override {
+        return py_invoke([&]() -> int {
+            auto pos = py_.attr("get_position")();
+            x = nb::cast<double>(pos[nb::int_(0)]);
+            y = nb::cast<double>(pos[nb::int_(1)]);
+            return DEVICE_OK;
+        });
+    }
+    int SetIlluminationState(bool on) override {
+        return py_call(py_, "set_illumination_state", on);
+    }
+
+    // -- MM::Galvo: range --
+    double GetXRange() override { return py_get<double>(py_, "get_x_range"); }
+    double GetXMinimum() override { return py_get<double>(py_, "get_x_minimum"); }
+    double GetYRange() override { return py_get<double>(py_, "get_y_range"); }
+    double GetYMinimum() override { return py_get<double>(py_, "get_y_minimum"); }
+
+    // -- MM::Galvo: polygons --
+    int AddPolygonVertex(int polygonIndex, double x, double y) override {
+        return py_call(py_, "add_polygon_vertex", polygonIndex, x, y);
+    }
+    int DeletePolygons() override { return py_call(py_, "delete_polygons"); }
+    int LoadPolygons() override { return py_call(py_, "load_polygons"); }
+    int SetPolygonRepetitions(int repetitions) override {
+        return py_call(py_, "set_polygon_repetitions", repetitions);
+    }
+    int RunPolygons() override { return py_call(py_, "run_polygons"); }
+
+    // -- MM::Galvo: sequence --
+    int RunSequence() override { return py_call(py_, "run_sequence"); }
+    int StopSequence() override { return py_call(py_, "stop_sequence"); }
+
+    // -- MM::Galvo: channel --
+    int GetChannel(char *channelName) override {
+        return py_invoke([&]() -> int {
+            auto name = nb::cast<std::string>(py_.attr("get_channel")());
+            CDeviceUtils::CopyLimitedString(channelName, name.c_str());
+            return DEVICE_OK;
+        });
+    }
+};
+
+// ============================================================================
 // PyBridgeGeneric
 // ============================================================================
 
@@ -1144,6 +1203,7 @@ inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
     case MM::SLMDevice: return new PyBridgeSLM(py_dev, name);
     case MM::AutoFocusDevice: return new PyBridgeAutoFocus(py_dev, name);
     case MM::SignalIODevice: return new PyBridgeSignalIO(py_dev, name);
+    case MM::GalvoDevice: return new PyBridgeGalvo(py_dev, name);
     case MM::GenericDevice: return new PyBridgeGeneric(py_dev, name);
     case MM::HubDevice: return new PyBridgeHub(py_dev, name);
     default:

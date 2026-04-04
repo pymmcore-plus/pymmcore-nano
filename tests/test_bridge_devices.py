@@ -590,6 +590,70 @@ class MinimalSignalIO(MinimalDevice):
         return False
 
 
+class MinimalGalvo(MinimalDevice):
+    def __init__(self) -> None:
+        self._x = 0.0
+        self._y = 0.0
+        self._illumination = False
+        self._spot_interval = 0.0
+        self._polygons: dict[int, list[tuple[float, float]]] = {}
+        self._repetitions = 1
+        self._sequence_running = False
+
+    def point_and_fire(self, x: float, y: float, time_us: float) -> None:
+        self._x = x
+        self._y = y
+
+    def set_spot_interval(self, pulse_interval_us: float) -> None:
+        self._spot_interval = pulse_interval_us
+
+    def set_position(self, x: float, y: float) -> None:
+        self._x = x
+        self._y = y
+
+    def get_position(self) -> tuple[float, float]:
+        return (self._x, self._y)
+
+    def set_illumination_state(self, on: bool) -> None:
+        self._illumination = on
+
+    def get_x_range(self) -> float:
+        return 100.0
+
+    def get_x_minimum(self) -> float:
+        return 0.0
+
+    def get_y_range(self) -> float:
+        return 100.0
+
+    def get_y_minimum(self) -> float:
+        return 0.0
+
+    def add_polygon_vertex(self, polygon_index: int, x: float, y: float) -> None:
+        self._polygons.setdefault(polygon_index, []).append((x, y))
+
+    def delete_polygons(self) -> None:
+        self._polygons.clear()
+
+    def load_polygons(self) -> None:
+        pass
+
+    def set_polygon_repetitions(self, repetitions: int) -> None:
+        self._repetitions = repetitions
+
+    def run_polygons(self) -> None:
+        pass
+
+    def run_sequence(self) -> None:
+        self._sequence_running = True
+
+    def stop_sequence(self) -> None:
+        self._sequence_running = False
+
+    def get_channel(self) -> str:
+        return ""
+
+
 class MinimalState(MinimalDevice):
     def __init__(self, n_positions: int = 4, labels: list[str] | None = None) -> None:
         self._n = n_positions
@@ -765,6 +829,46 @@ def test_load_py_signal_io() -> None:
 
     assert "DA" in core.getLoadedDevices()
     assert core.getDeviceType("DA") == DeviceType.SignalIODevice
+
+
+def test_load_py_galvo() -> None:
+    core = CMMCore()
+    galvo = MinimalGalvo()
+    core.loadPyDevice("Galvo", galvo, DeviceType.GalvoDevice)
+    core.initializeDevice("Galvo")
+    core.setGalvoDevice("Galvo")
+
+    assert "Galvo" in core.getLoadedDevices()
+    assert core.getDeviceType("Galvo") == DeviceType.GalvoDevice
+
+    # Position
+    core.setGalvoPosition("Galvo", 10.0, 20.0)
+    assert galvo._x == 10.0
+    assert galvo._y == 20.0
+    pos = core.getGalvoPosition("Galvo")
+    assert pos == (10.0, 20.0)
+
+    # Range
+    assert core.getGalvoXRange("Galvo") == 100.0
+    assert core.getGalvoYRange("Galvo") == 100.0
+
+    # Illumination
+    core.setGalvoIlluminationState("Galvo", True)
+    assert galvo._illumination is True
+
+    # Polygons
+    core.addGalvoPolygonVertex("Galvo", 0, 1.0, 2.0)
+    core.addGalvoPolygonVertex("Galvo", 0, 3.0, 4.0)
+    assert galvo._polygons[0] == [(1.0, 2.0), (3.0, 4.0)]
+
+    core.deleteGalvoPolygons("Galvo")
+    assert galvo._polygons == {}
+
+    # Sequence
+    core.runGalvoSequence("Galvo")
+    assert galvo._sequence_running is True
+    # Note: stopGalvoSequence is not in the CMMCore public API —
+    # StopSequence is called internally. Test the Python method directly.
 
 
 def test_load_py_generic() -> None:
