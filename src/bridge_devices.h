@@ -15,7 +15,6 @@
 #include "MockDeviceAdapter.h"
 
 #include <atomic>
-#include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
@@ -395,7 +394,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                        private PyBridgeDeviceBase<PyBridgeCamera> {
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeCamera)
 
-    std::vector<unsigned char> buf_;
+    nb::object img_arr_;  // holds ndarray from get_image_buffer() to prevent GC
     std::atomic<bool> capturing_{false};
 
     // -- MM::Camera: getters --
@@ -418,19 +417,18 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     int SetBinning(int bin) override { return py_call(py_, "set_binning", bin); }
 
     // -- MM::Camera: snap + buffer --
-    int SnapImage() override {
-        return py_invoke([&]() -> int {
-            py_.attr("snap_image")();
-            nb::object arr = py_.attr("get_image_buffer")();
-            auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
-            size_t nbytes = nd.nbytes();
-            buf_.resize(nbytes);
-            std::memcpy(buf_.data(), nd.data(), nbytes);
-            return DEVICE_OK;
+    int SnapImage() override { return py_call(py_, "snap_image"); }
+
+    const unsigned char *GetImageBuffer() override {
+        return py_invoke([&]() -> const unsigned char * {
+            // Zero-copy: store the Python array to prevent GC and return its
+            // data pointer directly. The c_contig constraint will trigger an
+            // implicit copy only if the array is non-contiguous (e.g. a slice).
+            img_arr_ = py_.attr("get_image_buffer")();
+            auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(img_arr_);
+            return static_cast<const unsigned char *>(nd.data());
         });
     }
-
-    const unsigned char *GetImageBuffer() override { return buf_.data(); }
 
     // -- MM::Camera: ROI --
     int SetROI(unsigned x, unsigned y, unsigned w, unsigned h) override {
