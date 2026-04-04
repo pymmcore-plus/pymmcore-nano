@@ -794,6 +794,72 @@ def test_slm_rgb_image() -> None:
     np.testing.assert_array_equal(slm._image, img)
 
 
+def test_property_sequencing() -> None:
+    """Property sequencing lifecycle: query, load, start, stop."""
+
+    class SeqDevice(MinimalDevice):
+        def __init__(self) -> None:
+            self._voltage = 0.0
+            self._loaded_seq: list[str] = []
+            self._seq_started = False
+            self._seq_stopped = False
+            self._voltage_handle = None
+
+        def initialize(
+            self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+        ) -> None:
+            super().initialize(create_property, notify)
+            # Non-sequenceable property
+            create_property(
+                "Mode",
+                "Off",
+                1,
+                False,
+                getter=lambda: "Off",
+            )
+            # Sequenceable property
+            self._voltage_handle = create_property(
+                "Voltage",
+                "0.0",
+                2,
+                False,
+                getter=lambda: self._voltage,
+                setter=lambda v: setattr(self, "_voltage", float(v)),
+                sequence_max_length=10,
+                sequence_loader=lambda seq: setattr(self, "_loaded_seq", seq),
+                sequence_starter=lambda: setattr(self, "_seq_started", True),
+                sequence_stopper=lambda: setattr(self, "_seq_stopped", True),
+            )
+
+    core = CMMCore()
+    dev = SeqDevice()
+    core.loadPyDevice("Dev", dev, DeviceType.GenericDevice)
+    core.initializeDevice("Dev")
+
+    # Non-sequenceable property
+    assert not core.isPropertySequenceable("Dev", "Mode")
+
+    # Sequenceable property
+    assert core.isPropertySequenceable("Dev", "Voltage")
+    assert core.getPropertySequenceMaxLength("Dev", "Voltage") == 10
+
+    # Load a sequence
+    core.loadPropertySequence("Dev", "Voltage", ["1.0", "2.0", "3.0"])
+    assert dev._loaded_seq == ["1.0", "2.0", "3.0"]
+
+    # Start / stop
+    core.startPropertySequence("Dev", "Voltage")
+    assert dev._seq_started
+
+    core.stopPropertySequence("Dev", "Voltage")
+    assert dev._seq_stopped
+
+    # Dynamic max length update via PropertyHandle
+    assert core.getPropertySequenceMaxLength("Dev", "Voltage") == 10
+    dev._voltage_handle.set_sequence_max_length(20)
+    assert core.getPropertySequenceMaxLength("Dev", "Voltage") == 20
+
+
 def test_device_notifications() -> None:
     """Test that Python devices can emit notifications via DeviceCallbacks."""
 

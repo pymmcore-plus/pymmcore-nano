@@ -33,6 +33,10 @@ class CreatePropertyFn(Protocol):
         pre_init: bool = False,
         limits: tuple[float, float] | None = None,
         allowed_values: Sequence[str] | None = None,
+        sequence_max_length: int = 0,
+        sequence_loader: Callable[[list[str]], None] | None = None,
+        sequence_starter: Callable[[], None] | None = None,
+        sequence_stopper: Callable[[], None] | None = None,
     ) -> PropertyHandle: ...
 
 

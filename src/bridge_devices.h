@@ -93,6 +93,8 @@ class PropertyHandle {
     MM::Device *dev_ = nullptr;
     std::string name_;
     std::shared_ptr<std::atomic<bool>> alive_;
+    // Shared with the ActionLambda in PyCallbacks so runtime updates propagate.
+    std::shared_ptr<std::atomic<long>> seqMaxLength_;
 
     struct Vtable {
         int (*setPropertyLimits)(MM::Device *, const char *, double, double);
@@ -109,8 +111,10 @@ class PropertyHandle {
     PropertyHandle() = delete;
 
     template <typename TDevice>
-    PropertyHandle(TDevice *dev, std::string name, std::shared_ptr<std::atomic<bool>> alive)
-        : dev_(dev), name_(std::move(name)), alive_(std::move(alive)) {
+    PropertyHandle(TDevice *dev, std::string name, std::shared_ptr<std::atomic<bool>> alive,
+                   std::shared_ptr<std::atomic<long>> seqMaxLength = nullptr)
+        : dev_(dev), name_(std::move(name)), alive_(std::move(alive)),
+          seqMaxLength_(std::move(seqMaxLength)) {
         vt_.setPropertyLimits = [](MM::Device *d, const char *n, double lo, double hi) -> int {
             return static_cast<TDevice *>(d)->SetPropertyLimits(n, lo, hi);
         };
@@ -128,6 +132,12 @@ class PropertyHandle {
     void setAllowedValues(std::vector<std::string> values) {
         checkAlive();
         vt_.setAllowedValues(dev_, name_.c_str(), values);
+    }
+
+    void setSequenceMaxLength(long maxLength) {
+        checkAlive();
+        if (seqMaxLength_)
+            *seqMaxLength_ = maxLength;
     }
 };
 
@@ -226,29 +236,50 @@ class DeviceCallbacks {
 // dynamic constraint updates.
 // ============================================================================
 
-// GIL-safe destructor for getter/setter captured in ActionLambda.
+// GIL-safe destructor for Python objects captured in ActionLambda.
 // CDeviceBase may destroy the ActionLambda without the GIL held.
 struct PyCallbacks {
     nb::object getter;
     nb::object setter;
+    // Sequence callbacks — none() if not sequenceable.
+    nb::object seq_loader;  // (list[str]) -> None
+    nb::object seq_starter; // () -> None
+    nb::object seq_stopper; // () -> None
+    // Shared with PropertyHandle so runtime updates propagate.
+    std::shared_ptr<std::atomic<long>> seq_max_length;
+
     ~PyCallbacks() {
         try {
             nb::gil_scoped_acquire gil;
             getter.reset();
             setter.reset();
+            seq_loader.reset();
+            seq_starter.reset();
+            seq_stopper.reset();
         } catch (...) {
         }
     }
 };
 
-// Build an ActionLambda that forwards BeforeGet/AfterSet to Python callables.
-inline std::unique_ptr<MM::ActionFunctor> makePropertyAction(nb::object getter,
-                                                             nb::object setter) {
-    if (getter.is_none() && setter.is_none())
-        return nullptr;
+// Build an ActionLambda that forwards property actions to Python callables.
+// Handles get/set and optionally sequencing (IsSequenceable, AfterLoadSequence,
+// StartSequence, StopSequence).
+// Returns the shared seq_max_length pointer (may be null if not sequenceable)
+// so createPropertyFactory can pass it to PropertyHandle.
+inline std::pair<std::unique_ptr<MM::ActionFunctor>, std::shared_ptr<std::atomic<long>>>
+makePropertyAction(nb::object getter, nb::object setter, long seqMaxLength,
+                   nb::object seqLoader, nb::object seqStarter, nb::object seqStopper) {
+    bool hasGetSet = !getter.is_none() || !setter.is_none();
+    // maxLength == 0 means not sequenceable — callbacks are ignored even if
+    // provided, since CMMCore won't invoke them on a non-sequenceable property.
+    bool hasSeq = seqMaxLength > 0;
+    if (!hasGetSet && !hasSeq)
+        return {nullptr, nullptr};
 
-    auto cbs = std::make_shared<PyCallbacks>(PyCallbacks{getter, setter});
-    return std::make_unique<MM::ActionLambda>(
+    auto seqMaxPtr = std::make_shared<std::atomic<long>>(seqMaxLength);
+    auto cbs = std::make_shared<PyCallbacks>(
+        PyCallbacks{getter, setter, seqLoader, seqStarter, seqStopper, seqMaxPtr});
+    auto functor = std::make_unique<MM::ActionLambda>(
         [cbs](MM::PropertyBase *pProp, MM::ActionType eAct) -> int {
             nb::gil_scoped_acquire gil;
             try {
@@ -259,6 +290,20 @@ inline std::unique_ptr<MM::ActionFunctor> makePropertyAction(nb::object getter,
                     std::string val;
                     pProp->Get(val);
                     cbs->setter(nb::str(val.c_str()));
+                } else if (eAct == MM::IsSequenceable) {
+                    long maxLen = cbs->seq_max_length ? cbs->seq_max_length->load() : 0;
+                    pProp->SetSequenceable(maxLen);
+                } else if (eAct == MM::AfterLoadSequence && !cbs->seq_loader.is_none()) {
+                    // Convert the C++ string sequence to a Python list
+                    auto seq = pProp->GetSequence();
+                    nb::list py_seq;
+                    for (auto &s : seq)
+                        py_seq.append(nb::str(s.c_str()));
+                    cbs->seq_loader(py_seq);
+                } else if (eAct == MM::StartSequence && !cbs->seq_starter.is_none()) {
+                    cbs->seq_starter();
+                } else if (eAct == MM::StopSequence && !cbs->seq_stopper.is_none()) {
+                    cbs->seq_stopper();
                 }
             } catch (nb::python_error &e) {
                 std::string msg = e.what();
@@ -268,6 +313,7 @@ inline std::unique_ptr<MM::ActionFunctor> makePropertyAction(nb::object getter,
             }
             return DEVICE_OK;
         });
+    return {std::move(functor), seqMaxPtr};
 }
 
 // ============================================================================
@@ -289,15 +335,18 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
     };
 
     return nb::cpp_function(
-        [dev, doCreate, canCreate,
-         alive](const std::string &name, const std::string &defaultValue, int mmType,
-                bool readOnly, nb::object getter, nb::object setter, bool preInit,
-                nb::object limits, nb::object allowedValues) -> PropertyHandle {
+        [dev, doCreate, canCreate, alive](
+            const std::string &name, const std::string &defaultValue, int mmType, bool readOnly,
+            nb::object getter, nb::object setter, bool preInit, nb::object limits,
+            nb::object allowedValues, long sequenceMaxLength, nb::object sequenceLoader,
+            nb::object sequenceStarter, nb::object sequenceStopper) -> PropertyHandle {
             if (!*canCreate)
                 throw std::runtime_error("create_property() can only be called during "
                                          "initialize()");
 
-            auto action = makePropertyAction(getter, setter);
+            auto [action, seqMaxPtr] =
+                makePropertyAction(getter, setter, sequenceMaxLength, sequenceLoader,
+                                   sequenceStarter, sequenceStopper);
 
             int ret = doCreate(dev, name.c_str(), defaultValue.c_str(),
                                static_cast<MM::PropertyType>(mmType), readOnly, action.get(),
@@ -305,7 +354,7 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
             if (ret == DEVICE_OK)
                 action.release();
 
-            PropertyHandle handle(dev, name, alive);
+            PropertyHandle handle(dev, name, alive, seqMaxPtr);
 
             if (!limits.is_none()) {
                 double lo = nb::cast<double>(limits[nb::int_(0)]);
@@ -324,7 +373,9 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
         nb::arg("name"), nb::arg("default_value"), nb::arg("mm_type"), nb::arg("read_only"),
         nb::kw_only(), nb::arg("getter") = nb::none(), nb::arg("setter") = nb::none(),
         nb::arg("pre_init") = false, nb::arg("limits") = nb::none(),
-        nb::arg("allowed_values") = nb::none());
+        nb::arg("allowed_values") = nb::none(), nb::arg("sequence_max_length") = 0,
+        nb::arg("sequence_loader") = nb::none(), nb::arg("sequence_starter") = nb::none(),
+        nb::arg("sequence_stopper") = nb::none());
 }
 
 // ============================================================================

@@ -322,7 +322,8 @@ NB_MODULE(_pymmcore_nano, m) {
         "Handle for updating an MM property's limits or allowed values. "
         "Returned by the create_property() callable passed to initialize().")
         .def("set_limits", &PropertyHandle::setLimits, "lower"_a, "upper"_a)
-        .def("set_allowed_values", &PropertyHandle::setAllowedValues, "values"_a);
+        .def("set_allowed_values", &PropertyHandle::setAllowedValues, "values"_a)
+        .def("set_sequence_max_length", &PropertyHandle::setSequenceMaxLength, "max_length"_a);
 
     // DeviceCallbacks — bridge between Python device objects and C++
     // infrastructure they can't access directly. In C++, a device adapter
