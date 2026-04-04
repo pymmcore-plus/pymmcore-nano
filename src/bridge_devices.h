@@ -561,11 +561,14 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
                       private PyBridgeDeviceBase<PyBridgeStage> {
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeStage)
 
-    // -- MM::Stage (pure virtuals only — base provides defaults for rest) --
+    // -- MM::Stage: position --
     int SetPositionUm(double pos) override { return py_call(py_, "set_position_um", pos); }
     int GetPositionUm(double &pos) override {
         pos = py_get<double>(py_, "get_position_um");
         return DEVICE_OK;
+    }
+    int SetRelativePositionUm(double d) override {
+        return py_call(py_, "set_relative_position_um", d);
     }
     int SetPositionSteps(long steps) override {
         return py_call(py_, "set_position_steps", steps);
@@ -573,6 +576,9 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
     int GetPositionSteps(long &steps) override {
         steps = py_get<long>(py_, "get_position_steps");
         return DEVICE_OK;
+    }
+    int SetAdapterOriginUm(double d) override {
+        return py_call(py_, "set_adapter_origin_um", d);
     }
     int SetOrigin() override { return py_call(py_, "set_origin"); }
     int GetLimits(double &lo, double &hi) override {
@@ -583,11 +589,26 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
             return DEVICE_OK;
         });
     }
-    int IsStageSequenceable(bool &f) const override {
-        f = false;
+
+    // -- MM::Stage: motion --
+    int Move(double velocity) override { return py_call(py_, "move", velocity); }
+    int Stop() override { return py_call(py_, "stop"); }
+    int Home() override { return py_call(py_, "home"); }
+
+    // -- MM::Stage: focus --
+    int GetFocusDirection(MM::FocusDirection &direction) override {
+        direction = static_cast<MM::FocusDirection>(py_get<int>(py_, "get_focus_direction"));
         return DEVICE_OK;
     }
-    bool IsContinuousFocusDrive() const override { return false; }
+    bool IsContinuousFocusDrive() const override {
+        return py_get<bool>(py_, "is_continuous_focus_drive");
+    }
+
+    // -- MM::Stage: sequencing --
+    int IsStageSequenceable(bool &f) const override {
+        f = py_get<bool>(py_, "is_stage_sequenceable");
+        return DEVICE_OK;
+    }
 };
 
 // ============================================================================
@@ -598,7 +619,26 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
                         private PyBridgeDeviceBase<PyBridgeXYStage> {
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeXYStage)
 
-    // -- MM::XYStage (pure virtuals — base provides Um/relative/origin defaults) --
+    // -- MM::XYStage: position (um) --
+    int SetPositionUm(double x, double y) override {
+        return py_call(py_, "set_position_um", x, y);
+    }
+    int GetPositionUm(double &x, double &y) override {
+        return py_invoke([&]() -> int {
+            auto pos = py_.attr("get_position_um")();
+            x = nb::cast<double>(pos[nb::int_(0)]);
+            y = nb::cast<double>(pos[nb::int_(1)]);
+            return DEVICE_OK;
+        });
+    }
+    int SetRelativePositionUm(double dx, double dy) override {
+        return py_call(py_, "set_relative_position_um", dx, dy);
+    }
+    int SetAdapterOriginUm(double x, double y) override {
+        return py_call(py_, "set_adapter_origin_um", x, y);
+    }
+
+    // -- MM::XYStage: position (steps) --
     int SetPositionSteps(long x, long y) override {
         return py_call(py_, "set_position_steps", x, y);
     }
@@ -610,9 +650,21 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
             return DEVICE_OK;
         });
     }
+    int SetRelativePositionSteps(long x, long y) override {
+        return py_call(py_, "set_relative_position_steps", x, y);
+    }
+
+    // -- MM::XYStage: motion --
     int Home() override { return py_call(py_, "home"); }
     int Stop() override { return py_call(py_, "stop"); }
+    int Move(double vx, double vy) override { return py_call(py_, "move", vx, vy); }
+
+    // -- MM::XYStage: origin --
     int SetOrigin() override { return py_call(py_, "set_origin"); }
+    int SetXOrigin() override { return py_call(py_, "set_x_origin"); }
+    int SetYOrigin() override { return py_call(py_, "set_y_origin"); }
+
+    // -- MM::XYStage: limits + step size --
     int GetLimitsUm(double &xMin, double &xMax, double &yMin, double &yMax) override {
         return py_invoke([&]() -> int {
             auto lim = py_.attr("get_limits_um")();
@@ -635,8 +687,10 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
     }
     double GetStepSizeXUm() override { return py_get<double>(py_, "get_step_size_x_um"); }
     double GetStepSizeYUm() override { return py_get<double>(py_, "get_step_size_y_um"); }
+
+    // -- MM::XYStage: sequencing --
     int IsXYStageSequenceable(bool &f) const override {
-        f = false;
+        f = py_get<bool>(py_, "is_xy_stage_sequenceable");
         return DEVICE_OK;
     }
 };

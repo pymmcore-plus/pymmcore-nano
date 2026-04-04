@@ -384,11 +384,17 @@ class MinimalStage(MinimalDevice):
     def get_position_um(self) -> float:
         return self._pos_um
 
+    def set_relative_position_um(self, d: float) -> None:
+        self._pos_um += d
+
     def set_position_steps(self, steps: int) -> None:
         self._pos_steps = steps
 
     def get_position_steps(self) -> int:
         return self._pos_steps
+
+    def set_adapter_origin_um(self, d: float) -> None:
+        pass
 
     def set_origin(self) -> None:
         self._pos_um = 0.0
@@ -397,29 +403,86 @@ class MinimalStage(MinimalDevice):
     def get_limits(self) -> tuple[float, float]:
         return (-10000.0, 10000.0)
 
-
-class MinimalXYStage(MinimalDevice):
-    def __init__(self) -> None:
-        self._x_steps = 0
-        self._y_steps = 0
-
-    def set_position_steps(self, x: int, y: int) -> None:
-        self._x_steps = x
-        self._y_steps = y
-
-    def get_position_steps(self) -> tuple[int, int]:
-        return (self._x_steps, self._y_steps)
-
-    def home(self) -> None:
-        self._x_steps = 0
-        self._y_steps = 0
+    def move(self, velocity: float) -> None:
+        pass
 
     def stop(self) -> None:
         pass
 
+    def home(self) -> None:
+        self._pos_um = 0.0
+        self._pos_steps = 0
+
+    def get_focus_direction(self) -> int:
+        return 0  # FocusDirectionUnknown
+
+    def is_continuous_focus_drive(self) -> bool:
+        return False
+
+    def is_stage_sequenceable(self) -> bool:
+        return False
+
+
+class MinimalXYStage(MinimalDevice):
+    def __init__(self) -> None:
+        self._x_um = 0.0
+        self._y_um = 0.0
+        self._x_steps = 0
+        self._y_steps = 0
+
+    # position (um)
+    def set_position_um(self, x: float, y: float) -> None:
+        self._x_um = x
+        self._y_um = y
+        self._x_steps = int(x / 0.1)
+        self._y_steps = int(y / 0.1)
+
+    def get_position_um(self) -> tuple[float, float]:
+        return (self._x_um, self._y_um)
+
+    def set_relative_position_um(self, dx: float, dy: float) -> None:
+        self.set_position_um(self._x_um + dx, self._y_um + dy)
+
+    def set_adapter_origin_um(self, x: float, y: float) -> None:
+        pass
+
+    # position (steps)
+    def set_position_steps(self, x: int, y: int) -> None:
+        self._x_steps = x
+        self._y_steps = y
+        self._x_um = x * 0.1
+        self._y_um = y * 0.1
+
+    def get_position_steps(self) -> tuple[int, int]:
+        return (self._x_steps, self._y_steps)
+
+    def set_relative_position_steps(self, x: int, y: int) -> None:
+        self.set_position_steps(self._x_steps + x, self._y_steps + y)
+
+    # motion
+    def home(self) -> None:
+        self._x_steps = 0
+        self._y_steps = 0
+        self._x_um = 0.0
+        self._y_um = 0.0
+
+    def stop(self) -> None:
+        pass
+
+    def move(self, vx: float, vy: float) -> None:
+        pass
+
+    # origin
     def set_origin(self) -> None:
         pass
 
+    def set_x_origin(self) -> None:
+        pass
+
+    def set_y_origin(self) -> None:
+        pass
+
+    # limits + step size
     def get_limits_um(self) -> tuple[float, float, float, float]:
         return (-10000.0, 10000.0, -10000.0, 10000.0)
 
@@ -431,6 +494,10 @@ class MinimalXYStage(MinimalDevice):
 
     def get_step_size_y_um(self) -> float:
         return 0.1
+
+    # sequencing
+    def is_xy_stage_sequenceable(self) -> bool:
+        return False
 
 
 class MinimalState(MinimalDevice):
@@ -550,11 +617,9 @@ def test_load_py_xy_stage() -> None:
 
     assert "XY" in core.getLoadedDevices()
 
-    # XYStageBase converts Um to Steps via GetStepSize{X,Y}Um
     core.setXYPosition(10.0, 20.0)
-    # 10.0 / 0.1 = 100 steps, 20.0 / 0.1 = 200 steps
-    assert xy._x_steps == 100
-    assert xy._y_steps == 200
+    assert xy._x_um == 10.0
+    assert xy._y_um == 20.0
 
 
 def test_load_py_state() -> None:
