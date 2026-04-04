@@ -554,12 +554,38 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
         });
     }
 
-    // -- MM::Camera: sequence acquisition --
+    // -- MM::Camera: exposure sequencing --
+    std::vector<double> exposureSeq_;
+
     int IsExposureSequenceable(bool &f) const override {
         f = py_get<bool>(py_, "is_exposure_sequenceable");
         return DEVICE_OK;
     }
+    int GetExposureSequenceMaxLength(long &nrEvents) const override {
+        nrEvents = py_get<long>(py_, "get_exposure_sequence_max_length");
+        return DEVICE_OK;
+    }
+    int ClearExposureSequence() override {
+        exposureSeq_.clear();
+        return DEVICE_OK;
+    }
+    int AddToExposureSequence(double exposureTime_ms) override {
+        exposureSeq_.push_back(exposureTime_ms);
+        return DEVICE_OK;
+    }
+    int SendExposureSequence() const override {
+        return py_invoke([&]() -> int {
+            nb::list py_seq;
+            for (double v : exposureSeq_)
+                py_seq.append(v);
+            py_.attr("load_exposure_sequence")(py_seq);
+            return DEVICE_OK;
+        });
+    }
+    int StartExposureSequence() override { return py_call(py_, "start_exposure_sequence"); }
+    int StopExposureSequence() override { return py_call(py_, "stop_exposure_sequence"); }
 
+    // -- MM::Camera: sequence acquisition --
     bool IsCapturing() override { return py_get<bool>(py_, "is_capturing"); }
 
     int StartSequenceAcquisition(long numImages, double interval_ms,
@@ -688,10 +714,35 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
     }
 
     // -- MM::Stage: sequencing --
+    std::vector<double> stageSeq_;
+
     int IsStageSequenceable(bool &f) const override {
         f = py_get<bool>(py_, "is_stage_sequenceable");
         return DEVICE_OK;
     }
+    int GetStageSequenceMaxLength(long &nrEvents) const override {
+        nrEvents = py_get<long>(py_, "get_stage_sequence_max_length");
+        return DEVICE_OK;
+    }
+    int ClearStageSequence() override {
+        stageSeq_.clear();
+        return DEVICE_OK;
+    }
+    int AddToStageSequence(double position) override {
+        stageSeq_.push_back(position);
+        return DEVICE_OK;
+    }
+    int SendStageSequence() override {
+        return py_invoke([&]() -> int {
+            nb::list py_seq;
+            for (double v : stageSeq_)
+                py_seq.append(v);
+            py_.attr("load_stage_sequence")(py_seq);
+            return DEVICE_OK;
+        });
+    }
+    int StartStageSequence() override { return py_call(py_, "start_stage_sequence"); }
+    int StopStageSequence() override { return py_call(py_, "stop_stage_sequence"); }
 };
 
 // ============================================================================
@@ -772,10 +823,35 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
     double GetStepSizeYUm() override { return py_get<double>(py_, "get_step_size_y_um"); }
 
     // -- MM::XYStage: sequencing --
+    std::vector<std::pair<double, double>> xySeq_;
+
     int IsXYStageSequenceable(bool &f) const override {
         f = py_get<bool>(py_, "is_xy_stage_sequenceable");
         return DEVICE_OK;
     }
+    int GetXYStageSequenceMaxLength(long &nrEvents) const override {
+        nrEvents = py_get<long>(py_, "get_xy_stage_sequence_max_length");
+        return DEVICE_OK;
+    }
+    int ClearXYStageSequence() override {
+        xySeq_.clear();
+        return DEVICE_OK;
+    }
+    int AddToXYStageSequence(double positionX, double positionY) override {
+        xySeq_.emplace_back(positionX, positionY);
+        return DEVICE_OK;
+    }
+    int SendXYStageSequence() override {
+        return py_invoke([&]() -> int {
+            nb::list py_seq;
+            for (auto &[x, y] : xySeq_)
+                py_seq.append(nb::make_tuple(x, y));
+            py_.attr("load_xy_stage_sequence")(py_seq);
+            return DEVICE_OK;
+        });
+    }
+    int StartXYStageSequence() override { return py_call(py_, "start_xy_stage_sequence"); }
+    int StopXYStageSequence() override { return py_call(py_, "stop_xy_stage_sequence"); }
 };
 
 // ============================================================================
@@ -924,10 +1000,71 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     unsigned GetBytesPerPixel() override {
         return py_get<unsigned>(py_, "get_bytes_per_pixel");
     }
+    // -- MM::SLM: sequencing --
+    std::vector<std::vector<unsigned char>> slmSeq8_;
+    std::vector<std::vector<unsigned int>> slmSeq32_;
+    bool usingSeq32_ = false;
+
     int IsSLMSequenceable(bool &f) const override {
-        f = false;
+        f = py_get<bool>(py_, "is_slm_sequenceable");
         return DEVICE_OK;
     }
+    int GetSLMSequenceMaxLength(long &nrEvents) const override {
+        nrEvents = py_get<long>(py_, "get_slm_sequence_max_length");
+        return DEVICE_OK;
+    }
+    int ClearSLMSequence() override {
+        slmSeq8_.clear();
+        slmSeq32_.clear();
+        usingSeq32_ = false;
+        return DEVICE_OK;
+    }
+    int AddToSLMSequence(const unsigned char *const image) override {
+        size_t h = GetHeight(), w = GetWidth();
+        size_t ncomp = GetNumberOfComponents();
+        size_t bpp = GetBytesPerPixel();
+        size_t nbytes = h * w * ncomp * bpp;
+        slmSeq8_.emplace_back(image, image + nbytes);
+        usingSeq32_ = false;
+        return DEVICE_OK;
+    }
+    int AddToSLMSequence(const unsigned int *const image) override {
+        size_t h = GetHeight(), w = GetWidth();
+        size_t npixels = h * w;
+        slmSeq32_.emplace_back(image, image + npixels);
+        usingSeq32_ = true;
+        return DEVICE_OK;
+    }
+    int SendSLMSequence() override {
+        return py_invoke([&]() -> int {
+            size_t h = GetHeight(), w = GetWidth();
+            size_t ncomp = GetNumberOfComponents();
+            size_t bpp = GetBytesPerPixel();
+            size_t pixDepth = ncomp * bpp;
+            nb::list py_seq;
+            if (usingSeq32_) {
+                for (auto &buf : slmSeq32_) {
+                    auto arr =
+                        nb::ndarray<nb::numpy, uint32_t, nb::c_contig>(buf.data(), {h, w});
+                    py_seq.append(arr);
+                }
+            } else {
+                for (auto &buf : slmSeq8_) {
+                    nb::ndarray<nb::numpy, uint8_t, nb::c_contig> arr;
+                    if (pixDepth == 1)
+                        arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(buf.data(), {h, w});
+                    else
+                        arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(buf.data(),
+                                                                            {h, w, pixDepth});
+                    py_seq.append(arr);
+                }
+            }
+            py_.attr("load_slm_sequence")(py_seq);
+            return DEVICE_OK;
+        });
+    }
+    int StartSLMSequence() override { return py_call(py_, "start_slm_sequence"); }
+    int StopSLMSequence() override { return py_call(py_, "stop_slm_sequence"); }
 };
 
 #undef PYBRIDGE_COMMON_OVERRIDES

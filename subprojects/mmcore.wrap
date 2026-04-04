@@ -2,7 +2,7 @@
 url = https://github.com/micro-manager/mmcore.git
 revision = 9134c9a4e2ca67446463ef15e818c168cc631615
 depth = 1
-diff_files = mmcore/0001-unload-adapter-from-registry.patch, mmcore/0002-mock-adapter-ownership-transfer.patch
+diff_files = mmcore/0001-unload-adapter-from-registry.patch, mmcore/0002-mock-adapter-ownership-transfer.patch, mmcore/0003-validate-sequence-lengths-in-load-methods.patch
 
 [provide]
 dependency_names = mmcore

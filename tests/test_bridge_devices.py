@@ -665,6 +665,9 @@ class MinimalSLM(MinimalDevice):
     def get_bytes_per_pixel(self) -> int:
         return 1
 
+    def is_slm_sequenceable(self) -> bool:
+        return False
+
 
 # ============================================================================
 # Tests for new device types
@@ -953,3 +956,195 @@ def test_python_exception_in_property_getter() -> None:
         msg = str(e)
 
     assert "ZeroDivisionError" in msg, f"Expected Python error info, got: {msg!r}"
+
+
+# ============================================================================
+# Device-level sequencing tests
+# ============================================================================
+
+
+class SequenceableCamera(MinimalCamera):
+    """Camera that supports exposure sequencing."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._loaded_exposure_seq: list[float] = []
+        self._exp_seq_started = False
+        self._exp_seq_stopped = False
+
+    def is_exposure_sequenceable(self) -> bool:
+        return True
+
+    def get_exposure_sequence_max_length(self) -> int:
+        return 5
+
+    def load_exposure_sequence(self, sequence: list[float]) -> None:
+        self._loaded_exposure_seq = list(sequence)
+
+    def start_exposure_sequence(self) -> None:
+        self._exp_seq_started = True
+
+    def stop_exposure_sequence(self) -> None:
+        self._exp_seq_stopped = True
+
+
+class SequenceableStage(MinimalStage):
+    """Stage that supports sequencing."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._loaded_seq: list[float] = []
+        self._seq_started = False
+        self._seq_stopped = False
+
+    def is_stage_sequenceable(self) -> bool:
+        return True
+
+    def get_stage_sequence_max_length(self) -> int:
+        return 10
+
+    def load_stage_sequence(self, positions: list[float]) -> None:
+        self._loaded_seq = list(positions)
+
+    def start_stage_sequence(self) -> None:
+        self._seq_started = True
+
+    def stop_stage_sequence(self) -> None:
+        self._seq_stopped = True
+
+
+class SequenceableXYStage(MinimalXYStage):
+    """XY stage that supports sequencing."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._loaded_seq: list[tuple[float, float]] = []
+        self._seq_started = False
+        self._seq_stopped = False
+
+    def is_xy_stage_sequenceable(self) -> bool:
+        return True
+
+    def get_xy_stage_sequence_max_length(self) -> int:
+        return 8
+
+    def load_xy_stage_sequence(self, positions: list[tuple[float, float]]) -> None:
+        self._loaded_seq = [tuple(p) for p in positions]
+
+    def start_xy_stage_sequence(self) -> None:
+        self._seq_started = True
+
+    def stop_xy_stage_sequence(self) -> None:
+        self._seq_stopped = True
+
+
+class SequenceableSLM(MinimalSLM):
+    """SLM that supports sequencing."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._loaded_seq: list[np.ndarray] = []
+        self._seq_started = False
+        self._seq_stopped = False
+
+    def is_slm_sequenceable(self) -> bool:
+        return True
+
+    def get_slm_sequence_max_length(self) -> int:
+        return 4
+
+    def load_slm_sequence(self, images: list[np.ndarray]) -> None:
+        self._loaded_seq = [np.array(img) for img in images]
+
+    def start_slm_sequence(self) -> None:
+        self._seq_started = True
+
+    def stop_slm_sequence(self) -> None:
+        self._seq_stopped = True
+
+
+def test_exposure_sequencing() -> None:
+    """Exposure sequence lifecycle: query, load, start, stop."""
+    core = CMMCore()
+    cam = SequenceableCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+
+    assert core.isExposureSequenceable("Cam")
+    assert core.getExposureSequenceMaxLength("Cam") == 5
+
+    core.loadExposureSequence("Cam", [10.0, 20.0, 30.0])
+    assert cam._loaded_exposure_seq == [10.0, 20.0, 30.0]
+
+    core.startExposureSequence("Cam")
+    assert cam._exp_seq_started
+
+    core.stopExposureSequence("Cam")
+    assert cam._exp_seq_stopped
+
+
+def test_stage_sequencing() -> None:
+    """Stage sequence lifecycle: query, load, start, stop."""
+    core = CMMCore()
+    stage = SequenceableStage()
+    core.loadPyDevice("Z", stage, DeviceType.StageDevice)
+    core.initializeDevice("Z")
+    core.setFocusDevice("Z")
+
+    assert core.isStageSequenceable("Z")
+    assert core.getStageSequenceMaxLength("Z") == 10
+
+    core.loadStageSequence("Z", [0.0, 1.0, 2.0, 3.0])
+    assert stage._loaded_seq == [0.0, 1.0, 2.0, 3.0]
+
+    core.startStageSequence("Z")
+    assert stage._seq_started
+
+    core.stopStageSequence("Z")
+    assert stage._seq_stopped
+
+
+def test_xy_stage_sequencing() -> None:
+    """XY stage sequence lifecycle: query, load, start, stop."""
+    core = CMMCore()
+    xy = SequenceableXYStage()
+    core.loadPyDevice("XY", xy, DeviceType.XYStageDevice)
+    core.initializeDevice("XY")
+    core.setXYStageDevice("XY")
+
+    assert core.isXYStageSequenceable("XY")
+    assert core.getXYStageSequenceMaxLength("XY") == 8
+
+    core.loadXYStageSequence("XY", [1.0, 3.0, 5.0], [2.0, 4.0, 6.0])
+    assert xy._loaded_seq == [(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)]
+
+    core.startXYStageSequence("XY")
+    assert xy._seq_started
+
+    core.stopXYStageSequence("XY")
+    assert xy._seq_stopped
+
+
+def test_slm_sequencing() -> None:
+    """SLM sequence lifecycle: query, load, start, stop."""
+    core = CMMCore()
+    slm = SequenceableSLM(width=8, height=4)
+    core.loadPyDevice("SLM", slm, DeviceType.SLMDevice)
+    core.initializeDevice("SLM")
+    core.setSLMDevice("SLM")
+
+    assert core.getSLMSequenceMaxLength("SLM") == 4
+
+    img1 = np.ones((4, 8), dtype=np.uint8) * 10
+    img2 = np.ones((4, 8), dtype=np.uint8) * 20
+    core.loadSLMSequence("SLM", [img1, img2])
+    assert len(slm._loaded_seq) == 2
+    np.testing.assert_array_equal(slm._loaded_seq[0], img1)
+    np.testing.assert_array_equal(slm._loaded_seq[1], img2)
+
+    core.startSLMSequence("SLM")
+    assert slm._seq_started
+
+    core.stopSLMSequence("SLM")
+    assert slm._seq_stopped
