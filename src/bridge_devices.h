@@ -1141,8 +1141,9 @@ class PyBridgeHub : public HubBase<PyBridgeHub>, private PyBridgeDeviceBase<PyBr
                 std::string desc;
                 nb::object py_type =
                     nb::borrow(reinterpret_cast<PyObject *>(Py_TYPE(py_dev.ptr())));
-                if (nb::hasattr(py_type, "__doc__") && !py_type.attr("__doc__").is_none())
-                    desc = nb::cast<std::string>(nb::str(py_type.attr("__doc__")));
+                nb::object doc = py_type.attr("__doc__");
+                if (!doc.is_none())
+                    desc = nb::cast<std::string>(nb::str(doc));
                 MM::Device *pDev = createBridgeDevice(py_dev, type, name, desc);
                 if (pDev)
                     AddInstalledDevice(pDev);
