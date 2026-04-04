@@ -133,9 +133,8 @@ class MinimalCamera(MinimalDevice):
     def start_sequence_acquisition(
         self,
         n: int,
-        interval: float,
-        stop_on_overflow: bool,
-        insert_image: Callable[[np.ndarray, dict | None], None],
+        interval_ms: float,
+        insert_image: Callable[[np.ndarray, dict | None], bool],
     ) -> None:
         self._stop_event = threading.Event()
         self._capturing = True
@@ -149,8 +148,10 @@ class MinimalCamera(MinimalDevice):
                     img = np.full(
                         (self._height, self._width), count % 256, dtype=np.uint8
                     )
-                    insert_image(img, {"frame": count})
+                    if not insert_image(img, {"frame": count}):
+                        break
                     count += 1
+                    time.sleep(interval_ms / 1000.0)
             finally:
                 self._capturing = False
                 if self._notify is not None:

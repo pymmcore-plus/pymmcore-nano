@@ -513,8 +513,10 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
             // Create an insert_image callable that pushes a frame into
             // CMMCore's circular buffer. Python calls this per frame.
             auto *self = this;
+            // insert_image returns False on buffer overflow so Python
+            // can stop acquisition when stopOnOverflow is set.
             nb::object inserter = nb::cpp_function(
-                [self](nb::object arr, nb::object metadata) {
+                [self](nb::object arr, nb::object metadata) -> bool {
                     auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
                     unsigned w = self->GetImageWidth();
                     unsigned h = self->GetImageHeight();
@@ -533,17 +535,18 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                     }
                     std::string mdStr = md.Serialize();
 
+                    int ret;
                     {
                         nb::gil_scoped_release release;
-                        self->GetCoreCallback()->InsertImage(
+                        ret = self->GetCoreCallback()->InsertImage(
                             self, static_cast<const unsigned char *>(nd.data()), w, h, bpp,
                             nComp, mdStr.c_str());
                     }
+                    return ret == DEVICE_OK;
                 },
                 nb::arg("image"), nb::arg("metadata") = nb::none());
 
-            py_.attr("start_sequence_acquisition")(numImages, interval_ms, stopOnOverflow,
-                                                   inserter);
+            py_.attr("start_sequence_acquisition")(numImages, interval_ms, inserter);
             return DEVICE_OK;
         });
     }
