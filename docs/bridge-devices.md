@@ -60,9 +60,14 @@ core.loadDevice("Cam1", "MyHardware", "MyCam")
 core.initializeDevice("Cam1")
 ```
 
-All devices from one adapter share the same `LoadedDeviceAdapter` mutex,
-matching the behavior of real C++ adapters (important for devices that share
-a communication bus).
+#### Benefits
+
+- All devices from one adapter share the same `LoadedDeviceAdapter` mutex,
+  matching the behavior of real C++ adapters (important for devices that share
+  a communication bus).
+- Easier discovery on the application side
+- Could be supported by python entry-points to allow third-party packages to
+  provide device adapter libraries without requiring explicit registration code
 
 ### `loadPyDevice` — convenience for a single pre-instantiated device
 
@@ -74,6 +79,11 @@ core.initializeDevice("Cam1")
 
 This creates a single-device adapter internally. The Python object is shared
 (not copied) — the bridge holds a reference to the same instance.
+
+#### Benefits
+
+- Simpler for users who just want to directly instantiate and load a single
+  python device without needing to create an adapter library to wrap it.
 
 ## Device Protocols
 
