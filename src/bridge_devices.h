@@ -143,6 +143,10 @@ class DeviceCallbacks {
     MM::Core *cb_ = nullptr;
     std::shared_ptr<std::atomic<bool>> alive_;
 
+    // Type-erased SetPositionLabel — only populated for state devices.
+    using SetPosLabelFn = int (*)(MM::Device *, long, const char *);
+    SetPosLabelFn setPositionLabel_ = nullptr;
+
     void checkAlive() const {
         if (!alive_ || !*alive_)
             throw std::runtime_error("Device has been unloaded");
@@ -153,6 +157,9 @@ class DeviceCallbacks {
 
     DeviceCallbacks(MM::Device *dev, MM::Core *cb, std::shared_ptr<std::atomic<bool>> alive)
         : dev_(dev), cb_(cb), alive_(std::move(alive)) {}
+
+    // Called by initializeWithPropertyFactory for state devices.
+    void enableSetPositionLabel(SetPosLabelFn fn) { setPositionLabel_ = fn; }
 
     void onPropertyChanged(const std::string &name, const std::string &value) {
         checkAlive();
@@ -200,6 +207,13 @@ class DeviceCallbacks {
         checkAlive();
         nb::gil_scoped_release release;
         cb_->AcqFinished(dev_, statusCode);
+    }
+
+    void setPositionLabel(long pos, const std::string &label) {
+        checkAlive();
+        if (!setPositionLabel_)
+            throw std::runtime_error("setPositionLabel is only available on State devices");
+        setPositionLabel_(dev_, pos, label.c_str());
     }
 };
 
@@ -330,6 +344,14 @@ int initializeWithPropertyFactory(TDevice *dev, nb::object &py,
     // Create DeviceCallbacks — valid for the device's lifetime.
     // Heap-allocated, Python takes ownership.
     auto *notify = new DeviceCallbacks(dev, coreCallback, alive);
+
+    // Enable SetPositionLabel for state devices.
+    if constexpr (std::is_base_of_v<CStateDeviceBase<TDevice>, TDevice>) {
+        notify->enableSetPositionLabel([](MM::Device *d, long pos, const char *label) -> int {
+            return static_cast<TDevice *>(d)->SetPositionLabel(pos, label);
+        });
+    }
+
     nb::object py_notify = nb::cast(notify, nb::rv_policy::take_ownership);
 
     try {

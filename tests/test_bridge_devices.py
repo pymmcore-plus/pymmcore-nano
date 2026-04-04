@@ -564,8 +564,17 @@ class MinimalXYStage(MinimalDevice):
 
 
 class MinimalState(MinimalDevice):
-    def __init__(self, n_positions: int = 4) -> None:
+    def __init__(self, n_positions: int = 4, labels: list[str] | None = None) -> None:
         self._n = n_positions
+        self._labels = labels
+
+    def initialize(
+        self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+    ) -> None:
+        super().initialize(create_property, notify)
+        if self._labels is not None:
+            for i, label in enumerate(self._labels):
+                notify.set_position_label(i, label)
 
     def get_number_of_positions(self) -> int:
         return self._n
@@ -687,12 +696,16 @@ def test_load_py_xy_stage() -> None:
 
 def test_load_py_state() -> None:
     core = CMMCore()
-    state = MinimalState(n_positions=6)
+    labels = ["DAPI", "FITC", "TRITC", "Cy5"]
+    state = MinimalState(n_positions=4, labels=labels)
     core.loadPyDevice("Wheel", state, DeviceType.StateDevice)
     core.initializeDevice("Wheel")
 
     assert "Wheel" in core.getLoadedDevices()
-    assert core.getNumberOfStates("Wheel") == 6
+    assert core.getNumberOfStates("Wheel") == 4
+
+    # Labels set during initialize should be accessible
+    assert core.getStateLabels("Wheel") == ["DAPI", "FITC", "TRITC", "Cy5"]
 
 
 def test_load_py_autofocus() -> None:

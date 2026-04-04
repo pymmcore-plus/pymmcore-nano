@@ -328,7 +328,13 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("set_limits", &PropertyHandle::setLimits, "lower"_a, "upper"_a)
         .def("set_allowed_values", &PropertyHandle::setAllowedValues, "values"_a);
 
-    // DeviceCallbacks — notification methods for Python devices.
+    // DeviceCallbacks — bridge between Python device objects and C++
+    // infrastructure they can't access directly. In C++, a device adapter
+    // calls this->SetPositionLabel(), this->GetCoreCallback()->OnExposureChanged(),
+    // etc. — it's calling methods on itself or on the core callback. But in
+    // the bridge, the Python device and the C++ bridge device are two separate
+    // objects, so DeviceCallbacks provides the channel for Python devices to
+    // reach back into CMMCore notifications and device base class methods.
     // Passed to initialize() as the second argument. Valid for the
     // device's entire lifetime.
     nb::class_<DeviceCallbacks>(m, "DeviceCallbacks",
@@ -342,7 +348,8 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("on_exposure_changed", &DeviceCallbacks::onExposureChanged, "exposure"_a)
         .def("on_shutter_open_changed", &DeviceCallbacks::onShutterOpenChanged, "open"_a)
         .def("log_message", &DeviceCallbacks::logMessage, "msg"_a, "debug_only"_a = false)
-        .def("acq_finished", &DeviceCallbacks::acqFinished, "status_code"_a = 0);
+        .def("acq_finished", &DeviceCallbacks::acqFinished, "status_code"_a = 0)
+        .def("set_position_label", &DeviceCallbacks::setPositionLabel, "pos"_a, "label"_a);
 
     /////////////////// Module Attributes ///////////////////
 
