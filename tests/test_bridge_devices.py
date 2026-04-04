@@ -811,9 +811,27 @@ def test_load_py_stage() -> None:
     assert "Z" in core.getLoadedDevices()
     assert core.getFocusDevice() == "Z"
 
+    # Position (um)
     core.setPosition(42.5)
     assert stage._pos_um == 42.5
     assert core.getPosition() == 42.5
+
+    core.setRelativePosition(10.0)
+    assert stage._pos_um == 52.5
+
+    # Origin
+    core.setOrigin("Z")
+    assert stage._pos_um == 0.0
+
+    # Home
+    core.home("Z")
+
+    # Focus direction + continuous focus drive
+    assert core.getFocusDirection("Z") == 0
+    assert core.isContinuousFocusDrive("Z") is False
+
+    # Sequenceable query
+    assert not core.isStageSequenceable("Z")
 
 
 def test_load_py_xy_stage() -> None:
@@ -825,9 +843,29 @@ def test_load_py_xy_stage() -> None:
 
     assert "XY" in core.getLoadedDevices()
 
+    # Position (um)
     core.setXYPosition(10.0, 20.0)
     assert xy._x_um == 10.0
     assert xy._y_um == 20.0
+    x, y = core.getXYPosition()
+    assert x == 10.0
+    assert y == 20.0
+
+    # Relative position
+    core.setRelativeXYPosition(5.0, -5.0)
+    assert xy._x_um == 15.0
+    assert xy._y_um == 15.0
+
+    # Home
+    core.home("XY")
+    assert xy._x_um == 0.0
+    assert xy._y_um == 0.0
+
+    # Stop (no-op but exercises the bridge)
+    core.stop("XY")
+
+    # Sequenceable query
+    assert not core.isXYStageSequenceable("XY")
 
 
 def test_load_py_state() -> None:
@@ -853,9 +891,27 @@ def test_load_py_autofocus() -> None:
 
     assert "AF" in core.getLoadedDevices()
 
+    # Offset
     core.setAutoFocusOffset(5.0)
     assert af._offset == 5.0
     assert core.getAutoFocusOffset() == 5.0
+
+    # Continuous focusing
+    core.enableContinuousFocus(True)
+    assert af._continuous is True
+    assert core.isContinuousFocusEnabled() is True
+    assert core.isContinuousFocusLocked() is True
+
+    core.enableContinuousFocus(False)
+    assert af._continuous is False
+
+    # Focus operations
+    core.fullFocus()
+    core.incrementalFocus()
+
+    # Scores
+    assert core.getLastFocusScore() == 1.0
+    assert core.getCurrentFocusScore() == 1.0
 
 
 def test_load_py_signal_io() -> None:
@@ -926,11 +982,33 @@ def test_load_py_galvo() -> None:
     core.deleteGalvoPolygons("Galvo")
     assert galvo._polygons == {}
 
+    # Point and fire
+    core.pointGalvoAndFire("Galvo", 5.0, 5.0, 100.0)
+    assert galvo._x == 5.0
+    assert galvo._y == 5.0
+
+    # Spot interval
+    core.setGalvoSpotInterval("Galvo", 50.0)
+    assert galvo._spot_interval == 50.0
+
+    # Range minimums
+    assert core.getGalvoXMinimum("Galvo") == 0.0
+    assert core.getGalvoYMinimum("Galvo") == 0.0
+
+    # Polygon load/repetitions/run
+    core.addGalvoPolygonVertex("Galvo", 0, 0.0, 0.0)
+    core.addGalvoPolygonVertex("Galvo", 0, 10.0, 10.0)
+    core.setGalvoPolygonRepetitions("Galvo", 3)
+    assert galvo._repetitions == 3
+    core.loadGalvoPolygons("Galvo")
+    core.runGalvoPolygons("Galvo")
+
+    # Channel
+    assert core.getGalvoChannel("Galvo") == ""
+
     # Sequence
     core.runGalvoSequence("Galvo")
     assert galvo._sequence_running is True
-    # Note: stopGalvoSequence is not in the CMMCore public API —
-    # StopSequence is called internally. Test the Python method directly.
 
 
 def test_load_py_generic() -> None:
@@ -974,9 +1052,12 @@ def test_load_py_slm() -> None:
     assert "SLM" in core.getLoadedDevices()
     assert core.getSLMWidth("SLM") == 64
     assert core.getSLMHeight("SLM") == 32
+    assert core.getSLMNumberOfComponents("SLM") == 1
+    assert core.getSLMBytesPerPixel("SLM") == 1
 
     core.setSLMExposure("SLM", 100.0)
     assert slm._exposure == 100.0
+    assert core.getSLMExposure("SLM") == 100.0
 
     # Set and verify image data round-trips through the bridge
     img = np.arange(64 * 32, dtype=np.uint8).reshape(32, 64)
@@ -984,6 +1065,18 @@ def test_load_py_slm() -> None:
     assert slm._image is not None
     assert slm._image.shape == (32, 64)
     np.testing.assert_array_equal(slm._image, img)
+
+    # DisplayImage
+    core.displaySLMImage("SLM")
+
+    # SetPixelsTo (uniform intensity)
+    core.setSLMPixelsTo("SLM", 128)
+
+    # SetPixelsTo (RGB)
+    core.setSLMPixelsTo("SLM", 10, 20, 30)
+
+    # Not sequenceable
+    assert not slm.is_slm_sequenceable()
 
 
 def test_slm_rgb_image() -> None:
