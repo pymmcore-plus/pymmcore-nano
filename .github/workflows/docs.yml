@@ -32,7 +32,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: uv run --group docs --no-editable -C=setup-args="-Dmatch_swig=false" mkdocs build --strict
       
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: docs
           path: site
