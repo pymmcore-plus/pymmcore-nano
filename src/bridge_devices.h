@@ -838,7 +838,8 @@ inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
     case MM::AutoFocusDevice: return new PyBridgeAutoFocus(py_dev, name);
     case MM::GenericDevice: return new PyBridgeGeneric(py_dev, name);
     case MM::HubDevice: return new PyBridgeHub(py_dev, name);
-    default: return nullptr;
+    default:
+        throw std::runtime_error("No Python bridge for device type " + std::to_string(type));
     }
 }
 
