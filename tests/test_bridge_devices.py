@@ -13,11 +13,16 @@ from pymmcore_nano import CMMCore, DeviceAdapter, DeviceType
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from pymmcore_nano import DeviceCallbacks
+    from pymmcore_nano.protocols import CreatePropertyFn
+
 
 class MinimalDevice:
     """Shared base for all minimal test devices."""
 
-    def initialize(self, create_property=None, notify=None) -> None:
+    def initialize(
+        self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+    ) -> None:
         pass
 
     def shutdown(self) -> None:
@@ -37,11 +42,14 @@ class MinimalCamera(MinimalDevice):
         self._buf: np.ndarray | None = None
         self._gain: float = 1.0
         self._mode: str = "Normal"
+        self._capturing = False
+        self._notify = None
 
-    def initialize(self, create_property=None, notify=None) -> None:
+    def initialize(
+        self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+    ) -> None:
         super().initialize(create_property, notify)
-        if create_property is None:
-            return
+        self._notify = notify
         self._gain_prop = create_property(
             "Gain",
             "1.0",
@@ -119,6 +127,9 @@ class MinimalCamera(MinimalDevice):
     def clear_roi(self) -> None:
         pass
 
+    def is_capturing(self) -> bool:
+        return self._capturing
+
     def start_sequence_acquisition(
         self,
         n: int,
@@ -127,15 +138,23 @@ class MinimalCamera(MinimalDevice):
         insert_image: Callable[[np.ndarray, dict | None], None],
     ) -> None:
         self._stop_event = threading.Event()
+        self._capturing = True
 
         def run():
             count = 0
-            while not self._stop_event.is_set():
-                if n is not None and n < 2**62 and count >= n:
-                    break
-                img = np.full((self._height, self._width), count % 256, dtype=np.uint8)
-                insert_image(img, {"frame": count})
-                count += 1
+            try:
+                while not self._stop_event.is_set():
+                    if n is not None and n < 2**62 and count >= n:
+                        break
+                    img = np.full(
+                        (self._height, self._width), count % 256, dtype=np.uint8
+                    )
+                    insert_image(img, {"frame": count})
+                    count += 1
+            finally:
+                self._capturing = False
+                if self._notify is not None:
+                    self._notify.acq_finished()
 
         self._acq_thread = threading.Thread(target=run, daemon=True)
         self._acq_thread.start()
@@ -694,10 +713,6 @@ def test_device_notifications() -> None:
             received["onExposureChanged"] = (dev, exposure)
 
     class NotifyingCamera(MinimalCamera):
-        def initialize(self, create_property=None, notify=None) -> None:
-            super().initialize(create_property, notify)
-            self._notify = notify
-
         def set_exposure(self, ms: float) -> None:
             self._exposure = ms
             # Notify CMMCore that exposure changed
@@ -755,15 +770,16 @@ def test_python_exception_in_property_getter() -> None:
     """Python exceptions in property getters should surface."""
 
     class BadCamera(MinimalCamera):
-        def initialize(self, create_property=None, notify=None) -> None:
-            if create_property is not None:
-                create_property(
-                    "Bad",
-                    "0",
-                    2,
-                    False,
-                    getter=lambda: 1 / 0,  # ZeroDivisionError
-                )
+        def initialize(
+            self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+        ) -> None:
+            create_property(
+                "Bad",
+                "0",
+                2,
+                False,
+                getter=lambda: 1 / 0,  # ZeroDivisionError
+            )
 
     core = CMMCore()
     cam = BadCamera()

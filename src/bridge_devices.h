@@ -195,6 +195,12 @@ class DeviceCallbacks {
         nb::gil_scoped_release release;
         cb_->LogMessage(dev_, msg.c_str(), debugOnly);
     }
+
+    void acqFinished(int statusCode = 0) {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->AcqFinished(dev_, statusCode);
+    }
 };
 
 // ============================================================================
@@ -395,7 +401,6 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeCamera)
 
     nb::object img_arr_; // holds ndarray from get_image_buffer() to prevent GC
-    std::atomic<bool> capturing_{false};
 
     // -- MM::Camera: getters --
     unsigned GetImageWidth() const override { return py_get<unsigned>(py_, "get_image_width"); }
@@ -474,7 +479,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
         return DEVICE_OK;
     }
 
-    bool IsCapturing() override { return capturing_; }
+    bool IsCapturing() override { return py_get<bool>(py_, "is_capturing"); }
 
     int StartSequenceAcquisition(long numImages, double interval_ms,
                                  bool stopOnOverflow) override {
@@ -515,7 +520,6 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                 },
                 nb::arg("image"), nb::arg("metadata") = nb::none());
 
-            capturing_ = true;
             py_.attr("start_sequence_acquisition")(numImages, interval_ms, stopOnOverflow,
                                                    inserter);
             return DEVICE_OK;
@@ -526,12 +530,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
         return StartSequenceAcquisition(LONG_MAX, interval_ms, false);
     }
 
-    int StopSequenceAcquisition() override {
-        py_invoke([&]() { py_.attr("stop_sequence_acquisition")(); });
-        capturing_ = false;
-        GetCoreCallback()->AcqFinished(this, 0);
-        return DEVICE_OK;
-    }
+    int StopSequenceAcquisition() override { return py_call(py_, "stop_sequence_acquisition"); }
 };
 
 // ============================================================================

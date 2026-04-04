@@ -353,7 +353,8 @@ NB_MODULE(_pymmcore_nano, m) {
              "y"_a)
         .def("on_exposure_changed", &DeviceCallbacks::onExposureChanged, "exposure"_a)
         .def("on_shutter_open_changed", &DeviceCallbacks::onShutterOpenChanged, "open"_a)
-        .def("log_message", &DeviceCallbacks::logMessage, "msg"_a, "debug_only"_a = false);
+        .def("log_message", &DeviceCallbacks::logMessage, "msg"_a, "debug_only"_a = false)
+        .def("acq_finished", &DeviceCallbacks::acqFinished, "status_code"_a = 0);
 
     /////////////////// Module Attributes ///////////////////
 
