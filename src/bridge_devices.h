@@ -136,7 +136,7 @@ inline std::unique_ptr<MM::ActionFunctor> makePropertyAction(nb::object getter,
 // ============================================================================
 
 template <typename TDevice>
-nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<bool> canCreate) {
+nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>> canCreate) {
     // Type-erased CreateProperty
     auto doCreate = [](MM::Device *d, const char *name, const char *val, MM::PropertyType t,
                        bool ro, MM::ActionFunctor *act, bool preInit) -> int {
@@ -188,7 +188,7 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<bool> canCreate) 
 // ============================================================================
 
 template <typename TDevice> int initializeWithPropertyFactory(TDevice *dev, nb::object &py) {
-    auto canCreate = std::make_shared<bool>(true);
+    auto canCreate = std::make_shared<std::atomic<bool>>(true);
     nb::object factory = createPropertyFactory(dev, canCreate);
     try {
         py.attr("initialize")(factory);

@@ -1737,7 +1737,10 @@ MMCore will send notifications on internal events using this interface
 
                 std::string adapterName = std::string("_PyBridge_") + label;
                 registerAndStoreBridgeAdapter(self, adapterName, std::move(adapter));
-                self.loadDevice(label, adapterName.c_str(), label);
+                {
+                    nb::gil_scoped_release release;
+                    self.loadDevice(label, adapterName.c_str(), label);
+                }
             },
             "label"_a, "py_device"_a, "type"_a)
 
@@ -1751,7 +1754,9 @@ MMCore will send notifications on internal events using this interface
                 auto owned = std::make_unique<PyBridgeAdapter>(std::move(*adapter));
                 registerAndStoreBridgeAdapter(self, adapterName, std::move(owned));
             },
-            "adapter_name"_a, "adapter"_a)
+            "adapter_name"_a, "adapter"_a,
+            nb::sig("def loadPyDeviceAdapter(self, adapter_name: str,"
+                    " adapter: DeviceAdapter) -> None"))
 
         ;
 }
