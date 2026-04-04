@@ -47,7 +47,7 @@ jobs:
       - name: cpp-coverage
         run: uv run --no-sync gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml,./coverage_cpp.xml
