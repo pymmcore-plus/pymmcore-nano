@@ -780,6 +780,10 @@ class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric>,
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeGeneric)
 };
 
+// Forward declaration — PyBridgeHub::DetectInstalledDevices needs this.
+inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
+                                      const std::string &name);
+
 // ============================================================================
 // PyBridgeHub
 // ============================================================================
@@ -787,10 +791,25 @@ class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric>,
 class PyBridgeHub : public HubBase<PyBridgeHub>, private PyBridgeDeviceBase<PyBridgeHub> {
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeHub)
 
-    // HubBase provides defaults for DetectInstalledDevices,
-    // GetNumberOfInstalledDevices, GetInstalledDevice, ClearInstalledDevices.
-    // Override DetectInstalledDevices if the Python device supports it.
-    int DetectInstalledDevices() override { return py_call(py_, "detect_installed_devices"); }
+    // Discover peripherals by calling Python's detect_installed_devices(),
+    // which returns a list of (name, py_device, device_type) tuples.
+    // Each is wrapped in a bridge device and registered with HubBase.
+    int DetectInstalledDevices() override {
+        ClearInstalledDevices();
+        return py_invoke([&]() -> int {
+            nb::object peripherals = py_.attr("detect_installed_devices")();
+            for (auto item : peripherals) {
+                auto tup = nb::cast<nb::tuple>(item);
+                auto name = nb::cast<std::string>(tup[0]);
+                nb::object py_dev = tup[1];
+                auto type = nb::cast<MM::DeviceType>(tup[2]);
+                MM::Device *pDev = createBridgeDevice(py_dev, type, name);
+                if (pDev)
+                    AddInstalledDevice(pDev);
+            }
+            return DEVICE_OK;
+        });
+    }
 };
 
 // ============================================================================

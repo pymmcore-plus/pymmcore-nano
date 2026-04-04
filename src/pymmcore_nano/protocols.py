@@ -185,7 +185,9 @@ class PyGeneric(PyDevice, Protocol):
 class PyHub(PyDevice, Protocol):
     """Protocol for Python hub devices."""
 
-    def detect_installed_devices(self) -> None: ...
+    def detect_installed_devices(self) -> Sequence[tuple[str, object, int]]:
+        """Return peripherals as (name, py_device, device_type) tuples."""
+        ...
 
 
 @runtime_checkable

@@ -618,8 +618,13 @@ class MinimalGeneric(MinimalDevice):
 
 
 class MinimalHub(MinimalDevice):
-    def detect_installed_devices(self) -> None:
-        pass
+    """Hub that discovers a camera and shutter as peripherals."""
+
+    def detect_installed_devices(self):
+        return [
+            ("HubCam", MinimalCamera(), DeviceType.CameraDevice),
+            ("HubShutter", MinimalShutter(), DeviceType.ShutterDevice),
+        ]
 
 
 class MinimalSLM(MinimalDevice):
@@ -733,13 +738,18 @@ def test_load_py_generic() -> None:
 
 
 def test_load_py_hub() -> None:
+    """Hub discovers peripherals via detect_installed_devices."""
     core = CMMCore()
     hub = MinimalHub()
     core.loadPyDevice("Hub", hub, DeviceType.HubDevice)
     core.initializeDevice("Hub")
 
-    assert "Hub" in core.getLoadedDevices()
     assert core.getDeviceType("Hub") == DeviceType.HubDevice
+
+    # Hub should discover its peripherals
+    peripherals = core.getInstalledDevices("Hub")
+    assert "HubCam" in peripherals
+    assert "HubShutter" in peripherals
 
 
 def test_load_py_slm() -> None:
