@@ -775,6 +775,25 @@ def test_load_py_slm() -> None:
     np.testing.assert_array_equal(slm._image, img)
 
 
+def test_slm_rgb_image() -> None:
+    """RGB SLM receives properly shaped (h, w, 3) array."""
+
+    class RGBSlm(MinimalSLM):
+        def get_number_of_components(self) -> int:
+            return 3
+
+    core = CMMCore()
+    slm = RGBSlm(width=8, height=4)
+    core.loadPyDevice("SLM", slm, DeviceType.SLMDevice)
+    core.initializeDevice("SLM")
+
+    img = np.ones((4, 8, 3), dtype=np.uint8) * 42
+    core.setSLMImage("SLM", img)
+    assert slm._image is not None
+    assert slm._image.shape == (4, 8, 3)
+    np.testing.assert_array_equal(slm._image, img)
+
+
 def test_device_notifications() -> None:
     """Test that Python devices can emit notifications via DeviceCallbacks."""
 

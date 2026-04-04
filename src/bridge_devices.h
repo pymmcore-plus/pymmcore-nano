@@ -825,12 +825,15 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     // -- MM::SLM --
     int SetImage(unsigned char *pixels) override {
         return py_invoke([&]() -> int {
-            size_t h = GetHeight(), w = GetWidth(), bpp = GetBytesPerPixel();
+            size_t h = GetHeight(), w = GetWidth();
+            size_t ncomp = GetNumberOfComponents();
+            size_t bpp = GetBytesPerPixel();
+            size_t pixDepth = ncomp * bpp; // total bytes per pixel
             nb::ndarray<nb::numpy, uint8_t, nb::c_contig> arr;
-            if (bpp == 1)
+            if (pixDepth == 1)
                 arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(pixels, {h, w});
             else
-                arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(pixels, {h, w, bpp});
+                arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(pixels, {h, w, pixDepth});
             py_.attr("set_image")(arr);
             return DEVICE_OK;
         });

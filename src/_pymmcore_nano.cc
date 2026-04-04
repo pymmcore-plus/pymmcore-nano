@@ -177,7 +177,7 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
 }
 
 void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
-                        long expectedHeight, long bytesPerPixel) {
+                        long expectedHeight, long bytesPerPixel, long nComponents) {
     // Check dtype
     if (pixels.dtype() != nb::dtype<uint8_t>()) {
         throw std::invalid_argument("Pixel array type is wrong. Expected uint8.");
@@ -187,7 +187,7 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
     if (pixels.ndim() != 2 && pixels.ndim() != 3) {
         throw std::invalid_argument(
             "Pixels must be a 2D numpy array [h,w] of uint8, or a 3D numpy array "
-            "[h,w,c] of uint8 with 3 color channels [R,G,B].");
+            "[h,w,c] of uint8 with 3 or 4 color channels.");
     }
 
     // Check shape
@@ -199,17 +199,13 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
                                     std::to_string(pixels.shape(1)) + ").");
     }
 
-    // Check total bytes
-    long expectedBytes = expectedWidth * expectedHeight * bytesPerPixel;
-    if (pixels.nbytes() != expectedBytes) {
+    // Check total bytes (accounts for multi-component pixels like RGB)
+    long expectedBytes = expectedWidth * expectedHeight * bytesPerPixel * nComponents;
+    if (static_cast<long>(pixels.nbytes()) != expectedBytes) {
         throw std::invalid_argument("Image size is wrong for this SLM. Expected " +
                                     std::to_string(expectedBytes) + " bytes, but received " +
-                                    std::to_string(pixels.nbytes()) +
-                                    " bytes. Does this SLM support RGB?");
+                                    std::to_string(pixels.nbytes()) + " bytes.");
     }
-
-    // Ensure C-contiguous layout
-    // TODO
 }
 
 ///////////////// Trampoline class for MMEventCallback ///////////////////
@@ -1610,7 +1606,9 @@ MMCore will send notifications on internal events using this interface
                 long expectedWidth = self.getSLMWidth(slmLabel);
                 long expectedHeight = self.getSLMHeight(slmLabel);
                 long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
-                validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel);
+                long nComponents = self.getSLMNumberOfComponents(slmLabel);
+                validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel,
+                                   nComponents);
 
                 // Cast the numpy array to a pointer to unsigned char
                 self.setSLMImage(slmLabel, reinterpret_cast<unsigned char *>(pixels.data()));
@@ -1647,9 +1645,11 @@ MMCore will send notifications on internal events using this interface
                 long expectedWidth = self.getSLMWidth(slmLabel);
                 long expectedHeight = self.getSLMHeight(slmLabel);
                 long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
+                long nComponents = self.getSLMNumberOfComponents(slmLabel);
                 std::vector<unsigned char *> inputVector;
                 for (auto &image : imageSequence) {
-                    validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel);
+                    validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel,
+                                       nComponents);
                     inputVector.push_back(reinterpret_cast<unsigned char *>(image.data()));
                 }
                 self.loadSLMSequence(slmLabel, inputVector);
