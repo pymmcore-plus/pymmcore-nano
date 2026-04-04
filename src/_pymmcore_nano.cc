@@ -285,21 +285,13 @@ class PyMMEventCallback : public MMEventCallback {
 ///////////////// Bridge adapter storage helper ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 
-// Store a PyBridgeAdapter in a module-level dict (so Python GC handles
-// cleanup rather than static destruction) and register it with CMMCore.
-// TODO(upstream): MockDeviceAdapter has no unload notification or ownership
-// transfer. The capsule may outlive the CMMCore that references the adapter.
+// Register a PyBridgeAdapter with CMMCore. CMMCore takes ownership of the
+// adapter (via unique_ptr in LoadedDeviceAdapterImplMock). The adapter is
+// destroyed when CMMCore unloads it (unloadLibrary/destructor).
 void registerAndStoreBridgeAdapter(CMMCore &core, const std::string &adapterName,
                                    std::unique_ptr<PyBridgeAdapter> adapter) {
     adapter->markLoaded();
-    auto *raw = adapter.release();
-    nb::capsule cap(raw, [](void *p) noexcept { delete static_cast<PyBridgeAdapter *>(p); });
-    nb::dict reg = nb::cast<nb::dict>(
-        nb::module_::import_("pymmcore_nano._pymmcore_nano").attr("_bridge_adapters"));
-    reg[nb::make_tuple(nb::int_(reinterpret_cast<uintptr_t>(&core)), adapterName.c_str())] =
-        cap;
-
-    core.loadMockDeviceAdapter(adapterName.c_str(), raw);
+    core.loadMockDeviceAdapter(adapterName.c_str(), adapter.release());
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -311,10 +303,6 @@ NB_MODULE(_pymmcore_nano, m) {
     nb::set_leak_warnings(false);
 
     m.doc() = "Python bindings for MMCore";
-
-    // Registry for bridge adapter capsules (see loadPyDevice).
-    // Created here so loadPyDevice never races on initialization.
-    m.attr("_bridge_adapters") = nb::dict();
 
     // DeviceAdapter — Python-visible wrapper for PyBridgeAdapter.
     // Allows Python to build an adapter by adding device classes, then
@@ -1747,11 +1735,14 @@ MMCore will send notifications on internal events using this interface
         .def("loadPyDevice",
             [](CMMCore& self, const char* label, nb::object py_device,
                MM::DeviceType type) {
-                // Convenience: create a single-device adapter and load it
+                // Convenience: create a single-device adapter and load it.
+                // Counter ensures unique adapter names across load/unload
+                // cycles for the same label.
+                static std::atomic<uint64_t> counter{0};
                 auto adapter = std::make_unique<PyBridgeAdapter>();
                 adapter->addDevice(label, py_device, type);
 
-                std::string adapterName = std::string("_PyBridge_") + label;
+                std::string adapterName = "_PyBridge_" + std::to_string(counter.fetch_add(1));
                 registerAndStoreBridgeAdapter(self, adapterName, std::move(adapter));
                 {
                     nb::gil_scoped_release release;

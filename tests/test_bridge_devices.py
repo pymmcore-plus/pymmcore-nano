@@ -289,6 +289,50 @@ def test_unload_py_device() -> None:
     assert "Cam" not in core.getLoadedDevices()
 
 
+def test_reload_py_device_after_unload() -> None:
+    """Reloading the same label after unload should work."""
+    core = CMMCore()
+
+    cam1 = MinimalCamera(width=64, height=32)
+    core.loadPyDevice("Cam", cam1, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.snapImage()
+    assert core.getImage().shape == (32, 64)
+
+    core.unloadDevice("Cam")
+
+    # Reload with a new device using the same label
+    cam2 = MinimalCamera(width=16, height=8)
+    core.loadPyDevice("Cam", cam2, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.snapImage()
+    assert core.getImage().shape == (8, 16)
+
+
+def test_adapter_cleanup_on_core_destroy() -> None:
+    """CMMCore destruction should release bridge adapter references."""
+    import gc
+    import weakref
+
+    cam = MinimalCamera()
+    cam_ref = weakref.ref(cam)
+
+    core = CMMCore()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+
+    del cam
+    # Adapter still holds a reference
+    assert cam_ref() is not None
+
+    # Destroying the core should clean up everything
+    del core
+    gc.collect()
+    assert cam_ref() is None, "CMMCore destruction leaked bridge adapter"
+
+
 def test_device_properties() -> None:
     core = CMMCore()
     cam = MinimalCamera()
