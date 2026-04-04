@@ -60,7 +60,7 @@ class PropertyHandle {
     Vtable vt_{};
 
   public:
-    PropertyHandle() = default;
+    PropertyHandle() = delete;
 
     template <typename TDevice>
     PropertyHandle(TDevice *dev, std::string name) : dev_(dev), name_(std::move(name)) {
@@ -522,14 +522,14 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     // -- MM::SLM --
     int SetImage(unsigned char *pixels) override {
         nb::gil_scoped_acquire gil;
-        size_t nbytes = (size_t)GetWidth() * GetHeight() * GetBytesPerPixel();
+        size_t nbytes = static_cast<size_t>(GetWidth()) * GetHeight() * GetBytesPerPixel();
         auto arr = nb::ndarray<uint8_t, nb::c_contig>(pixels, {nbytes});
         py_.attr("set_image")(arr);
         return DEVICE_OK;
     }
     int SetImage(unsigned int *pixels) override {
         nb::gil_scoped_acquire gil;
-        size_t n = (size_t)GetWidth() * GetHeight();
+        size_t n = static_cast<size_t>(GetWidth()) * GetHeight();
         auto arr = nb::ndarray<uint32_t, nb::c_contig>(pixels, {n});
         py_.attr("set_image")(arr);
         return DEVICE_OK;
