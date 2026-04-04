@@ -44,11 +44,24 @@ class CreatePropertyFn(Protocol):
 class PyDevice(Protocol):
     """Base protocol for all Python bridge devices."""
 
-    def initialize(
-        self,
-        create_property: CreatePropertyFn,
-        notify: DeviceCallbacks,
-    ) -> None: ...
+    def initialize_bridge(
+        self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+    ) -> None:
+        """Initialize the device.
+
+        Receives two callables:
+        - `create_property(...)` for registering properties with CMMCore. See
+          `CreatePropertyFn` for details.
+        - `notify(...)` for sending property change notifications to CMMCore. See
+          `DeviceCallbacks` for details.
+
+        Because this signature is different from the standard `initialize()` method of
+        MM devices, the bridge calls this `initialize_bridge()` instead. This leaves
+        downstream devices free to implement `initialize()` as desired (which
+        will likely be called inside of `initialize_bridge()`).
+        """
+        ...
+
     def shutdown(self) -> None: ...
     def busy(self) -> bool: ...
 

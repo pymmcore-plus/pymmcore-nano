@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class MinimalDevice:
     """Shared base for all minimal test devices."""
 
-    def initialize(
+    def initialize_bridge(
         self, create_property: CreatePropertyFn, notify: DeviceCallbacks
     ) -> None:
         pass
@@ -45,10 +45,10 @@ class MinimalCamera(MinimalDevice):
         self._capturing = False
         self._notify = None
 
-    def initialize(
+    def initialize_bridge(
         self, create_property: CreatePropertyFn, notify: DeviceCallbacks
     ) -> None:
-        super().initialize(create_property, notify)
+        super().initialize_bridge(create_property, notify)
         self._notify = notify
         self._gain_prop = create_property(
             "Gain",
@@ -696,10 +696,10 @@ class MinimalState(MinimalDevice):
         self._n = n_positions
         self._labels = labels
 
-    def initialize(
+    def initialize_bridge(
         self, create_property: CreatePropertyFn, notify: DeviceCallbacks
     ) -> None:
-        super().initialize(create_property, notify)
+        super().initialize_bridge(create_property, notify)
         if self._labels is not None:
             for i, label in enumerate(self._labels):
                 notify.set_position_label(i, label)
@@ -1016,10 +1016,10 @@ def test_property_sequencing() -> None:
             self._seq_stopped = False
             self._voltage_handle = None
 
-        def initialize(
+        def initialize_bridge(
             self, create_property: CreatePropertyFn, notify: DeviceCallbacks
         ) -> None:
-            super().initialize(create_property, notify)
+            super().initialize_bridge(create_property, notify)
             # Non-sequenceable property
             create_property(
                 "Mode",
@@ -1141,7 +1141,7 @@ def test_python_exception_in_property_getter() -> None:
     """Python exceptions in property getters should surface."""
 
     class BadCamera(MinimalCamera):
-        def initialize(
+        def initialize_bridge(
             self, create_property: CreatePropertyFn, notify: DeviceCallbacks
         ) -> None:
             create_property(

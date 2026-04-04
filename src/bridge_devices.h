@@ -406,7 +406,7 @@ int initializeWithPropertyFactory(TDevice *dev, nb::object &py,
     nb::object py_notify = nb::cast(notify, nb::rv_policy::take_ownership);
 
     try {
-        py.attr("initialize")(factory, py_notify);
+        py.attr("initialize_bridge")(factory, py_notify);
     } catch (...) {
         *canCreate = false;
         throw;
