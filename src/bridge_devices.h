@@ -325,15 +325,407 @@ class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
 };
 
 // ============================================================================
+// PyBridgeStage
+// ============================================================================
+
+class PyBridgeStage : public CStageBase<PyBridgeStage> {
+    nb::object py_;
+    std::string deviceName_;
+
+public:
+    PyBridgeStage(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeStage() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int Initialize() override {
+        nb::gil_scoped_acquire gil;
+        return initializeWithBridge(this, py_);
+    }
+    int Shutdown() override { return py_call(py_, "shutdown"); }
+    bool Busy() override { return py_get<bool>(py_, "busy"); }
+    void GetName(char* name) const override {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+
+    // -- MM::Stage (pure virtuals only — base provides defaults for rest) --
+    int SetPositionUm(double pos) override {
+        return py_call(py_, "set_position_um", pos);
+    }
+    int GetPositionUm(double& pos) override {
+        pos = py_get<double>(py_, "get_position_um");
+        return DEVICE_OK;
+    }
+    int SetPositionSteps(long steps) override {
+        return py_call(py_, "set_position_steps", steps);
+    }
+    int GetPositionSteps(long& steps) override {
+        steps = py_get<long>(py_, "get_position_steps");
+        return DEVICE_OK;
+    }
+    int SetOrigin() override { return py_call(py_, "set_origin"); }
+    int GetLimits(double& lo, double& hi) override {
+        nb::gil_scoped_acquire gil;
+        auto lim = py_.attr("get_limits")();
+        lo = nb::cast<double>(lim[nb::int_(0)]);
+        hi = nb::cast<double>(lim[nb::int_(1)]);
+        return DEVICE_OK;
+    }
+    int IsStageSequenceable(bool& f) const override {
+        f = false;
+        return DEVICE_OK;
+    }
+    bool IsContinuousFocusDrive() const override { return false; }
+};
+
+// ============================================================================
+// PyBridgeXYStage
+// ============================================================================
+
+class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage> {
+    nb::object py_;
+    std::string deviceName_;
+
+public:
+    PyBridgeXYStage(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeXYStage() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int Initialize() override {
+        nb::gil_scoped_acquire gil;
+        return initializeWithBridge(this, py_);
+    }
+    int Shutdown() override { return py_call(py_, "shutdown"); }
+    bool Busy() override { return py_get<bool>(py_, "busy"); }
+    void GetName(char* name) const override {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+
+    // -- MM::XYStage (pure virtuals — base provides Um/relative/origin defaults) --
+    int SetPositionSteps(long x, long y) override {
+        return py_call(py_, "set_position_steps", x, y);
+    }
+    int GetPositionSteps(long& x, long& y) override {
+        nb::gil_scoped_acquire gil;
+        auto pos = py_.attr("get_position_steps")();
+        x = nb::cast<long>(pos[nb::int_(0)]);
+        y = nb::cast<long>(pos[nb::int_(1)]);
+        return DEVICE_OK;
+    }
+    int Home() override { return py_call(py_, "home"); }
+    int Stop() override { return py_call(py_, "stop"); }
+    int SetOrigin() override { return py_call(py_, "set_origin"); }
+    int GetLimitsUm(double& xMin, double& xMax,
+                    double& yMin, double& yMax) override {
+        nb::gil_scoped_acquire gil;
+        auto lim = py_.attr("get_limits_um")();
+        xMin = nb::cast<double>(lim[nb::int_(0)]);
+        xMax = nb::cast<double>(lim[nb::int_(1)]);
+        yMin = nb::cast<double>(lim[nb::int_(2)]);
+        yMax = nb::cast<double>(lim[nb::int_(3)]);
+        return DEVICE_OK;
+    }
+    int GetStepLimits(long& xMin, long& xMax,
+                      long& yMin, long& yMax) override {
+        nb::gil_scoped_acquire gil;
+        auto lim = py_.attr("get_step_limits")();
+        xMin = nb::cast<long>(lim[nb::int_(0)]);
+        xMax = nb::cast<long>(lim[nb::int_(1)]);
+        yMin = nb::cast<long>(lim[nb::int_(2)]);
+        yMax = nb::cast<long>(lim[nb::int_(3)]);
+        return DEVICE_OK;
+    }
+    double GetStepSizeXUm() override {
+        return py_get<double>(py_, "get_step_size_x_um");
+    }
+    double GetStepSizeYUm() override {
+        return py_get<double>(py_, "get_step_size_y_um");
+    }
+    int IsXYStageSequenceable(bool& f) const override {
+        f = false;
+        return DEVICE_OK;
+    }
+};
+
+// ============================================================================
+// PyBridgeState
+// ============================================================================
+
+class PyBridgeState : public CStateDeviceBase<PyBridgeState> {
+    nb::object py_;
+    std::string deviceName_;
+
+public:
+    PyBridgeState(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeState() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int Initialize() override {
+        nb::gil_scoped_acquire gil;
+        return initializeWithBridge(this, py_);
+    }
+    int Shutdown() override { return py_call(py_, "shutdown"); }
+    bool Busy() override { return py_get<bool>(py_, "busy"); }
+    void GetName(char* name) const override {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+
+    // -- MM::State --
+    // CStateDeviceBase provides defaults for SetPosition, GetPosition,
+    // GetPositionLabel, SetPositionLabel, GetLabelPosition, SetGateOpen,
+    // GetGateOpen — all driven by the "State" and "Label" properties.
+    // The only pure virtual remaining is GetNumberOfPositions.
+    unsigned long GetNumberOfPositions() const override {
+        nb::gil_scoped_acquire gil;
+        return nb::cast<unsigned long>(py_.attr("get_number_of_positions")());
+    }
+};
+
+// ============================================================================
+// PyBridgeAutoFocus
+// ============================================================================
+
+class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus> {
+    nb::object py_;
+    std::string deviceName_;
+
+public:
+    PyBridgeAutoFocus(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeAutoFocus() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int Initialize() override {
+        nb::gil_scoped_acquire gil;
+        return initializeWithBridge(this, py_);
+    }
+    int Shutdown() override { return py_call(py_, "shutdown"); }
+    bool Busy() override { return py_get<bool>(py_, "busy"); }
+    void GetName(char* name) const override {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+
+    // -- MM::AutoFocus --
+    int SetContinuousFocusing(bool state) override {
+        return py_call(py_, "set_continuous_focusing", state);
+    }
+    int GetContinuousFocusing(bool& state) override {
+        state = py_get<bool>(py_, "get_continuous_focusing");
+        return DEVICE_OK;
+    }
+    bool IsContinuousFocusLocked() override {
+        return py_get<bool>(py_, "is_continuous_focus_locked");
+    }
+    int FullFocus() override { return py_call(py_, "full_focus"); }
+    int IncrementalFocus() override {
+        return py_call(py_, "incremental_focus");
+    }
+    int GetLastFocusScore(double& score) override {
+        score = py_get<double>(py_, "get_last_focus_score");
+        return DEVICE_OK;
+    }
+    int GetCurrentFocusScore(double& score) override {
+        score = py_get<double>(py_, "get_current_focus_score");
+        return DEVICE_OK;
+    }
+    int GetOffset(double& offset) override {
+        offset = py_get<double>(py_, "get_offset");
+        return DEVICE_OK;
+    }
+    int SetOffset(double offset) override {
+        return py_call(py_, "set_offset", offset);
+    }
+};
+
+// ============================================================================
+// PyBridgeGeneric
+// ============================================================================
+
+class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric> {
+    nb::object py_;
+    std::string deviceName_;
+
+public:
+    PyBridgeGeneric(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeGeneric() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int Initialize() override {
+        nb::gil_scoped_acquire gil;
+        return initializeWithBridge(this, py_);
+    }
+    int Shutdown() override { return py_call(py_, "shutdown"); }
+    bool Busy() override { return py_get<bool>(py_, "busy"); }
+    void GetName(char* name) const override {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+};
+
+// ============================================================================
+// PyBridgeHub
+// ============================================================================
+
+class PyBridgeHub : public HubBase<PyBridgeHub> {
+    nb::object py_;
+    std::string deviceName_;
+
+public:
+    PyBridgeHub(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeHub() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int Initialize() override {
+        nb::gil_scoped_acquire gil;
+        return initializeWithBridge(this, py_);
+    }
+    int Shutdown() override { return py_call(py_, "shutdown"); }
+    bool Busy() override { return py_get<bool>(py_, "busy"); }
+    void GetName(char* name) const override {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+
+    // HubBase provides defaults for DetectInstalledDevices,
+    // GetNumberOfInstalledDevices, GetInstalledDevice, ClearInstalledDevices.
+    // Override DetectInstalledDevices if the Python device supports it.
+    int DetectInstalledDevices() override {
+        return py_call(py_, "detect_installed_devices");
+    }
+};
+
+// ============================================================================
+// PyBridgeSLM
+// ============================================================================
+
+class PyBridgeSLM : public CSLMBase<PyBridgeSLM> {
+    nb::object py_;
+    std::string deviceName_;
+
+public:
+    PyBridgeSLM(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeSLM() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int Initialize() override {
+        nb::gil_scoped_acquire gil;
+        return initializeWithBridge(this, py_);
+    }
+    int Shutdown() override { return py_call(py_, "shutdown"); }
+    bool Busy() override { return py_get<bool>(py_, "busy"); }
+    void GetName(char* name) const override {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+
+    // -- MM::SLM --
+    int SetImage(unsigned char* pixels) override {
+        nb::gil_scoped_acquire gil;
+        size_t nbytes = (size_t)GetWidth() * GetHeight() * GetBytesPerPixel();
+        auto arr = nb::ndarray<uint8_t, nb::c_contig>(
+            pixels, {nbytes});
+        py_.attr("set_image")(arr);
+        return DEVICE_OK;
+    }
+    int SetImage(unsigned int* pixels) override {
+        nb::gil_scoped_acquire gil;
+        size_t n = (size_t)GetWidth() * GetHeight();
+        auto arr = nb::ndarray<uint32_t, nb::c_contig>(
+            pixels, {n});
+        py_.attr("set_image")(arr);
+        return DEVICE_OK;
+    }
+    int DisplayImage() override { return py_call(py_, "display_image"); }
+    int SetPixelsTo(unsigned char intensity) override {
+        return py_call(py_, "set_pixels_to", intensity);
+    }
+    int SetPixelsTo(unsigned char r, unsigned char g, unsigned char b) override {
+        return py_call(py_, "set_pixels_to_rgb", r, g, b);
+    }
+    int SetExposure(double interval_ms) override {
+        return py_call(py_, "set_exposure", interval_ms);
+    }
+    double GetExposure() override {
+        return py_get<double>(py_, "get_exposure");
+    }
+    unsigned GetWidth() override {
+        return py_get<unsigned>(py_, "get_width");
+    }
+    unsigned GetHeight() override {
+        return py_get<unsigned>(py_, "get_height");
+    }
+    unsigned GetNumberOfComponents() override {
+        return py_get<unsigned>(py_, "get_number_of_components");
+    }
+    unsigned GetBytesPerPixel() override {
+        return py_get<unsigned>(py_, "get_bytes_per_pixel");
+    }
+    int IsSLMSequenceable(bool& f) const override {
+        f = false;
+        return DEVICE_OK;
+    }
+};
+
+// ============================================================================
 // Helper: create the right bridge device for a given MM::DeviceType
 // ============================================================================
 
-inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
-                                      const std::string &name) {
+inline MM::Device* createBridgeDevice(nb::object py_dev, MM::DeviceType type,
+                                      const std::string& name) {
     switch (type) {
-    case MM::CameraDevice: return new PyBridgeCamera(py_dev, name);
-    case MM::ShutterDevice: return new PyBridgeShutter(py_dev, name);
-    // TODO: Stage, XYStage, State, SLM, Hub
+    case MM::CameraDevice:     return new PyBridgeCamera(py_dev, name);
+    case MM::ShutterDevice:    return new PyBridgeShutter(py_dev, name);
+    case MM::StageDevice:      return new PyBridgeStage(py_dev, name);
+    case MM::XYStageDevice:    return new PyBridgeXYStage(py_dev, name);
+    case MM::StateDevice:      return new PyBridgeState(py_dev, name);
+    case MM::SLMDevice:        return new PyBridgeSLM(py_dev, name);
+    case MM::AutoFocusDevice:  return new PyBridgeAutoFocus(py_dev, name);
+    case MM::GenericDevice:    return new PyBridgeGeneric(py_dev, name);
+    case MM::HubDevice:        return new PyBridgeHub(py_dev, name);
     default: return nullptr;
     }
 }

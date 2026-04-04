@@ -287,3 +287,312 @@ def test_load_py_device_adapter() -> None:
     core.loadDevice("Cam2", "MyHardware", "MyCam")
     core.initializeDevice("Cam2")
     assert "Cam2" in core.getLoadedDevices()
+
+
+# ============================================================================
+# Minimal device stubs for new device types
+# ============================================================================
+
+
+class MinimalStage:
+    def __init__(self) -> None:
+        self._pos_um = 0.0
+        self._pos_steps = 0
+
+    def initialize(self, bridge=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+    def set_position_um(self, pos: float) -> None:
+        self._pos_um = pos
+
+    def get_position_um(self) -> float:
+        return self._pos_um
+
+    def set_position_steps(self, steps: int) -> None:
+        self._pos_steps = steps
+
+    def get_position_steps(self) -> int:
+        return self._pos_steps
+
+    def set_origin(self) -> None:
+        self._pos_um = 0.0
+        self._pos_steps = 0
+
+    def get_limits(self) -> tuple[float, float]:
+        return (-10000.0, 10000.0)
+
+
+class MinimalXYStage:
+    def __init__(self) -> None:
+        self._x_steps = 0
+        self._y_steps = 0
+
+    def initialize(self, bridge=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+    def set_position_steps(self, x: int, y: int) -> None:
+        self._x_steps = x
+        self._y_steps = y
+
+    def get_position_steps(self) -> tuple[int, int]:
+        return (self._x_steps, self._y_steps)
+
+    def home(self) -> None:
+        self._x_steps = 0
+        self._y_steps = 0
+
+    def stop(self) -> None:
+        pass
+
+    def set_origin(self) -> None:
+        pass
+
+    def get_limits_um(self) -> tuple[float, float, float, float]:
+        return (-10000.0, 10000.0, -10000.0, 10000.0)
+
+    def get_step_limits(self) -> tuple[int, int, int, int]:
+        return (-100000, 100000, -100000, 100000)
+
+    def get_step_size_x_um(self) -> float:
+        return 0.1
+
+    def get_step_size_y_um(self) -> float:
+        return 0.1
+
+
+class MinimalState:
+    def __init__(self, n_positions: int = 4) -> None:
+        self._n = n_positions
+
+    def initialize(self, bridge=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+    def get_number_of_positions(self) -> int:
+        return self._n
+
+
+class MinimalAutoFocus:
+    def __init__(self) -> None:
+        self._continuous = False
+        self._offset = 0.0
+
+    def initialize(self, bridge=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+    def set_continuous_focusing(self, state: bool) -> None:
+        self._continuous = state
+
+    def get_continuous_focusing(self) -> bool:
+        return self._continuous
+
+    def is_continuous_focus_locked(self) -> bool:
+        return self._continuous
+
+    def full_focus(self) -> None:
+        pass
+
+    def incremental_focus(self) -> None:
+        pass
+
+    def get_last_focus_score(self) -> float:
+        return 1.0
+
+    def get_current_focus_score(self) -> float:
+        return 1.0
+
+    def get_offset(self) -> float:
+        return self._offset
+
+    def set_offset(self, offset: float) -> None:
+        self._offset = offset
+
+
+class MinimalGeneric:
+    def initialize(self, bridge=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+
+class MinimalHub:
+    def initialize(self, bridge=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+    def detect_installed_devices(self) -> None:
+        pass
+
+
+class MinimalSLM:
+    def __init__(self, width: int = 128, height: int = 128) -> None:
+        self._width = width
+        self._height = height
+        self._exposure = 0.0
+        self._image: np.ndarray | None = None
+
+    def initialize(self, bridge=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+    def set_image(self, pixels: np.ndarray) -> None:
+        self._image = pixels
+
+    def display_image(self) -> None:
+        pass
+
+    def set_pixels_to(self, intensity: int) -> None:
+        pass
+
+    def set_pixels_to_rgb(self, r: int, g: int, b: int) -> None:
+        pass
+
+    def set_exposure(self, interval_ms: float) -> None:
+        self._exposure = interval_ms
+
+    def get_exposure(self) -> float:
+        return self._exposure
+
+    def get_width(self) -> int:
+        return self._width
+
+    def get_height(self) -> int:
+        return self._height
+
+    def get_number_of_components(self) -> int:
+        return 1
+
+    def get_bytes_per_pixel(self) -> int:
+        return 1
+
+
+# ============================================================================
+# Tests for new device types
+# ============================================================================
+
+
+def test_load_py_stage() -> None:
+    core = CMMCore()
+    stage = MinimalStage()
+    core.loadPyDevice("Z", stage, DeviceType.StageDevice)
+    core.initializeDevice("Z")
+    core.setFocusDevice("Z")
+
+    assert "Z" in core.getLoadedDevices()
+    assert core.getFocusDevice() == "Z"
+
+    core.setPosition(42.5)
+    assert stage._pos_um == 42.5
+    assert core.getPosition() == 42.5
+
+
+def test_load_py_xy_stage() -> None:
+    core = CMMCore()
+    xy = MinimalXYStage()
+    core.loadPyDevice("XY", xy, DeviceType.XYStageDevice)
+    core.initializeDevice("XY")
+    core.setXYStageDevice("XY")
+
+    assert "XY" in core.getLoadedDevices()
+
+    # XYStageBase converts Um to Steps via GetStepSize{X,Y}Um
+    core.setXYPosition(10.0, 20.0)
+    # 10.0 / 0.1 = 100 steps, 20.0 / 0.1 = 200 steps
+    assert xy._x_steps == 100
+    assert xy._y_steps == 200
+
+
+def test_load_py_state() -> None:
+    core = CMMCore()
+    state = MinimalState(n_positions=6)
+    core.loadPyDevice("Wheel", state, DeviceType.StateDevice)
+    core.initializeDevice("Wheel")
+
+    assert "Wheel" in core.getLoadedDevices()
+    assert core.getNumberOfStates("Wheel") == 6
+
+
+def test_load_py_autofocus() -> None:
+    core = CMMCore()
+    af = MinimalAutoFocus()
+    core.loadPyDevice("AF", af, DeviceType.AutoFocusDevice)
+    core.initializeDevice("AF")
+    core.setAutoFocusDevice("AF")
+
+    assert "AF" in core.getLoadedDevices()
+
+    core.setAutoFocusOffset(5.0)
+    assert af._offset == 5.0
+    assert core.getAutoFocusOffset() == 5.0
+
+
+def test_load_py_generic() -> None:
+    core = CMMCore()
+    dev = MinimalGeneric()
+    core.loadPyDevice("Gen", dev, DeviceType.GenericDevice)
+    core.initializeDevice("Gen")
+
+    assert "Gen" in core.getLoadedDevices()
+    assert core.getDeviceType("Gen") == DeviceType.GenericDevice
+
+
+def test_load_py_hub() -> None:
+    core = CMMCore()
+    hub = MinimalHub()
+    core.loadPyDevice("Hub", hub, DeviceType.HubDevice)
+    core.initializeDevice("Hub")
+
+    assert "Hub" in core.getLoadedDevices()
+    assert core.getDeviceType("Hub") == DeviceType.HubDevice
+
+
+def test_load_py_slm() -> None:
+    core = CMMCore()
+    slm = MinimalSLM(width=64, height=32)
+    core.loadPyDevice("SLM", slm, DeviceType.SLMDevice)
+    core.initializeDevice("SLM")
+    core.setSLMDevice("SLM")
+
+    assert "SLM" in core.getLoadedDevices()
+    assert core.getSLMWidth("SLM") == 64
+    assert core.getSLMHeight("SLM") == 32
+
+    core.setSLMExposure("SLM", 100.0)
+    assert slm._exposure == 100.0
