@@ -201,41 +201,56 @@ template <typename TDevice> int initializeWithPropertyFactory(TDevice *dev, nb::
 }
 
 // ============================================================================
-// Common members for all bridge device classes.
-// Provides: py_, deviceName_, constructor, destructor,
-//           Initialize, Shutdown, Busy, GetName.
+// Common helper for all bridge device classes.
+// Provides shared state and behavior for Initialize/Shutdown/Busy/GetName.
 // ============================================================================
 
-#define PYBRIDGE_DEVICE_BOILERPLATE(ClassName)                                                 \
-    nb::object py_;                                                                            \
-    std::string deviceName_;                                                                   \
-                                                                                               \
+template <typename TDevice> class PyBridgeDeviceBase {
+  protected:
+    nb::object py_;
+    std::string deviceName_;
+
+    PyBridgeDeviceBase(nb::object py_dev, std::string name)
+        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+
+    ~PyBridgeDeviceBase() {
+        try {
+            nb::gil_scoped_acquire gil;
+            py_.reset();
+        } catch (...) {
+        }
+    }
+
+    int initializeCommon(TDevice *dev) {
+        nb::gil_scoped_acquire gil;
+        return initializeWithPropertyFactory(dev, py_);
+    }
+
+    int shutdownCommon() { return py_call(py_, "shutdown"); }
+
+    bool busyCommon() { return py_get<bool>(py_, "busy"); }
+
+    void getNameCommon(char *name) const {
+        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
+    }
+};
+
+#define PYBRIDGE_COMMON_OVERRIDES(ClassName)                                                   \
   public:                                                                                      \
     ClassName(nb::object py_dev, std::string name)                                             \
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}                              \
-    ~ClassName() {                                                                             \
-        try {                                                                                  \
-            nb::gil_scoped_acquire gil;                                                        \
-            py_.reset();                                                                       \
-        } catch (...) {                                                                        \
-        }                                                                                      \
-    }                                                                                          \
-    int Initialize() override {                                                                \
-        nb::gil_scoped_acquire gil;                                                            \
-        return initializeWithPropertyFactory(this, py_);                                       \
-    }                                                                                          \
-    int Shutdown() override { return py_call(py_, "shutdown"); }                               \
-    bool Busy() override { return py_get<bool>(py_, "busy"); }                                 \
-    void GetName(char *name) const override {                                                  \
-        CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());                            \
-    }
+        : PyBridgeDeviceBase<ClassName>(std::move(py_dev), std::move(name)) {}                 \
+    int Initialize() override { return this->initializeCommon(this); }                         \
+    int Shutdown() override { return this->shutdownCommon(); }                                 \
+    bool Busy() override { return this->busyCommon(); }                                        \
+    void GetName(char *name) const override { this->getNameCommon(name); }
 
 // ============================================================================
 // PyBridgeCamera
 // ============================================================================
 
-class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeCamera)
+class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
+                       private PyBridgeDeviceBase<PyBridgeCamera> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeCamera)
 
     std::vector<unsigned char> buf_;
     std::atomic<bool> capturing_{false};
@@ -321,8 +336,9 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera> {
 // PyBridgeShutter
 // ============================================================================
 
-class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeShutter)
+class PyBridgeShutter : public CShutterBase<PyBridgeShutter>,
+                        private PyBridgeDeviceBase<PyBridgeShutter> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeShutter)
 
     // -- MM::Shutter --
     int SetOpen(bool open) override { return py_call(py_, "set_open", open); }
@@ -339,8 +355,9 @@ class PyBridgeShutter : public CShutterBase<PyBridgeShutter> {
 // PyBridgeStage
 // ============================================================================
 
-class PyBridgeStage : public CStageBase<PyBridgeStage> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeStage)
+class PyBridgeStage : public CStageBase<PyBridgeStage>,
+                      private PyBridgeDeviceBase<PyBridgeStage> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeStage)
 
     // -- MM::Stage (pure virtuals only — base provides defaults for rest) --
     int SetPositionUm(double pos) override { return py_call(py_, "set_position_um", pos); }
@@ -374,8 +391,9 @@ class PyBridgeStage : public CStageBase<PyBridgeStage> {
 // PyBridgeXYStage
 // ============================================================================
 
-class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeXYStage)
+class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
+                        private PyBridgeDeviceBase<PyBridgeXYStage> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeXYStage)
 
     // -- MM::XYStage (pure virtuals — base provides Um/relative/origin defaults) --
     int SetPositionSteps(long x, long y) override {
@@ -421,8 +439,9 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage> {
 // PyBridgeState
 // ============================================================================
 
-class PyBridgeState : public CStateDeviceBase<PyBridgeState> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeState)
+class PyBridgeState : public CStateDeviceBase<PyBridgeState>,
+                      private PyBridgeDeviceBase<PyBridgeState> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeState)
 
     // -- MM::State --
     // CStateDeviceBase provides defaults for SetPosition, GetPosition,
@@ -439,8 +458,9 @@ class PyBridgeState : public CStateDeviceBase<PyBridgeState> {
 // PyBridgeAutoFocus
 // ============================================================================
 
-class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeAutoFocus)
+class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus>,
+                          private PyBridgeDeviceBase<PyBridgeAutoFocus> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeAutoFocus)
 
     // -- MM::AutoFocus --
     int SetContinuousFocusing(bool state) override {
@@ -474,16 +494,17 @@ class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus> {
 // PyBridgeGeneric
 // ============================================================================
 
-class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeGeneric)
+class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric>,
+                        private PyBridgeDeviceBase<PyBridgeGeneric> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeGeneric)
 };
 
 // ============================================================================
 // PyBridgeHub
 // ============================================================================
 
-class PyBridgeHub : public HubBase<PyBridgeHub> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeHub)
+class PyBridgeHub : public HubBase<PyBridgeHub>, private PyBridgeDeviceBase<PyBridgeHub> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeHub)
 
     // HubBase provides defaults for DetectInstalledDevices,
     // GetNumberOfInstalledDevices, GetInstalledDevice, ClearInstalledDevices.
@@ -495,8 +516,8 @@ class PyBridgeHub : public HubBase<PyBridgeHub> {
 // PyBridgeSLM
 // ============================================================================
 
-class PyBridgeSLM : public CSLMBase<PyBridgeSLM> {
-    PYBRIDGE_DEVICE_BOILERPLATE(PyBridgeSLM)
+class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyBridgeSLM> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeSLM)
 
     // -- MM::SLM --
     int SetImage(unsigned char *pixels) override {
@@ -537,6 +558,8 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM> {
         return DEVICE_OK;
     }
 };
+
+#undef PYBRIDGE_COMMON_OVERRIDES
 
 // ============================================================================
 // Helper: create the right bridge device for a given MM::DeviceType
