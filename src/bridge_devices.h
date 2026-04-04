@@ -825,16 +825,20 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     // -- MM::SLM --
     int SetImage(unsigned char *pixels) override {
         return py_invoke([&]() -> int {
-            size_t nbytes = static_cast<size_t>(GetWidth()) * GetHeight() * GetBytesPerPixel();
-            auto arr = nb::ndarray<uint8_t, nb::c_contig>(pixels, {nbytes});
+            size_t h = GetHeight(), w = GetWidth(), bpp = GetBytesPerPixel();
+            nb::ndarray<nb::numpy, uint8_t, nb::c_contig> arr;
+            if (bpp == 1)
+                arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(pixels, {h, w});
+            else
+                arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(pixels, {h, w, bpp});
             py_.attr("set_image")(arr);
             return DEVICE_OK;
         });
     }
     int SetImage(unsigned int *pixels) override {
         return py_invoke([&]() -> int {
-            size_t n = static_cast<size_t>(GetWidth()) * GetHeight();
-            auto arr = nb::ndarray<uint32_t, nb::c_contig>(pixels, {n});
+            size_t h = GetHeight(), w = GetWidth();
+            auto arr = nb::ndarray<nb::numpy, uint32_t, nb::c_contig>(pixels, {h, w});
             py_.attr("set_image")(arr);
             return DEVICE_OK;
         });

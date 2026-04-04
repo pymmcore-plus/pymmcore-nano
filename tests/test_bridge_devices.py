@@ -767,6 +767,13 @@ def test_load_py_slm() -> None:
     core.setSLMExposure("SLM", 100.0)
     assert slm._exposure == 100.0
 
+    # Set and verify image data round-trips through the bridge
+    img = np.arange(64 * 32, dtype=np.uint8).reshape(32, 64)
+    core.setSLMImage("SLM", img)
+    assert slm._image is not None
+    assert slm._image.shape == (32, 64)
+    np.testing.assert_array_equal(slm._image, img)
+
 
 def test_device_notifications() -> None:
     """Test that Python devices can emit notifications via DeviceCallbacks."""
