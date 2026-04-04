@@ -64,8 +64,21 @@ class PyCamera(PyDevice, Protocol):
     def get_image_buffer(self) -> np.ndarray: ...
     def get_roi(self) -> tuple[int, int, int, int]: ...
     def start_sequence_acquisition(
-        self, num_images: int, interval_ms: float, stop_on_overflow: bool
-    ) -> None: ...
+        self,
+        num_images: int,
+        interval_ms: float,
+        stop_on_overflow: bool,
+        insert_image: Callable[[np.ndarray, dict | None], None],
+    ) -> None:
+        """Start sequence acquisition.
+
+        Called with an `insert_image(array, metadata)` callable that pushes
+        frames into CMMCore's circular buffer. The implementation should
+        call `insert_image` for each acquired frame, either synchronously
+        or from a background thread.
+        """
+        ...
+
     def stop_sequence_acquisition(self) -> None: ...
 
 

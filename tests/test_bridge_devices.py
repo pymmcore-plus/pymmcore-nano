@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+import threading
+import time
+from typing import TYPE_CHECKING
+
 import numpy as np
 from pymmcore_nano import CMMCore, DeviceAdapter, DeviceType
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class MinimalCamera:
@@ -92,12 +99,31 @@ class MinimalCamera:
         pass
 
     def start_sequence_acquisition(
-        self, n: int, interval: float, stop_on_overflow: bool
+        self,
+        n: int,
+        interval: float,
+        stop_on_overflow: bool,
+        insert_image: Callable[[np.ndarray, dict | None], None],
     ) -> None:
-        pass
+        self._stop_event = threading.Event()
+
+        def run():
+            count = 0
+            while not self._stop_event.is_set():
+                if n is not None and n < 2**62 and count >= n:
+                    break
+                img = np.full((self._height, self._width), count % 256, dtype=np.uint8)
+                insert_image(img, {"frame": count})
+                count += 1
+
+        self._acq_thread = threading.Thread(target=run, daemon=True)
+        self._acq_thread.start()
 
     def stop_sequence_acquisition(self) -> None:
-        pass
+        if hasattr(self, "_stop_event"):
+            self._stop_event.set()
+        if hasattr(self, "_acq_thread"):
+            self._acq_thread.join(timeout=5.0)
 
 
 class MinimalShutter:
@@ -148,6 +174,47 @@ def test_load_py_camera() -> None:
     # Verify the pixel pattern round-trips
     expected = np.arange(64 * 32, dtype=np.uint8).reshape(32, 64)
     np.testing.assert_array_equal(img, expected)
+
+
+def test_sequence_acquisition() -> None:
+    core = CMMCore()
+    cam = MinimalCamera(width=64, height=32)
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+
+    # Set up circular buffer
+    core.setCircularBufferMemoryFootprint(16)  # 16 MB
+    core.initializeCircularBuffer()
+
+    # Start finite acquisition (5 frames)
+    core.startSequenceAcquisition(5, 0.0, True)
+
+    # Wait for frames to arrive
+    deadline = time.time() + 5.0
+    while core.getRemainingImageCount() < 5 and time.time() < deadline:
+        time.sleep(0.01)
+
+    core.stopSequenceAcquisition()
+
+    assert core.getRemainingImageCount() >= 5
+
+    # Pop a frame and verify shape + metadata
+    img, md = core.popNextImageMD()
+    assert img.shape == (32, 64)
+    assert img.dtype == np.uint8
+
+    # CMMCore auto-adds standard metadata
+    assert md.HasTag("Width")
+    assert md.GetSingleTag("Width").GetValue() == "64"
+    assert md.HasTag("Height")
+    assert md.GetSingleTag("Height").GetValue() == "32"
+    assert md.HasTag("Camera")
+    assert md.GetSingleTag("Camera").GetValue() == "Cam"
+
+    # Our Python device's custom metadata should be present too
+    assert md.HasTag("frame")
+    assert md.GetSingleTag("frame").GetValue() == "0"
 
 
 def test_load_py_shutter() -> None:

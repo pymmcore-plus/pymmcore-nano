@@ -10,6 +10,7 @@
 #include <nanobind/stl/vector.h>
 
 #include "DeviceBase.h"
+#include "ImageMetadata.h"
 #include "MMDevice.h"
 #include "MockDeviceAdapter.h"
 
@@ -332,9 +333,47 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
 
     int StartSequenceAcquisition(long numImages, double interval_ms,
                                  bool stopOnOverflow) override {
+        int ret = GetCoreCallback()->PrepareForAcq(this);
+        if (ret != DEVICE_OK)
+            return ret;
+
         nb::gil_scoped_acquire gil;
-        py_.attr("start_sequence_acquisition")(numImages, interval_ms, stopOnOverflow);
+
+        // Create an insert_image callable that pushes a frame into
+        // CMMCore's circular buffer. Python calls this per frame.
+        auto *self = this;
+        nb::object inserter = nb::cpp_function(
+            [self](nb::object arr, nb::object metadata) {
+                auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
+                unsigned w = self->GetImageWidth();
+                unsigned h = self->GetImageHeight();
+                unsigned bpp = self->GetImageBytesPerPixel();
+                unsigned nComp = self->GetNumberOfComponents();
+
+                // Build serialized metadata in MMCore's format
+                Metadata md;
+                if (!metadata.is_none()) {
+                    nb::dict d = nb::cast<nb::dict>(metadata);
+                    for (auto [key, val] : d) {
+                        auto k = nb::cast<std::string>(nb::str(key));
+                        auto v = nb::cast<std::string>(nb::str(val));
+                        md.PutImageTag(k.c_str(), v);
+                    }
+                }
+                std::string mdStr = md.Serialize();
+
+                {
+                    nb::gil_scoped_release release;
+                    self->GetCoreCallback()->InsertImage(
+                        self, static_cast<const unsigned char *>(nd.data()), w, h, bpp, nComp,
+                        mdStr.c_str());
+                }
+            },
+            nb::arg("image"), nb::arg("metadata") = nb::none());
+
         capturing_ = true;
+        py_.attr("start_sequence_acquisition")(numImages, interval_ms, stopOnOverflow,
+                                               inserter);
         return DEVICE_OK;
     }
 
@@ -343,9 +382,12 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     }
 
     int StopSequenceAcquisition() override {
-        nb::gil_scoped_acquire gil;
-        py_.attr("stop_sequence_acquisition")();
+        {
+            nb::gil_scoped_acquire gil;
+            py_.attr("stop_sequence_acquisition")();
+        }
         capturing_ = false;
+        GetCoreCallback()->AcqFinished(this, 0);
         return DEVICE_OK;
     }
 };
