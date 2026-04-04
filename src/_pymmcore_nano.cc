@@ -336,12 +336,15 @@ NB_MODULE(_pymmcore_nano, m) {
         "Handle for registering MM properties during device initialization.")
         .def("create_property", &PropertyBridge::createProperty, "name"_a, "default_value"_a,
              "mm_type"_a, "read_only"_a, "getter"_a = nb::none(), "setter"_a = nb::none(),
-             "pre_init"_a = false,
+             "pre_init"_a = false, "limits"_a = nb::none(), "allowed_values"_a = nb::none(),
              nb::sig("def create_property(self, name: str, default_value: str,"
                      " mm_type: int, read_only: bool,"
                      " getter: typing.Callable[[], str | int | float] | None = None,"
                      " setter: typing.Callable[[str], None] | None = None,"
-                     " pre_init: bool = False) -> None"))
+                     " pre_init: bool = False,"
+                     " limits: tuple[float, float] | None = None,"
+                     " allowed_values: typing.Sequence[str] | None = None,"
+                     ") -> None"))
         .def("set_property_limits", &PropertyBridge::setPropertyLimits, "name"_a, "lower"_a,
              "upper"_a)
         .def("set_allowed_values", &PropertyBridge::setAllowedValues, "name"_a, "values"_a);

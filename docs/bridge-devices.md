@@ -122,15 +122,19 @@ def initialize(self, bridge):
         "Gain", "1.0", PropertyType.Float, read_only=False,
         getter=lambda: self._gain,
         setter=lambda v: setattr(self, '_gain', float(v)),
+        limits=(0.0, 100.0)
     )
-    bridge.set_property_limits("Gain", 0.0, 100.0)
+    # can also set limits separately:
+    # bridge.set_property_limits("Gain", 0.0, 100.0)
 
     bridge.create_property(
         "Mode", "Normal", PropertyType.String, read_only=False,
         getter=lambda: self._mode,
         setter=lambda v: setattr(self, '_mode', v),
+        allowed_values=["Normal", "Fast", "Slow"]
     )
-    bridge.set_allowed_values("Mode", ["Normal", "Fast", "Slow"])
+    # can also set allowed values separately:
+    # bridge.set_allowed_values("Mode", ["Normal", "Fast", "Slow"])
 ```
 
 The `PropertyBridge`:

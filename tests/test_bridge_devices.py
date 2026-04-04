@@ -27,8 +27,8 @@ class MinimalCamera:
             False,
             getter=lambda: self._gain,
             setter=lambda v: setattr(self, "_gain", float(v)),
+            limits=(0.0, 100.0),
         )
-        bridge.set_property_limits("Gain", 0.0, 100.0)
         bridge.create_property(
             "Mode",
             "Normal",
@@ -36,8 +36,8 @@ class MinimalCamera:
             False,
             getter=lambda: self._mode,
             setter=lambda v: setattr(self, "_mode", str(v)),
+            allowed_values=["Normal", "Fast", "Slow"],
         )
-        bridge.set_allowed_values("Mode", ["Normal", "Fast", "Slow"])
 
     def shutdown(self) -> None:
         pass
