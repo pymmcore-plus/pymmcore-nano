@@ -340,6 +340,21 @@ NB_MODULE(_pymmcore_nano, m) {
         .def("set_limits", &PropertyHandle::setLimits, "lower"_a, "upper"_a)
         .def("set_allowed_values", &PropertyHandle::setAllowedValues, "values"_a);
 
+    // DeviceCallbacks — notification methods for Python devices.
+    // Passed to initialize() as the second argument. Valid for the
+    // device's entire lifetime.
+    nb::class_<DeviceCallbacks>(m, "DeviceCallbacks",
+                                "Notification callbacks for communicating device state changes "
+                                "to CMMCore. Passed to initialize() as the second argument.")
+        .def("on_property_changed", &DeviceCallbacks::onPropertyChanged, "name"_a, "value"_a)
+        .def("on_properties_changed", &DeviceCallbacks::onPropertiesChanged)
+        .def("on_stage_position_changed", &DeviceCallbacks::onStagePositionChanged, "pos"_a)
+        .def("on_xy_stage_position_changed", &DeviceCallbacks::onXYStagePositionChanged, "x"_a,
+             "y"_a)
+        .def("on_exposure_changed", &DeviceCallbacks::onExposureChanged, "exposure"_a)
+        .def("on_shutter_open_changed", &DeviceCallbacks::onShutterOpenChanged, "open"_a)
+        .def("log_message", &DeviceCallbacks::logMessage, "msg"_a, "debug_only"_a = false);
+
     /////////////////// Module Attributes ///////////////////
 
     m.attr("DEVICE_INTERFACE_VERSION") = CMMCore::getMMDeviceDeviceInterfaceVersion();

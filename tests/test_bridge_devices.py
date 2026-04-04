@@ -7,13 +7,27 @@ import time
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pymmcore_nano as pmn
 from pymmcore_nano import CMMCore, DeviceAdapter, DeviceType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class MinimalCamera:
+class MinimalDevice:
+    """Shared base for all minimal test devices."""
+
+    def initialize(self, create_property=None, notify=None) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def busy(self) -> bool:
+        return False
+
+
+class MinimalCamera(MinimalDevice):
     """Minimal Python camera that satisfies the bridge interface."""
 
     def __init__(self, width: int = 64, height: int = 32) -> None:
@@ -24,7 +38,8 @@ class MinimalCamera:
         self._gain: float = 1.0
         self._mode: str = "Normal"
 
-    def initialize(self, create_property=None) -> None:
+    def initialize(self, create_property=None, notify=None) -> None:
+        super().initialize(create_property, notify)
         if create_property is None:
             return
         self._gain_prop = create_property(
@@ -45,12 +60,6 @@ class MinimalCamera:
             setter=lambda v: setattr(self, "_mode", str(v)),
             allowed_values=["Normal", "Fast", "Slow"],
         )
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
 
     def snap_image(self) -> None:
         # Fill with a recognizable pattern
@@ -126,20 +135,11 @@ class MinimalCamera:
             self._acq_thread.join(timeout=5.0)
 
 
-class MinimalShutter:
+class MinimalShutter(MinimalDevice):
     """Minimal Python shutter for the bridge."""
 
     def __init__(self) -> None:
         self._open = False
-
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
 
     def set_open(self, state: bool) -> None:
         self._open = state
@@ -361,19 +361,10 @@ def test_load_py_device_adapter() -> None:
 # ============================================================================
 
 
-class MinimalStage:
+class MinimalStage(MinimalDevice):
     def __init__(self) -> None:
         self._pos_um = 0.0
         self._pos_steps = 0
-
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
 
     def set_position_um(self, pos: float) -> None:
         self._pos_um = pos
@@ -395,19 +386,10 @@ class MinimalStage:
         return (-10000.0, 10000.0)
 
 
-class MinimalXYStage:
+class MinimalXYStage(MinimalDevice):
     def __init__(self) -> None:
         self._x_steps = 0
         self._y_steps = 0
-
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
 
     def set_position_steps(self, x: int, y: int) -> None:
         self._x_steps = x
@@ -439,36 +421,18 @@ class MinimalXYStage:
         return 0.1
 
 
-class MinimalState:
+class MinimalState(MinimalDevice):
     def __init__(self, n_positions: int = 4) -> None:
         self._n = n_positions
-
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
 
     def get_number_of_positions(self) -> int:
         return self._n
 
 
-class MinimalAutoFocus:
+class MinimalAutoFocus(MinimalDevice):
     def __init__(self) -> None:
         self._continuous = False
         self._offset = 0.0
-
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
 
     def set_continuous_focusing(self, state: bool) -> None:
         self._continuous = state
@@ -498,46 +462,21 @@ class MinimalAutoFocus:
         self._offset = offset
 
 
-class MinimalGeneric:
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
+class MinimalGeneric(MinimalDevice):
+    pass
 
 
-class MinimalHub:
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
-
+class MinimalHub(MinimalDevice):
     def detect_installed_devices(self) -> None:
         pass
 
 
-class MinimalSLM:
+class MinimalSLM(MinimalDevice):
     def __init__(self, width: int = 128, height: int = 128) -> None:
         self._width = width
         self._height = height
         self._exposure = 0.0
         self._image: np.ndarray | None = None
-
-    def initialize(self, create_property=None) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def busy(self) -> bool:
-        return False
 
     def set_image(self, pixels: np.ndarray) -> None:
         self._image = pixels
@@ -663,3 +602,51 @@ def test_load_py_slm() -> None:
 
     core.setSLMExposure("SLM", 100.0)
     assert slm._exposure == 100.0
+
+
+def test_device_notifications() -> None:
+    """Test that Python devices can emit notifications via DeviceCallbacks."""
+
+    received: dict[str, tuple] = {}
+
+    class Listener(pmn.MMEventCallback):
+        def onPropertyChanged(self, dev: str, name: str, value: str) -> None:
+            received["onPropertyChanged"] = (dev, name, value)
+
+        def onExposureChanged(self, dev: str, exposure: float) -> None:
+            received["onExposureChanged"] = (dev, exposure)
+
+    class NotifyingCamera(MinimalCamera):
+        def initialize(self, create_property=None, notify=None) -> None:
+            super().initialize(create_property, notify)
+            self._notify = notify
+
+        def set_exposure(self, ms: float) -> None:
+            self._exposure = ms
+            # Notify CMMCore that exposure changed
+            if self._notify is not None:
+                self._notify.on_exposure_changed(ms)
+
+    core = CMMCore()
+    cam = NotifyingCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+
+    cb = Listener()
+    core.registerCallback(cb)
+
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+
+    # Setting exposure through CMMCore triggers the bridge → Python setter
+    # → Python calls notify.on_exposure_changed → CMMCore posts notification
+    # → notification thread delivers to callback (async)
+    core.setExposure(42.0)
+    assert cam._exposure == 42.0
+
+    # Wait for async notification delivery
+    deadline = time.time() + 2.0
+    while "onExposureChanged" not in received and time.time() < deadline:
+        time.sleep(0.01)
+
+    assert "onExposureChanged" in received
+    assert received["onExposureChanged"] == ("Cam", 42.0)

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from . import PropertyHandle
+    from . import DeviceCallbacks, PropertyHandle
 
 
 class CreatePropertyFn(Protocol):
@@ -40,7 +40,11 @@ class CreatePropertyFn(Protocol):
 class PyDevice(Protocol):
     """Base protocol for all Python bridge devices."""
 
-    def initialize(self, create_property: CreatePropertyFn) -> None: ...
+    def initialize(
+        self,
+        create_property: CreatePropertyFn,
+        notify: DeviceCallbacks,
+    ) -> None: ...
     def shutdown(self) -> None: ...
     def busy(self) -> bool: ...
 

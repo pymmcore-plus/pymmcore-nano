@@ -93,8 +93,74 @@ class PropertyHandle {
 };
 
 // ============================================================================
+// DeviceCallbacks — passed to Python's initialize() so the device can send
+// notifications to CMMCore (property changes, position updates, etc.).
+// Valid for the device's entire lifetime. Shares the alive_ flag with the
+// bridge device.
+// ============================================================================
+
+class DeviceCallbacks {
+    MM::Device *dev_ = nullptr;
+    MM::Core *cb_ = nullptr;
+    std::shared_ptr<std::atomic<bool>> alive_;
+
+    void checkAlive() const {
+        if (!alive_ || !*alive_)
+            throw std::runtime_error("Device has been unloaded");
+    }
+
+  public:
+    DeviceCallbacks() = delete;
+
+    DeviceCallbacks(MM::Device *dev, MM::Core *cb, std::shared_ptr<std::atomic<bool>> alive)
+        : dev_(dev), cb_(cb), alive_(std::move(alive)) {}
+
+    void onPropertyChanged(const std::string &name, const std::string &value) {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->OnPropertyChanged(dev_, name.c_str(), value.c_str());
+    }
+
+    void onPropertiesChanged() {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->OnPropertiesChanged(dev_);
+    }
+
+    void onStagePositionChanged(double pos) {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->OnStagePositionChanged(dev_, pos);
+    }
+
+    void onXYStagePositionChanged(double x, double y) {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->OnXYStagePositionChanged(dev_, x, y);
+    }
+
+    void onExposureChanged(double newExposure) {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->OnExposureChanged(dev_, newExposure);
+    }
+
+    void onShutterOpenChanged(bool open) {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->OnShutterOpenChanged(dev_, open);
+    }
+
+    void logMessage(const std::string &msg, bool debugOnly = false) {
+        checkAlive();
+        nb::gil_scoped_release release;
+        cb_->LogMessage(dev_, msg.c_str(), debugOnly);
+    }
+};
+
+// ============================================================================
 // createPropertyFactory — builds the create_property callable that is passed
-// to Python's initialize(create_property).
+// to Python's initialize(create_property, notify).
 //
 // Each call to create_property registers an MM property on the C++ device
 // with an ActionLambda for get/set, and returns a PropertyHandle for
@@ -196,17 +262,26 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
 }
 
 // ============================================================================
-// initializeWithPropertyFactory — calls Python's initialize(create_property).
+// initializeWithPropertyFactory — calls Python's
+//   initialize(create_property, notify)
 // The create_property callable is invalidated after initialize() returns.
+// The DeviceCallbacks object remains valid for the device's lifetime.
 // ============================================================================
 
 template <typename TDevice>
 int initializeWithPropertyFactory(TDevice *dev, nb::object &py,
-                                  std::shared_ptr<std::atomic<bool>> alive) {
+                                  std::shared_ptr<std::atomic<bool>> alive,
+                                  MM::Core *coreCallback) {
     auto canCreate = std::make_shared<std::atomic<bool>>(true);
     nb::object factory = createPropertyFactory(dev, canCreate, alive);
+
+    // Create DeviceCallbacks — valid for the device's lifetime.
+    // Heap-allocated, Python takes ownership.
+    auto *notify = new DeviceCallbacks(dev, coreCallback, alive);
+    nb::object py_notify = nb::cast(notify, nb::rv_policy::take_ownership);
+
     try {
-        py.attr("initialize")(factory);
+        py.attr("initialize")(factory, py_notify);
     } catch (...) {
         *canCreate = false;
         throw;
@@ -237,9 +312,9 @@ template <typename TDevice> class PyBridgeDeviceBase {
         }
     }
 
-    int initializeCommon(TDevice *dev) {
+    int initializeCommon(TDevice *dev, MM::Core *coreCallback) {
         nb::gil_scoped_acquire gil;
-        return initializeWithPropertyFactory(dev, py_, alive_);
+        return initializeWithPropertyFactory(dev, py_, alive_, coreCallback);
     }
 
     int shutdownCommon() {
@@ -258,7 +333,9 @@ template <typename TDevice> class PyBridgeDeviceBase {
   public:                                                                                      \
     ClassName(nb::object py_dev, std::string name)                                             \
         : PyBridgeDeviceBase<ClassName>(std::move(py_dev), std::move(name)) {}                 \
-    int Initialize() override { return this->initializeCommon(this); }                         \
+    int Initialize() override {                                                                \
+        return this->initializeCommon(this, this->GetCoreCallback());                          \
+    }                                                                                          \
     int Shutdown() override { return this->shutdownCommon(); }                                 \
     bool Busy() override { return this->busyCommon(); }                                        \
     void GetName(char *name) const override { this->getNameCommon(name); }
