@@ -650,3 +650,53 @@ def test_device_notifications() -> None:
 
     assert "onExposureChanged" in received
     assert received["onExposureChanged"] == ("Cam", 42.0)
+
+
+def test_python_exception_surfaces_as_runtime_error() -> None:
+    """Python exceptions in device methods should surface with traceback info."""
+
+    class BrokenStage(MinimalStage):
+        def get_position_um(self) -> float:
+            raise ValueError("motor not homed")
+
+    core = CMMCore()
+    stage = BrokenStage()
+    core.loadPyDevice("Z", stage, DeviceType.StageDevice)
+    core.initializeDevice("Z")
+    core.setFocusDevice("Z")
+
+    try:
+        core.getPosition()
+        msg = ""
+    except RuntimeError as e:
+        msg = str(e)
+
+    assert "motor not homed" in msg, f"Expected Python error message, got: {msg!r}"
+
+
+def test_python_exception_in_property_getter() -> None:
+    """Python exceptions in property getters should surface."""
+
+    class BadCamera(MinimalCamera):
+        def initialize(self, create_property=None, notify=None) -> None:
+            if create_property is not None:
+                create_property(
+                    "Bad",
+                    "0",
+                    2,
+                    False,
+                    getter=lambda: 1 / 0,  # ZeroDivisionError
+                )
+
+    core = CMMCore()
+    cam = BadCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+
+    try:
+        core.getProperty("Cam", "Bad")
+        msg = ""
+    except RuntimeError as e:
+        msg = str(e)
+
+    assert "ZeroDivisionError" in msg, f"Expected Python error info, got: {msg!r}"

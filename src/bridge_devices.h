@@ -26,22 +26,62 @@ namespace nb = nanobind;
 // Helpers — factor out GIL + cast boilerplate
 // ============================================================================
 
+// Catch nb::python_error from Python calls and rethrow as std::runtime_error
+// with the Python traceback preserved. CMMCore's DeviceInstance layer catches
+// std::exception, logs via LOG_ERROR, and wraps in CMMError — so the Python
+// error info surfaces through MM's existing error pipeline.
+
 template <typename T> T py_get(const nb::object &py, const char *attr) {
     nb::gil_scoped_acquire gil;
-    return nb::cast<T>(py.attr(attr)());
+    try {
+        return nb::cast<T>(py.attr(attr)());
+    } catch (nb::python_error &e) {
+        std::string msg = e.what();
+        e.restore();
+        PyErr_Clear();
+        throw std::runtime_error(msg);
+    }
 }
 
 template <typename... Args>
 void py_set(const nb::object &py, const char *attr, Args &&...args) {
     nb::gil_scoped_acquire gil;
-    py.attr(attr)(std::forward<Args>(args)...);
+    try {
+        py.attr(attr)(std::forward<Args>(args)...);
+    } catch (nb::python_error &e) {
+        std::string msg = e.what();
+        e.restore();
+        PyErr_Clear();
+        throw std::runtime_error(msg);
+    }
 }
 
 template <typename... Args>
 int py_call(const nb::object &py, const char *attr, Args &&...args) {
     nb::gil_scoped_acquire gil;
-    py.attr(attr)(std::forward<Args>(args)...);
+    try {
+        py.attr(attr)(std::forward<Args>(args)...);
+    } catch (nb::python_error &e) {
+        std::string msg = e.what();
+        e.restore();
+        PyErr_Clear();
+        throw std::runtime_error(msg);
+    }
     return DEVICE_OK;
+}
+
+// GIL-acquiring wrapper for inline Python calls that aren't simple
+// get/set/call. Catches nb::python_error and rethrows as std::runtime_error.
+template <typename F> auto py_invoke(F &&fn) -> decltype(fn()) {
+    nb::gil_scoped_acquire gil;
+    try {
+        return fn();
+    } catch (nb::python_error &e) {
+        std::string msg = e.what();
+        e.restore();
+        PyErr_Clear();
+        throw std::runtime_error(msg);
+    }
 }
 
 // ============================================================================
@@ -192,13 +232,20 @@ inline std::unique_ptr<MM::ActionFunctor> makePropertyAction(nb::object getter,
     return std::make_unique<MM::ActionLambda>(
         [cbs](MM::PropertyBase *pProp, MM::ActionType eAct) -> int {
             nb::gil_scoped_acquire gil;
-            if (eAct == MM::BeforeGet && !cbs->getter.is_none()) {
-                auto val = cbs->getter();
-                pProp->Set(nb::cast<std::string>(nb::str(val)).c_str());
-            } else if (eAct == MM::AfterSet && !cbs->setter.is_none()) {
-                std::string val;
-                pProp->Get(val);
-                cbs->setter(nb::str(val.c_str()));
+            try {
+                if (eAct == MM::BeforeGet && !cbs->getter.is_none()) {
+                    auto val = cbs->getter();
+                    pProp->Set(nb::cast<std::string>(nb::str(val)).c_str());
+                } else if (eAct == MM::AfterSet && !cbs->setter.is_none()) {
+                    std::string val;
+                    pProp->Get(val);
+                    cbs->setter(nb::str(val.c_str()));
+                }
+            } catch (nb::python_error &e) {
+                std::string msg = e.what();
+                e.restore();
+                PyErr_Clear();
+                throw std::runtime_error(msg);
             }
             return DEVICE_OK;
         });
@@ -372,14 +419,15 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
 
     // -- MM::Camera: snap + buffer --
     int SnapImage() override {
-        nb::gil_scoped_acquire gil;
-        py_.attr("snap_image")();
-        nb::object arr = py_.attr("get_image_buffer")();
-        auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
-        size_t nbytes = nd.nbytes();
-        buf_.resize(nbytes);
-        std::memcpy(buf_.data(), nd.data(), nbytes);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            py_.attr("snap_image")();
+            nb::object arr = py_.attr("get_image_buffer")();
+            auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
+            size_t nbytes = nd.nbytes();
+            buf_.resize(nbytes);
+            std::memcpy(buf_.data(), nd.data(), nbytes);
+            return DEVICE_OK;
+        });
     }
 
     const unsigned char *GetImageBuffer() override { return buf_.data(); }
@@ -391,13 +439,14 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     int ClearROI() override { return py_call(py_, "clear_roi"); }
 
     int GetROI(unsigned &x, unsigned &y, unsigned &w, unsigned &h) override {
-        nb::gil_scoped_acquire gil;
-        auto roi = py_.attr("get_roi")();
-        x = nb::cast<unsigned>(roi[nb::int_(0)]);
-        y = nb::cast<unsigned>(roi[nb::int_(1)]);
-        w = nb::cast<unsigned>(roi[nb::int_(2)]);
-        h = nb::cast<unsigned>(roi[nb::int_(3)]);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            auto roi = py_.attr("get_roi")();
+            x = nb::cast<unsigned>(roi[nb::int_(0)]);
+            y = nb::cast<unsigned>(roi[nb::int_(1)]);
+            w = nb::cast<unsigned>(roi[nb::int_(2)]);
+            h = nb::cast<unsigned>(roi[nb::int_(3)]);
+            return DEVICE_OK;
+        });
     }
 
     // -- MM::Camera: sequence acquisition --
@@ -414,44 +463,44 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
         if (ret != DEVICE_OK)
             return ret;
 
-        nb::gil_scoped_acquire gil;
+        return py_invoke([&]() -> int {
+            // Create an insert_image callable that pushes a frame into
+            // CMMCore's circular buffer. Python calls this per frame.
+            auto *self = this;
+            nb::object inserter = nb::cpp_function(
+                [self](nb::object arr, nb::object metadata) {
+                    auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
+                    unsigned w = self->GetImageWidth();
+                    unsigned h = self->GetImageHeight();
+                    unsigned bpp = self->GetImageBytesPerPixel();
+                    unsigned nComp = self->GetNumberOfComponents();
 
-        // Create an insert_image callable that pushes a frame into
-        // CMMCore's circular buffer. Python calls this per frame.
-        auto *self = this;
-        nb::object inserter = nb::cpp_function(
-            [self](nb::object arr, nb::object metadata) {
-                auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
-                unsigned w = self->GetImageWidth();
-                unsigned h = self->GetImageHeight();
-                unsigned bpp = self->GetImageBytesPerPixel();
-                unsigned nComp = self->GetNumberOfComponents();
-
-                // Build serialized metadata in MMCore's format
-                Metadata md;
-                if (!metadata.is_none()) {
-                    nb::dict d = nb::cast<nb::dict>(metadata);
-                    for (auto [key, val] : d) {
-                        auto k = nb::cast<std::string>(nb::str(key));
-                        auto v = nb::cast<std::string>(nb::str(val));
-                        md.PutImageTag(k.c_str(), v);
+                    // Build serialized metadata in MMCore's format
+                    Metadata md;
+                    if (!metadata.is_none()) {
+                        nb::dict d = nb::cast<nb::dict>(metadata);
+                        for (auto [key, val] : d) {
+                            auto k = nb::cast<std::string>(nb::str(key));
+                            auto v = nb::cast<std::string>(nb::str(val));
+                            md.PutImageTag(k.c_str(), v);
+                        }
                     }
-                }
-                std::string mdStr = md.Serialize();
+                    std::string mdStr = md.Serialize();
 
-                {
-                    nb::gil_scoped_release release;
-                    self->GetCoreCallback()->InsertImage(
-                        self, static_cast<const unsigned char *>(nd.data()), w, h, bpp, nComp,
-                        mdStr.c_str());
-                }
-            },
-            nb::arg("image"), nb::arg("metadata") = nb::none());
+                    {
+                        nb::gil_scoped_release release;
+                        self->GetCoreCallback()->InsertImage(
+                            self, static_cast<const unsigned char *>(nd.data()), w, h, bpp,
+                            nComp, mdStr.c_str());
+                    }
+                },
+                nb::arg("image"), nb::arg("metadata") = nb::none());
 
-        capturing_ = true;
-        py_.attr("start_sequence_acquisition")(numImages, interval_ms, stopOnOverflow,
-                                               inserter);
-        return DEVICE_OK;
+            capturing_ = true;
+            py_.attr("start_sequence_acquisition")(numImages, interval_ms, stopOnOverflow,
+                                                   inserter);
+            return DEVICE_OK;
+        });
     }
 
     int StartSequenceAcquisition(double interval_ms) override {
@@ -459,10 +508,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     }
 
     int StopSequenceAcquisition() override {
-        {
-            nb::gil_scoped_acquire gil;
-            py_.attr("stop_sequence_acquisition")();
-        }
+        py_invoke([&]() { py_.attr("stop_sequence_acquisition")(); });
         capturing_ = false;
         GetCoreCallback()->AcqFinished(this, 0);
         return DEVICE_OK;
@@ -511,11 +557,12 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
     }
     int SetOrigin() override { return py_call(py_, "set_origin"); }
     int GetLimits(double &lo, double &hi) override {
-        nb::gil_scoped_acquire gil;
-        auto lim = py_.attr("get_limits")();
-        lo = nb::cast<double>(lim[nb::int_(0)]);
-        hi = nb::cast<double>(lim[nb::int_(1)]);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            auto lim = py_.attr("get_limits")();
+            lo = nb::cast<double>(lim[nb::int_(0)]);
+            hi = nb::cast<double>(lim[nb::int_(1)]);
+            return DEVICE_OK;
+        });
     }
     int IsStageSequenceable(bool &f) const override {
         f = false;
@@ -537,32 +584,35 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
         return py_call(py_, "set_position_steps", x, y);
     }
     int GetPositionSteps(long &x, long &y) override {
-        nb::gil_scoped_acquire gil;
-        auto pos = py_.attr("get_position_steps")();
-        x = nb::cast<long>(pos[nb::int_(0)]);
-        y = nb::cast<long>(pos[nb::int_(1)]);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            auto pos = py_.attr("get_position_steps")();
+            x = nb::cast<long>(pos[nb::int_(0)]);
+            y = nb::cast<long>(pos[nb::int_(1)]);
+            return DEVICE_OK;
+        });
     }
     int Home() override { return py_call(py_, "home"); }
     int Stop() override { return py_call(py_, "stop"); }
     int SetOrigin() override { return py_call(py_, "set_origin"); }
     int GetLimitsUm(double &xMin, double &xMax, double &yMin, double &yMax) override {
-        nb::gil_scoped_acquire gil;
-        auto lim = py_.attr("get_limits_um")();
-        xMin = nb::cast<double>(lim[nb::int_(0)]);
-        xMax = nb::cast<double>(lim[nb::int_(1)]);
-        yMin = nb::cast<double>(lim[nb::int_(2)]);
-        yMax = nb::cast<double>(lim[nb::int_(3)]);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            auto lim = py_.attr("get_limits_um")();
+            xMin = nb::cast<double>(lim[nb::int_(0)]);
+            xMax = nb::cast<double>(lim[nb::int_(1)]);
+            yMin = nb::cast<double>(lim[nb::int_(2)]);
+            yMax = nb::cast<double>(lim[nb::int_(3)]);
+            return DEVICE_OK;
+        });
     }
     int GetStepLimits(long &xMin, long &xMax, long &yMin, long &yMax) override {
-        nb::gil_scoped_acquire gil;
-        auto lim = py_.attr("get_step_limits")();
-        xMin = nb::cast<long>(lim[nb::int_(0)]);
-        xMax = nb::cast<long>(lim[nb::int_(1)]);
-        yMin = nb::cast<long>(lim[nb::int_(2)]);
-        yMax = nb::cast<long>(lim[nb::int_(3)]);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            auto lim = py_.attr("get_step_limits")();
+            xMin = nb::cast<long>(lim[nb::int_(0)]);
+            xMax = nb::cast<long>(lim[nb::int_(1)]);
+            yMin = nb::cast<long>(lim[nb::int_(2)]);
+            yMax = nb::cast<long>(lim[nb::int_(3)]);
+            return DEVICE_OK;
+        });
     }
     double GetStepSizeXUm() override { return py_get<double>(py_, "get_step_size_x_um"); }
     double GetStepSizeYUm() override { return py_get<double>(py_, "get_step_size_y_um"); }
@@ -586,8 +636,8 @@ class PyBridgeState : public CStateDeviceBase<PyBridgeState>,
     // GetGateOpen — all driven by the "State" and "Label" properties.
     // The only pure virtual remaining is GetNumberOfPositions.
     unsigned long GetNumberOfPositions() const override {
-        nb::gil_scoped_acquire gil;
-        return nb::cast<unsigned long>(py_.attr("get_number_of_positions")());
+        return py_invoke(
+            [&]() { return nb::cast<unsigned long>(py_.attr("get_number_of_positions")()); });
     }
 };
 
@@ -658,18 +708,20 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
 
     // -- MM::SLM --
     int SetImage(unsigned char *pixels) override {
-        nb::gil_scoped_acquire gil;
-        size_t nbytes = static_cast<size_t>(GetWidth()) * GetHeight() * GetBytesPerPixel();
-        auto arr = nb::ndarray<uint8_t, nb::c_contig>(pixels, {nbytes});
-        py_.attr("set_image")(arr);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            size_t nbytes = static_cast<size_t>(GetWidth()) * GetHeight() * GetBytesPerPixel();
+            auto arr = nb::ndarray<uint8_t, nb::c_contig>(pixels, {nbytes});
+            py_.attr("set_image")(arr);
+            return DEVICE_OK;
+        });
     }
     int SetImage(unsigned int *pixels) override {
-        nb::gil_scoped_acquire gil;
-        size_t n = static_cast<size_t>(GetWidth()) * GetHeight();
-        auto arr = nb::ndarray<uint32_t, nb::c_contig>(pixels, {n});
-        py_.attr("set_image")(arr);
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            size_t n = static_cast<size_t>(GetWidth()) * GetHeight();
+            auto arr = nb::ndarray<uint32_t, nb::c_contig>(pixels, {n});
+            py_.attr("set_image")(arr);
+            return DEVICE_OK;
+        });
     }
     int DisplayImage() override { return py_call(py_, "display_image"); }
     int SetPixelsTo(unsigned char intensity) override {
