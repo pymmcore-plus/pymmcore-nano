@@ -67,9 +67,12 @@ class MinimalCamera(MinimalDevice):
             self._height, self._width
         )
 
-    def get_image_buffer(self) -> np.ndarray:
+    def get_image_buffer(self, channel: int = 0) -> np.ndarray:
         assert self._buf is not None
         return self._buf
+
+    def is_exposure_sequenceable(self) -> bool:
+        return False
 
     def get_image_width(self) -> int:
         return self._width
@@ -79,6 +82,15 @@ class MinimalCamera(MinimalDevice):
 
     def get_bytes_per_pixel(self) -> int:
         return 1
+
+    def get_number_of_components(self) -> int:
+        return 1
+
+    def get_number_of_channels(self) -> int:
+        return 1
+
+    def get_channel_name(self, channel: int) -> str:
+        return ""
 
     def get_bit_depth(self) -> int:
         return 8

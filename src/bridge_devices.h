@@ -394,7 +394,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                        private PyBridgeDeviceBase<PyBridgeCamera> {
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeCamera)
 
-    nb::object img_arr_;  // holds ndarray from get_image_buffer() to prevent GC
+    nb::object img_arr_; // holds ndarray from get_image_buffer() to prevent GC
     std::atomic<bool> capturing_{false};
 
     // -- MM::Camera: getters --
@@ -404,6 +404,19 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     }
     unsigned GetImageBytesPerPixel() const override {
         return py_get<unsigned>(py_, "get_bytes_per_pixel");
+    }
+    unsigned GetNumberOfComponents() const override {
+        return py_get<unsigned>(py_, "get_number_of_components");
+    }
+    unsigned GetNumberOfChannels() const override {
+        return py_get<unsigned>(py_, "get_number_of_channels");
+    }
+    int GetChannelName(unsigned channel, char *name) override {
+        return py_invoke([&]() -> int {
+            auto pyName = nb::cast<std::string>(py_.attr("get_channel_name")(channel));
+            CDeviceUtils::CopyLimitedString(name, pyName.c_str());
+            return DEVICE_OK;
+        });
     }
     unsigned GetBitDepth() const override { return py_get<unsigned>(py_, "get_bit_depth"); }
     long GetImageBufferSize() const override {
@@ -430,6 +443,14 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
         });
     }
 
+    const unsigned char *GetImageBuffer(unsigned channelNr) override {
+        return py_invoke([&]() -> const unsigned char * {
+            img_arr_ = py_.attr("get_image_buffer")(channelNr);
+            auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(img_arr_);
+            return static_cast<const unsigned char *>(nd.data());
+        });
+    }
+
     // -- MM::Camera: ROI --
     int SetROI(unsigned x, unsigned y, unsigned w, unsigned h) override {
         return py_call(py_, "set_roi", x, y, w, h);
@@ -449,7 +470,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
 
     // -- MM::Camera: sequence acquisition --
     int IsExposureSequenceable(bool &f) const override {
-        f = false;
+        f = py_get<bool>(py_, "is_exposure_sequenceable");
         return DEVICE_OK;
     }
 
