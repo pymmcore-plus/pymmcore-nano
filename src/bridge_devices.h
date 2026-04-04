@@ -910,6 +910,66 @@ class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus>,
 };
 
 // ============================================================================
+// PyBridgeSignalIO
+// ============================================================================
+
+class PyBridgeSignalIO : public CSignalIOBase<PyBridgeSignalIO>,
+                         private PyBridgeDeviceBase<PyBridgeSignalIO> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeSignalIO)
+
+    // -- MM::SignalIO: core --
+    int SetGateOpen(bool open) override { return py_call(py_, "set_gate_open", open); }
+    int GetGateOpen(bool &open) override {
+        open = py_get<bool>(py_, "get_gate_open");
+        return DEVICE_OK;
+    }
+    int SetSignal(double volts) override { return py_call(py_, "set_signal", volts); }
+    int GetSignal(double &volts) override {
+        volts = py_get<double>(py_, "get_signal");
+        return DEVICE_OK;
+    }
+    int GetLimits(double &minVolts, double &maxVolts) override {
+        return py_invoke([&]() -> int {
+            auto lim = py_.attr("get_limits")();
+            minVolts = nb::cast<double>(lim[nb::int_(0)]);
+            maxVolts = nb::cast<double>(lim[nb::int_(1)]);
+            return DEVICE_OK;
+        });
+    }
+
+    // -- MM::SignalIO: DA sequencing --
+    std::vector<double> daSeq_;
+
+    int IsDASequenceable(bool &f) const override {
+        f = py_get<bool>(py_, "is_da_sequenceable");
+        return DEVICE_OK;
+    }
+    int GetDASequenceMaxLength(long &nrEvents) const override {
+        nrEvents = py_get<long>(py_, "get_da_sequence_max_length");
+        return DEVICE_OK;
+    }
+    int ClearDASequence() override {
+        daSeq_.clear();
+        return DEVICE_OK;
+    }
+    int AddToDASequence(double voltage) override {
+        daSeq_.push_back(voltage);
+        return DEVICE_OK;
+    }
+    int SendDASequence() override {
+        return py_invoke([&]() -> int {
+            nb::list py_seq;
+            for (double v : daSeq_)
+                py_seq.append(v);
+            py_.attr("load_da_sequence")(py_seq);
+            return DEVICE_OK;
+        });
+    }
+    int StartDASequence() override { return py_call(py_, "start_da_sequence"); }
+    int StopDASequence() override { return py_call(py_, "stop_da_sequence"); }
+};
+
+// ============================================================================
 // PyBridgeGeneric
 // ============================================================================
 
@@ -1083,6 +1143,7 @@ inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
     case MM::StateDevice: return new PyBridgeState(py_dev, name);
     case MM::SLMDevice: return new PyBridgeSLM(py_dev, name);
     case MM::AutoFocusDevice: return new PyBridgeAutoFocus(py_dev, name);
+    case MM::SignalIODevice: return new PyBridgeSignalIO(py_dev, name);
     case MM::GenericDevice: return new PyBridgeGeneric(py_dev, name);
     case MM::HubDevice: return new PyBridgeHub(py_dev, name);
     default:

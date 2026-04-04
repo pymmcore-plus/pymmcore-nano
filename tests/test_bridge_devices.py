@@ -564,6 +564,32 @@ class MinimalXYStage(MinimalDevice):
         return False
 
 
+class MinimalSignalIO(MinimalDevice):
+    def __init__(self) -> None:
+        self._gate_open = True
+        self._volts = 0.0
+        self._min_volts = 0.0
+        self._max_volts = 5.0
+
+    def set_gate_open(self, open: bool) -> None:
+        self._gate_open = open
+
+    def get_gate_open(self) -> bool:
+        return self._gate_open
+
+    def set_signal(self, volts: float) -> None:
+        self._volts = volts
+
+    def get_signal(self) -> float:
+        return self._volts
+
+    def get_limits(self) -> tuple[float, float]:
+        return (self._min_volts, self._max_volts)
+
+    def is_da_sequenceable(self) -> bool:
+        return False
+
+
 class MinimalState(MinimalDevice):
     def __init__(self, n_positions: int = 4, labels: list[str] | None = None) -> None:
         self._n = n_positions
@@ -729,6 +755,16 @@ def test_load_py_autofocus() -> None:
     core.setAutoFocusOffset(5.0)
     assert af._offset == 5.0
     assert core.getAutoFocusOffset() == 5.0
+
+
+def test_load_py_signal_io() -> None:
+    core = CMMCore()
+    da = MinimalSignalIO()
+    core.loadPyDevice("DA", da, DeviceType.SignalIODevice)
+    core.initializeDevice("DA")
+
+    assert "DA" in core.getLoadedDevices()
+    assert core.getDeviceType("DA") == DeviceType.SignalIODevice
 
 
 def test_load_py_generic() -> None:
