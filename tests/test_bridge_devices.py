@@ -416,6 +416,10 @@ def test_load_py_device_adapter() -> None:
     assert "Cam1" in core.getLoadedDevices()
     assert "Shutter1" in core.getLoadedDevices()
 
+    # Loaded device descriptions should come from the bridge's GetDescription
+    assert core.getDeviceDescription("Cam1") == "A test camera."
+    assert core.getDeviceDescription("Shutter1") == "A test shutter."
+
     # Devices should work normally
     core.setCameraDevice("Cam1")
     core.snapImage()
@@ -952,6 +956,12 @@ def test_load_py_hub() -> None:
     peripherals = core.getInstalledDevices("Hub")
     assert "HubCam" in peripherals
     assert "HubShutter" in peripherals
+
+    # Peripheral descriptions should come from the Python class docstring
+    cam_desc = core.getInstalledDeviceDescription("Hub", "HubCam")
+    shutter_desc = core.getInstalledDeviceDescription("Hub", "HubShutter")
+    assert "Minimal Python camera" in cam_desc
+    assert "Minimal Python shutter" in shutter_desc
 
 
 def test_load_py_slm() -> None:

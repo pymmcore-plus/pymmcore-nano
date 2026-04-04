@@ -424,10 +424,12 @@ template <typename TDevice> class PyBridgeDeviceBase {
   protected:
     nb::object py_;
     std::string deviceName_;
+    std::string deviceDescription_;
     std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
 
-    PyBridgeDeviceBase(nb::object py_dev, std::string name)
-        : py_(std::move(py_dev)), deviceName_(std::move(name)) {}
+    PyBridgeDeviceBase(nb::object py_dev, std::string name, std::string description = "")
+        : py_(std::move(py_dev)), deviceName_(std::move(name)),
+          deviceDescription_(std::move(description)) {}
 
     ~PyBridgeDeviceBase() {
         try {
@@ -452,18 +454,24 @@ template <typename TDevice> class PyBridgeDeviceBase {
     void getNameCommon(char *name) const {
         CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
     }
+
+    void getDescriptionCommon(char *desc) const {
+        CDeviceUtils::CopyLimitedString(desc, deviceDescription_.c_str());
+    }
 };
 
 #define PYBRIDGE_COMMON_OVERRIDES(ClassName)                                                   \
   public:                                                                                      \
-    ClassName(nb::object py_dev, std::string name)                                             \
-        : PyBridgeDeviceBase<ClassName>(std::move(py_dev), std::move(name)) {}                 \
+    ClassName(nb::object py_dev, std::string name, std::string description = "")               \
+        : PyBridgeDeviceBase<ClassName>(std::move(py_dev), std::move(name),                    \
+                                        std::move(description)) {}                             \
     int Initialize() override {                                                                \
         return this->initializeCommon(this, this->GetCoreCallback());                          \
     }                                                                                          \
     int Shutdown() override { return this->shutdownCommon(); }                                 \
     bool Busy() override { return this->busyCommon(); }                                        \
-    void GetName(char *name) const override { this->getNameCommon(name); }
+    void GetName(char *name) const override { this->getNameCommon(name); }                     \
+    void GetDescription(char *desc) const override { this->getDescriptionCommon(desc); }
 
 // ============================================================================
 // PyBridgeCamera
@@ -1107,7 +1115,8 @@ class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric>,
 
 // Forward declaration — PyBridgeHub::DetectInstalledDevices needs this.
 inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
-                                      const std::string &name);
+                                      const std::string &name,
+                                      const std::string &description = "");
 
 // ============================================================================
 // PyBridgeHub
@@ -1128,7 +1137,13 @@ class PyBridgeHub : public HubBase<PyBridgeHub>, private PyBridgeDeviceBase<PyBr
                 auto name = nb::cast<std::string>(tup[0]);
                 nb::object py_dev = tup[1];
                 auto type = nb::cast<MM::DeviceType>(tup[2]);
-                MM::Device *pDev = createBridgeDevice(py_dev, type, name);
+                // Extract description from the Python object's class docstring.
+                std::string desc;
+                nb::object py_type =
+                    nb::borrow(reinterpret_cast<PyObject *>(Py_TYPE(py_dev.ptr())));
+                if (nb::hasattr(py_type, "__doc__") && !py_type.attr("__doc__").is_none())
+                    desc = nb::cast<std::string>(nb::str(py_type.attr("__doc__")));
+                MM::Device *pDev = createBridgeDevice(py_dev, type, name, desc);
                 if (pDev)
                     AddInstalledDevice(pDev);
             }
@@ -1261,21 +1276,21 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
 // ============================================================================
 
 inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
-                                      const std::string &name) {
+                                      const std::string &name, const std::string &description) {
     switch (type) {
-    case MM::CameraDevice: return new PyBridgeCamera(py_dev, name);
-    case MM::ShutterDevice: return new PyBridgeShutter(py_dev, name);
-    case MM::StageDevice: return new PyBridgeStage(py_dev, name);
-    case MM::XYStageDevice: return new PyBridgeXYStage(py_dev, name);
-    case MM::StateDevice: return new PyBridgeState(py_dev, name);
-    case MM::SLMDevice: return new PyBridgeSLM(py_dev, name);
-    case MM::AutoFocusDevice: return new PyBridgeAutoFocus(py_dev, name);
-    case MM::SignalIODevice: return new PyBridgeSignalIO(py_dev, name);
-    case MM::GalvoDevice: return new PyBridgeGalvo(py_dev, name);
-    case MM::MagnifierDevice: return new PyBridgeMagnifier(py_dev, name);
-    case MM::SerialDevice: return new PyBridgeSerial(py_dev, name);
-    case MM::GenericDevice: return new PyBridgeGeneric(py_dev, name);
-    case MM::HubDevice: return new PyBridgeHub(py_dev, name);
+    case MM::CameraDevice: return new PyBridgeCamera(py_dev, name, description);
+    case MM::ShutterDevice: return new PyBridgeShutter(py_dev, name, description);
+    case MM::StageDevice: return new PyBridgeStage(py_dev, name, description);
+    case MM::XYStageDevice: return new PyBridgeXYStage(py_dev, name, description);
+    case MM::StateDevice: return new PyBridgeState(py_dev, name, description);
+    case MM::SLMDevice: return new PyBridgeSLM(py_dev, name, description);
+    case MM::AutoFocusDevice: return new PyBridgeAutoFocus(py_dev, name, description);
+    case MM::SignalIODevice: return new PyBridgeSignalIO(py_dev, name, description);
+    case MM::GalvoDevice: return new PyBridgeGalvo(py_dev, name, description);
+    case MM::MagnifierDevice: return new PyBridgeMagnifier(py_dev, name, description);
+    case MM::SerialDevice: return new PyBridgeSerial(py_dev, name, description);
+    case MM::GenericDevice: return new PyBridgeGeneric(py_dev, name, description);
+    case MM::HubDevice: return new PyBridgeHub(py_dev, name, description);
     default:
         throw std::runtime_error("No Python bridge for device type " + std::to_string(type));
     }
@@ -1359,7 +1374,7 @@ class PyBridgeAdapter : public MockDeviceAdapter {
             if (d.name == name) {
                 try {
                     nb::object py_dev = d.is_class ? d.py_obj() : d.py_obj;
-                    return createBridgeDevice(py_dev, d.type, d.name);
+                    return createBridgeDevice(py_dev, d.type, d.name, d.description);
                 } catch (nb::python_error &e) {
                     e.restore();
                     PyErr_Clear();
