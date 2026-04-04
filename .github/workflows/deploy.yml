@@ -49,7 +49,7 @@ jobs:
       - run: uv run scripts/extract_version.py --update
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.2
+        uses: pypa/cibuildwheel@v3.4
         env:
           CIBW_BUILD: ${{ matrix.python && format('{0}-*', matrix.python) }}
           CIBW_ARCHS_MACOS: "${{ matrix.macos_arch }}"
@@ -61,7 +61,7 @@ jobs:
       - name: check-wheel-contents
         run: uvx check-wheel-contents ./wheelhouse
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: artifact-wheels-${{ matrix.os }}${{ matrix.macos_arch && format('-{0}', matrix.macos_arch) }}${{ matrix.python && format('-{0}', matrix.python) }}
           path: ./wheelhouse/*.whl
@@ -79,7 +79,7 @@ jobs:
           uv run scripts/extract_version.py --update
           uv build --sdist
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: artifact-sdist
           path: dist/*.tar.gz
@@ -96,7 +96,7 @@ jobs:
       contents: write # allows writing releases
 
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: artifact-*
           merge-multiple: true
