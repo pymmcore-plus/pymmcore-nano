@@ -590,6 +590,39 @@ class MinimalSignalIO(MinimalDevice):
         return False
 
 
+class MinimalMagnifier(MinimalDevice):
+    def __init__(self, mag: float = 10.0) -> None:
+        self._mag = mag
+
+    def get_magnification(self) -> float:
+        return self._mag
+
+
+class MinimalSerial(MinimalDevice):
+    def __init__(self) -> None:
+        self._buf = b""
+
+    def get_port_type(self) -> int:
+        return 1  # SerialPort
+
+    def set_command(self, command: str, term: str) -> None:
+        self._buf = (command + term).encode()
+
+    def get_answer(self, term: str) -> str:
+        return self._buf.decode()
+
+    def write(self, data: bytes) -> None:
+        self._buf = data
+
+    def read(self, max_bytes: int) -> bytes:
+        result = self._buf[:max_bytes]
+        self._buf = self._buf[max_bytes:]
+        return result
+
+    def purge(self) -> None:
+        self._buf = b""
+
+
 class MinimalGalvo(MinimalDevice):
     def __init__(self) -> None:
         self._x = 0.0
@@ -829,6 +862,31 @@ def test_load_py_signal_io() -> None:
 
     assert "DA" in core.getLoadedDevices()
     assert core.getDeviceType("DA") == DeviceType.SignalIODevice
+
+
+def test_load_py_magnifier() -> None:
+    core = CMMCore()
+    mag = MinimalMagnifier(mag=40.0)
+    core.loadPyDevice("Mag", mag, DeviceType.MagnifierDevice)
+    core.initializeDevice("Mag")
+
+    assert "Mag" in core.getLoadedDevices()
+    assert core.getDeviceType("Mag") == DeviceType.MagnifierDevice
+    assert core.getMagnificationFactor() == 40.0
+
+
+def test_load_py_serial() -> None:
+    core = CMMCore()
+    ser = MinimalSerial()
+    core.loadPyDevice("COM1", ser, DeviceType.SerialDevice)
+    core.initializeDevice("COM1")
+
+    assert "COM1" in core.getLoadedDevices()
+    assert core.getDeviceType("COM1") == DeviceType.SerialDevice
+
+    # Command/answer round-trip
+    core.setSerialPortCommand("COM1", "HELLO", "\n")
+    assert core.getSerialPortAnswer("COM1", "\n") == "HELLO\n"
 
 
 def test_load_py_galvo() -> None:

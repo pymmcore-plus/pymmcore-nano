@@ -970,6 +970,74 @@ class PyBridgeSignalIO : public CSignalIOBase<PyBridgeSignalIO>,
 };
 
 // ============================================================================
+// PyBridgeMagnifier
+// ============================================================================
+
+class PyBridgeMagnifier : public CMagnifierBase<PyBridgeMagnifier>,
+                          private PyBridgeDeviceBase<PyBridgeMagnifier> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeMagnifier)
+
+    double GetMagnification() override { return py_get<double>(py_, "get_magnification"); }
+};
+
+// ============================================================================
+// PyBridgeSerial
+// ============================================================================
+
+class PyBridgeSerial : public CSerialBase<PyBridgeSerial>,
+                       private PyBridgeDeviceBase<PyBridgeSerial> {
+    PYBRIDGE_COMMON_OVERRIDES(PyBridgeSerial)
+
+    MM::PortType GetPortType() const override {
+        return static_cast<MM::PortType>(py_get<int>(py_, "get_port_type"));
+    }
+
+    int SetCommand(const char *command, const char *term) override {
+        return py_invoke([&]() -> int {
+            py_.attr("set_command")(std::string(command),
+                                    term ? std::string(term) : std::string());
+            return DEVICE_OK;
+        });
+    }
+
+    int GetAnswer(char *txt, unsigned maxChars, const char *term) override {
+        return py_invoke([&]() -> int {
+            auto answer = nb::cast<std::string>(
+                py_.attr("get_answer")(term ? std::string(term) : std::string()));
+            strncpy(txt, answer.c_str(), maxChars);
+            if (maxChars > 0)
+                txt[maxChars - 1] = '\0';
+            return DEVICE_OK;
+        });
+    }
+
+    int Write(const unsigned char *buf, unsigned long bufLen) override {
+        return py_invoke([&]() -> int {
+            // Pass as Python bytes object
+            nb::object py_bytes = nb::steal(
+                PyBytes_FromStringAndSize(reinterpret_cast<const char *>(buf), bufLen));
+            py_.attr("write")(py_bytes);
+            return DEVICE_OK;
+        });
+    }
+
+    int Read(unsigned char *buf, unsigned long bufLen, unsigned long &charsRead) override {
+        return py_invoke([&]() -> int {
+            nb::object result = py_.attr("read")(bufLen);
+            Py_buffer view;
+            if (PyObject_GetBuffer(result.ptr(), &view, PyBUF_SIMPLE) != 0)
+                throw nb::python_error();
+            charsRead = std::min(static_cast<unsigned long>(view.len), bufLen);
+            std::memcpy(buf, view.buf, charsRead);
+            PyBuffer_Release(&view);
+            return DEVICE_OK;
+        });
+    }
+
+    int Purge() override { return py_call(py_, "purge"); }
+};
+
+// ============================================================================
 // PyBridgeGalvo
 // ============================================================================
 
@@ -1204,6 +1272,8 @@ inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
     case MM::AutoFocusDevice: return new PyBridgeAutoFocus(py_dev, name);
     case MM::SignalIODevice: return new PyBridgeSignalIO(py_dev, name);
     case MM::GalvoDevice: return new PyBridgeGalvo(py_dev, name);
+    case MM::MagnifierDevice: return new PyBridgeMagnifier(py_dev, name);
+    case MM::SerialDevice: return new PyBridgeSerial(py_dev, name);
     case MM::GenericDevice: return new PyBridgeGeneric(py_dev, name);
     case MM::HubDevice: return new PyBridgeHub(py_dev, name);
     default:

@@ -187,6 +187,25 @@ class PySignalIO(PyDevice, Protocol):
 
 
 @runtime_checkable
+class PyMagnifier(PyDevice, Protocol):
+    """Protocol for Python magnifier devices."""
+
+    def get_magnification(self) -> float: ...
+
+
+@runtime_checkable
+class PySerial(PyDevice, Protocol):
+    """Protocol for Python serial port devices."""
+
+    def get_port_type(self) -> int: ...
+    def set_command(self, command: str, term: str) -> None: ...
+    def get_answer(self, term: str) -> str: ...
+    def write(self, data: bytes) -> None: ...
+    def read(self, max_bytes: int) -> bytes: ...
+    def purge(self) -> None: ...
+
+
+@runtime_checkable
 class PyGalvo(PyDevice, Protocol):
     """Protocol for Python galvo scanner devices."""
 
