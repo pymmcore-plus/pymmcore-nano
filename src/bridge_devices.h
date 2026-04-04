@@ -422,6 +422,14 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                        private PyBridgeDeviceBase<PyBridgeCamera> {
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeCamera)
 
+    ~PyBridgeCamera() {
+        try {
+            nb::gil_scoped_acquire gil;
+            img_arr_.reset();
+        } catch (...) {
+        }
+    }
+
     nb::object img_arr_; // holds ndarray from get_image_buffer() to prevent GC
 
     // -- MM::Camera: getters --
