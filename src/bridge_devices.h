@@ -602,6 +602,14 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
         if (ret != DEVICE_OK)
             return ret;
 
+        // Cache image dimensions once for the whole sequence. These shouldn't
+        // change during a running acquisition and querying them on every frame
+        // crosses the Python bridge 4 times per frame.
+        unsigned w = GetImageWidth();
+        unsigned h = GetImageHeight();
+        unsigned bpp = GetImageBytesPerPixel();
+        unsigned nComp = GetNumberOfComponents();
+
         return py_invoke([&]() -> int {
             // Create an insert_image callable that pushes a frame into
             // CMMCore's circular buffer. Python calls this per frame.
@@ -609,12 +617,8 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
             // insert_image returns False on buffer overflow so Python
             // can stop acquisition when stopOnOverflow is set.
             nb::object inserter = nb::cpp_function(
-                [self](nb::object arr, nb::object metadata) -> bool {
+                [self, w, h, bpp, nComp](nb::object arr, nb::object metadata) -> bool {
                     auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
-                    unsigned w = self->GetImageWidth();
-                    unsigned h = self->GetImageHeight();
-                    unsigned bpp = self->GetImageBytesPerPixel();
-                    unsigned nComp = self->GetNumberOfComponents();
 
                     // Build serialized metadata in MMCore's format
                     Metadata md;

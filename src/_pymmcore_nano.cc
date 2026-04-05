@@ -1280,7 +1280,34 @@ MMCore will send notifications on internal events using this interface
              } RGIL)
         .def("popNextImage",
              [](CMMCore &self) -> np_array {
-                return create_image_array(self, self.popNextImage());
+                // Use the MD fast-path: CircularBuffer stores Width/Height/PixelType
+                // tags, so we can build the np_array without querying the camera
+                // (which would cross the Python bridge for PyBridgeCamera devices).
+                //
+                // TRADEOFF: For C++ cameras, this replaces 4 inline int accesses
+                // (create_image_array) with 2 std::stoi + a PixelType string-compare
+                // per frame — measured ~5% slowdown in a tight-pop loop, invisible
+                // in any realistic acquisition. For PyBridgeCamera (python devices)
+                // it saves 4 Python bridge crossings (~8us) per frame, which is a
+                // huge win (see bridge_devices.h StartSequenceAcquisition comment).
+                //
+                // ALTERNATIVES if the C++ regression ever matters:
+                //   (a) Cache dims in pymmcore-plus' popNextImage wrapper at
+                //       startSequenceAcquisition and reuse — only works when going
+                //       through CMMCorePlus.
+                //   (b) Cache dims in CMMCore itself at startSequenceAcquisition
+                //       (cleanest, but touches upstream MMCore).
+                //   (c) Expose popNextImageFast as a separate method, leaving
+                //       popNextImage unchanged, and opt-in from pymmcore-plus for
+                //       the python-device case.
+                //
+                // Safety: CircularBuffer::InsertImage always writes Width/Height/
+                // PixelType (CircularBuffer.cpp ~264-280). If the tags are missing
+                // or the PixelType is exotic, create_metadata_array falls back to
+                // create_image_array(self, pBuf) automatically.
+                Metadata md;
+                auto img = self.popNextImageMD(md);
+                return create_metadata_array(self, img, md);
              } RGIL)
         // this is a new overload that returns both the image and the metadata
         // not present in the original C++ API
