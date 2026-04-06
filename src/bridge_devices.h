@@ -1166,11 +1166,10 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
 
     // -- MM::SLM --
     int SetImage(unsigned char *pixels) override {
+        ensureSLMDimsCached();
+        size_t h = cachedH_, w = cachedW_;
+        size_t pixDepth = cachedNComp_ * cachedBpp_;
         return py_invoke([&]() -> int {
-            size_t h = GetHeight(), w = GetWidth();
-            size_t ncomp = GetNumberOfComponents();
-            size_t bpp = GetBytesPerPixel();
-            size_t pixDepth = ncomp * bpp; // total bytes per pixel
             nb::ndarray<nb::numpy, uint8_t, nb::c_contig> arr;
             if (pixDepth == 1)
                 arr = nb::ndarray<nb::numpy, uint8_t, nb::c_contig>(pixels, {h, w});
@@ -1181,8 +1180,9 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
         });
     }
     int SetImage(unsigned int *pixels) override {
+        ensureSLMDimsCached();
+        size_t h = cachedH_, w = cachedW_;
         return py_invoke([&]() -> int {
-            size_t h = GetHeight(), w = GetWidth();
             auto arr = nb::ndarray<nb::numpy, uint32_t, nb::c_contig>(pixels, {h, w});
             py_.attr("set_image")(arr);
             return DEVICE_OK;
@@ -1207,6 +1207,21 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     unsigned GetBytesPerPixel() override {
         return py_get<unsigned>(py_, "get_bytes_per_pixel");
     }
+    // Cached SLM dimensions — populated once to avoid repeated Python
+    // bridge crossings in SetImage / AddToSLMSequence / SendSLMSequence.
+    unsigned cachedW_ = 0, cachedH_ = 0, cachedNComp_ = 0, cachedBpp_ = 0;
+    bool slmDimsCached_ = false;
+
+    void ensureSLMDimsCached() {
+        if (!slmDimsCached_) {
+            cachedW_ = GetWidth();
+            cachedH_ = GetHeight();
+            cachedNComp_ = GetNumberOfComponents();
+            cachedBpp_ = GetBytesPerPixel();
+            slmDimsCached_ = true;
+        }
+    }
+
     // -- MM::SLM: sequencing --
     std::vector<std::vector<unsigned char>> slmSeq8_;
     std::vector<std::vector<unsigned int>> slmSeq32_;
@@ -1227,27 +1242,24 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
         return DEVICE_OK;
     }
     int AddToSLMSequence(const unsigned char *const image) override {
-        size_t h = GetHeight(), w = GetWidth();
-        size_t ncomp = GetNumberOfComponents();
-        size_t bpp = GetBytesPerPixel();
-        size_t nbytes = h * w * ncomp * bpp;
+        ensureSLMDimsCached();
+        size_t nbytes = (size_t)cachedH_ * cachedW_ * cachedNComp_ * cachedBpp_;
         slmSeq8_.emplace_back(image, image + nbytes);
         usingSeq32_ = false;
         return DEVICE_OK;
     }
     int AddToSLMSequence(const unsigned int *const image) override {
-        size_t h = GetHeight(), w = GetWidth();
-        size_t npixels = h * w;
+        ensureSLMDimsCached();
+        size_t npixels = (size_t)cachedH_ * cachedW_;
         slmSeq32_.emplace_back(image, image + npixels);
         usingSeq32_ = true;
         return DEVICE_OK;
     }
     int SendSLMSequence() override {
+        ensureSLMDimsCached();
+        size_t h = cachedH_, w = cachedW_;
+        size_t pixDepth = (size_t)cachedNComp_ * cachedBpp_;
         return py_invoke([&]() -> int {
-            size_t h = GetHeight(), w = GetWidth();
-            size_t ncomp = GetNumberOfComponents();
-            size_t bpp = GetBytesPerPixel();
-            size_t pixDepth = ncomp * bpp;
             nb::list py_seq;
             if (usingSeq32_) {
                 for (auto &buf : slmSeq32_) {
