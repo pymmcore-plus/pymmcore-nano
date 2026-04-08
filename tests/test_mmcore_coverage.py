@@ -47,7 +47,7 @@ def test_property_sequenceable(demo_core: pmn.CMMCore) -> None:
 def test_set_property_numeric_overloads(demo_core: pmn.CMMCore) -> None:
     demo_core.setProperty("Camera", "Exposure", 25.0)
     assert demo_core.getProperty("Camera", "Exposure") == "25.0000"
-    demo_core.setProperty("Camera", "Exposure", float(10.0))
+    demo_core.setProperty("Camera", "Exposure", 10.0)
     assert demo_core.getProperty("Camera", "Exposure") == "10.0000"
     # bool overload maps True -> "1"
     demo_core.setProperty("Camera", "TransposeCorrection", True)

@@ -1,9 +1,8 @@
-from ._pymmcore_nano import *  # noqa
-from ._pymmcore_nano import __version__ as __version__  # type: ignore [attr-defined]
-
-import sys
 import importlib.util
+import sys
 
+from ._pymmcore_nano import *  # pyright: ignore  # noqa: F403
+from ._pymmcore_nano import __version__ as __version__  # type: ignore [attr-defined]
 
 _pymmcore_spec = importlib.util.find_spec("pymmcore")
 
