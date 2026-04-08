@@ -194,6 +194,39 @@ def test_rotation_creates_backup_files(core: pmn.CMMCore, tmp_path: Path) -> Non
     assert len(rotated) <= 2
 
 
+# ── setStderrLogLevel / getStderrLogLevel ─────────────────────────────────────
+
+
+def test_set_get_stderr_log_level(core: pmn.CMMCore) -> None:
+    core.setStderrLogLevel(pmn.LogLevel.LogLevelWarning)
+    assert core.getStderrLogLevel() == pmn.LogLevel.LogLevelWarning
+
+    core.setStderrLogLevel(pmn.LogLevel.LogLevelTrace)
+    assert core.getStderrLogLevel() == pmn.LogLevel.LogLevelTrace
+
+
+def test_set_stderr_log_level_accepts_all_values(core: pmn.CMMCore) -> None:
+    for level in pmn.LogLevel:
+        core.setStderrLogLevel(level)
+        assert core.getStderrLogLevel() == level
+
+
+def test_stderr_log_level_filters_output(
+    core: pmn.CMMCore, capfd: pytest.CaptureFixture
+) -> None:
+    core.enableStderrLog(True)
+    core.setStderrLogLevel(pmn.LogLevel.LogLevelWarning)
+
+    core.log("stderr-should-appear", pmn.LogLevel.LogLevelError)
+    _wait_until_stderr(capfd, "stderr-should-appear")
+
+    core.log("stderr-should-not-appear", pmn.LogLevel.LogLevelDebug)
+    time.sleep(0.2)
+    captured = capfd.readouterr().err
+    assert "stderr-should-not-appear" not in captured
+    core.enableStderrLog(False)
+
+
 # ── interaction with legacy APIs ──────────────────────────────────────────────
 
 

@@ -864,6 +864,8 @@ MMCore will send notifications on internal events using this interface
         .def("debugLogEnabled", &CMMCore::debugLogEnabled RGIL)
         .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a RGIL)
         .def("stderrLogEnabled", &CMMCore::stderrLogEnabled RGIL)
+        .def("setStderrLogLevel", &CMMCore::setStderrLogLevel, "level"_a RGIL)
+        .def("getStderrLogLevel", &CMMCore::getStderrLogLevel RGIL)
         .def(
             "startSecondaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)
