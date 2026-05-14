@@ -32,6 +32,10 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        if: matrix.platform == 'windows-latest'
+        with:
+          arch: x64
 
       - name: install
         # install with coverage=true
@@ -68,7 +72,10 @@ jobs:
         with:
           python-version: "3.13"
           enable-cache: true
-
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        if: matrix.os == 'windows-latest'
+        with:
+          arch: x64
       - name: Setup MM test adapters
         uses: pymmcore-plus/setup-mm-test-adapters@main
         with:
