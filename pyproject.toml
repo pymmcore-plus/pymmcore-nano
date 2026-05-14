@@ -40,6 +40,7 @@ build = ["meson-python", "nanobind", "ninja", "ruff", "typing_extensions"]
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-rerunfailures",
     "gcovr",
     "libclang>=18.1.1",
     "pymmcore-nano[test-devices]",

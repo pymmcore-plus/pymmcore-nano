@@ -152,6 +152,8 @@ def test_device_loading(core: pmn.CMMCore) -> None:
 
 
 # have to use capfd to capture stderr, capsys won't work
+# Flaky on macOS CI: capfd occasionally returns partial/null-filled reads
+@pytest.mark.flaky(reruns=2)
 def test_core_logging(capfd: pytest.CaptureFixture, tmp_path: Path) -> None:
     mmc = pmn.CMMCore()
     # no file logging at start
@@ -209,6 +211,47 @@ def test_core(demo_core: pmn.CMMCore) -> None:
     assert "Camera" in demo_core.getLoadedDevices()
     cfg = demo_core.getConfigState("Channel", "DAPI")
     assert isinstance(cfg, pmn.Configuration)
+
+
+def test_per_device_timeout(demo_core: pmn.CMMCore) -> None:
+    global_timeout = demo_core.getTimeoutMs()
+
+    # No override is set initially; effective timeout equals global timeout.
+    assert not demo_core.hasDeviceTimeout("Camera")
+    assert demo_core.getDeviceTimeoutMs("Camera") == global_timeout
+
+    demo_core.setDeviceTimeoutMs("Camera", global_timeout + 1234)
+    assert demo_core.hasDeviceTimeout("Camera")
+    assert demo_core.getDeviceTimeoutMs("Camera") == global_timeout + 1234
+    # Global timeout is unaffected by the per-device override.
+    assert demo_core.getTimeoutMs() == global_timeout
+
+    demo_core.unsetDeviceTimeout("Camera")
+    assert not demo_core.hasDeviceTimeout("Camera")
+    assert demo_core.getDeviceTimeoutMs("Camera") == global_timeout
+
+    # The Core device cannot have a per-device override.
+    assert not demo_core.hasDeviceTimeout("Core")
+    assert demo_core.getDeviceTimeoutMs("Core") == global_timeout
+    with pytest.raises(pmn.CMMError, match="Core device"):
+        demo_core.setDeviceTimeoutMs("Core", 1000)
+
+    with pytest.raises(pmn.CMMError, match="must be positive"):
+        demo_core.setDeviceTimeoutMs("Camera", 0)
+    with pytest.raises(pmn.CMMError, match=r'No device with label "Bogus"'):
+        demo_core.setDeviceTimeoutMs("Bogus", 1000)
+
+
+def test_sequence_acquisition_unused_kwarg(demo_core: pmn.CMMCore) -> None:
+    # Upstream renamed the always-ignored `intervalMs` parameter to `unused`;
+    # confirm the new keyword name is accepted by all three overloads.
+    demo_core.startSequenceAcquisition(2, unused=0, stopOnOverflow=False)
+    _wait_until(lambda: not demo_core.isSequenceRunning())
+    demo_core.startSequenceAcquisition("Camera", 2, unused=0, stopOnOverflow=False)
+    _wait_until(lambda: not demo_core.isSequenceRunning())
+    demo_core.startContinuousSequenceAcquisition(unused=0)
+    _wait_until(lambda: demo_core.isSequenceRunning())
+    demo_core.stopSequenceAcquisition()
 
 
 def test_camera_snap(demo_core: pmn.CMMCore) -> None:
