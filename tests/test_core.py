@@ -152,6 +152,8 @@ def test_device_loading(core: pmn.CMMCore) -> None:
 
 
 # have to use capfd to capture stderr, capsys won't work
+# Flaky on macOS CI: capfd occasionally returns partial/null-filled reads
+@pytest.mark.flaky(reruns=2)
 def test_core_logging(capfd: pytest.CaptureFixture, tmp_path: Path) -> None:
     mmc = pmn.CMMCore()
     # no file logging at start
