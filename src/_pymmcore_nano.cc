@@ -7,6 +7,7 @@
 #include <nanobind/trampoline.h>
 
 #include "ImageMetadata.h"
+#include "LogLevel.h"
 #include "MMCore.h"
 #include "MMEventCallback.h"
 #include "ModuleInterface.h"
@@ -17,7 +18,7 @@ namespace nb = nanobind;
 
 using namespace nb::literals;
 
-const std::string PYMMCORE_NANO_VERSION = "1";
+const std::string PYMMCORE_NANO_VERSION = "0";
 
 ///////////////// GIL_MACROS ///////////////////
 
@@ -621,6 +622,15 @@ NB_MODULE(_pymmcore_nano, m) {
     BIND_ENUM_VALUE(device_initialization_state_enum, "InitializationFailed",
                     DeviceInitializationState::InitializationFailed)
 
+    // LogLevel enum
+    auto log_level_enum = nb::enum_<mmcore::LogLevel>(m, "LogLevel", nb::is_arithmetic());
+    BIND_ENUM_VALUE(log_level_enum, "LogLevelTrace", mmcore::LogLevelTrace)
+    BIND_ENUM_VALUE(log_level_enum, "LogLevelDebug", mmcore::LogLevelDebug)
+    BIND_ENUM_VALUE(log_level_enum, "LogLevelInfo", mmcore::LogLevelInfo)
+    BIND_ENUM_VALUE(log_level_enum, "LogLevelWarning", mmcore::LogLevelWarning)
+    BIND_ENUM_VALUE(log_level_enum, "LogLevelError", mmcore::LogLevelError)
+    BIND_ENUM_VALUE(log_level_enum, "LogLevelCritical", mmcore::LogLevelCritical)
+
 // Clean up the macros
 #undef BIND_ENUM_VALUE
 #undef SWIG_COMPAT_ATTR
@@ -913,6 +923,8 @@ MMCore will send notifications on internal events using this interface
         .def("debugLogEnabled", &CMMCore::debugLogEnabled RGIL)
         .def("enableStderrLog", &CMMCore::enableStderrLog, "enable"_a RGIL)
         .def("stderrLogEnabled", &CMMCore::stderrLogEnabled RGIL)
+        .def("setStderrLogLevel", &CMMCore::setStderrLogLevel, "level"_a RGIL)
+        .def("getStderrLogLevel", &CMMCore::getStderrLogLevel RGIL)
         .def(
             "startSecondaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)
@@ -929,6 +941,16 @@ MMCore will send notifications on internal events using this interface
             "truncate"_a = true,
             "synchronous"_a = false )
         .def("stopSecondaryLogFile", &CMMCore::stopSecondaryLogFile, "handle"_a RGIL)
+        .def("setPrimaryLogFileRotation", &CMMCore::setPrimaryLogFileRotation,
+             "maxFileSize"_a, "maxBackupCount"_a RGIL)
+        .def("log",
+             nb::overload_cast<const char *, mmcore::LogLevel>(&CMMCore::log),
+             "msg"_a, "level"_a RGIL)
+        .def("log",
+             nb::overload_cast<const char *, mmcore::LogLevel, const char *>(&CMMCore::log),
+             "msg"_a, "level"_a, "loggerName"_a RGIL)
+        .def("setPrimaryLogLevel", &CMMCore::setPrimaryLogLevel, "level"_a RGIL)
+        .def("getPrimaryLogLevel", &CMMCore::getPrimaryLogLevel RGIL)
 
         .def("getDeviceAdapterSearchPaths", &CMMCore::getDeviceAdapterSearchPaths RGIL)
         .def("setDeviceAdapterSearchPaths", &CMMCore::setDeviceAdapterSearchPaths, "paths"_a RGIL)
@@ -1006,6 +1028,10 @@ MMCore will send notifications on internal events using this interface
         .def("usesDeviceDelay", &CMMCore::usesDeviceDelay, "label"_a RGIL)
         .def("setTimeoutMs", &CMMCore::setTimeoutMs, "timeoutMs"_a RGIL)
         .def("getTimeoutMs", &CMMCore::getTimeoutMs RGIL)
+        .def("setDeviceTimeoutMs", &CMMCore::setDeviceTimeoutMs, "label"_a, "timeoutMs"_a RGIL)
+        .def("unsetDeviceTimeout", &CMMCore::unsetDeviceTimeout, "label"_a RGIL)
+        .def("getDeviceTimeoutMs", &CMMCore::getDeviceTimeoutMs, "label"_a RGIL)
+        .def("hasDeviceTimeout", &CMMCore::hasDeviceTimeout, "label"_a RGIL)
         .def("sleep", &CMMCore::sleep, "intervalMs"_a RGIL)
 
         .def("getCameraDevice", &CMMCore::getCameraDevice RGIL)
@@ -1252,20 +1278,20 @@ MMCore will send notifications on internal events using this interface
         .def("startSequenceAcquisition",
              nb::overload_cast<long, double, bool>(&CMMCore::startSequenceAcquisition),
              "numImages"_a,
-             "intervalMs"_a,
+             "unused"_a,
              "stopOnOverflow"_a RGIL)
         .def("startSequenceAcquisition",
              nb::overload_cast<const char *, long, double, bool>(
                  &CMMCore::startSequenceAcquisition),
              "cameraLabel"_a,
              "numImages"_a,
-             "intervalMs"_a,
+             "unused"_a,
              "stopOnOverflow"_a RGIL)
         .def(
             "prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition, "cameraLabel"_a RGIL)
         .def("startContinuousSequenceAcquisition",
              &CMMCore::startContinuousSequenceAcquisition,
-             "intervalMs"_a RGIL)
+             "unused"_a RGIL)
         .def("stopSequenceAcquisition", nb::overload_cast<>(&CMMCore::stopSequenceAcquisition) RGIL)
         .def("stopSequenceAcquisition",
              nb::overload_cast<const char *>(&CMMCore::stopSequenceAcquisition),
