@@ -969,6 +969,10 @@ MMCore will send notifications on internal events using this interface
         .def("usesDeviceDelay", &CMMCore::usesDeviceDelay, "label"_a RGIL)
         .def("setTimeoutMs", &CMMCore::setTimeoutMs, "timeoutMs"_a RGIL)
         .def("getTimeoutMs", &CMMCore::getTimeoutMs RGIL)
+        .def("setDeviceTimeoutMs", &CMMCore::setDeviceTimeoutMs, "label"_a, "timeoutMs"_a RGIL)
+        .def("unsetDeviceTimeout", &CMMCore::unsetDeviceTimeout, "label"_a RGIL)
+        .def("getDeviceTimeoutMs", &CMMCore::getDeviceTimeoutMs, "label"_a RGIL)
+        .def("hasDeviceTimeout", &CMMCore::hasDeviceTimeout, "label"_a RGIL)
         .def("sleep", &CMMCore::sleep, "intervalMs"_a RGIL)
 
         .def("getCameraDevice", &CMMCore::getCameraDevice RGIL)
@@ -1206,20 +1210,20 @@ MMCore will send notifications on internal events using this interface
         .def("startSequenceAcquisition",
              nb::overload_cast<long, double, bool>(&CMMCore::startSequenceAcquisition),
              "numImages"_a,
-             "intervalMs"_a,
+             "unused"_a,
              "stopOnOverflow"_a RGIL)
         .def("startSequenceAcquisition",
              nb::overload_cast<const char *, long, double, bool>(
                  &CMMCore::startSequenceAcquisition),
              "cameraLabel"_a,
              "numImages"_a,
-             "intervalMs"_a,
+             "unused"_a,
              "stopOnOverflow"_a RGIL)
         .def(
             "prepareSequenceAcquisition", &CMMCore::prepareSequenceAcquisition, "cameraLabel"_a RGIL)
         .def("startContinuousSequenceAcquisition",
              &CMMCore::startContinuousSequenceAcquisition,
-             "intervalMs"_a RGIL)
+             "unused"_a RGIL)
         .def("stopSequenceAcquisition", nb::overload_cast<>(&CMMCore::stopSequenceAcquisition) RGIL)
         .def("stopSequenceAcquisition",
              nb::overload_cast<const char *>(&CMMCore::stopSequenceAcquisition),
