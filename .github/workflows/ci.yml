@@ -25,10 +25,10 @@ jobs:
         platform: [windows-latest, ubuntu-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -47,7 +47,7 @@ jobs:
       - name: cpp-coverage
         run: uv run --no-sync gcovr --filter=src --xml coverage_cpp.xml --merge-mode-functions=merge-use-line-min
 
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml,./coverage_cpp.xml
@@ -62,10 +62,10 @@ jobs:
     env:
       UV_NO_SYNC: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: pymmcore-plus/pymmcore-plus
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: pymmcore-nano
       - uses: astral-sh/setup-uv@v7
