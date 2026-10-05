@@ -573,22 +573,35 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     // -- MM::Camera: snap + buffer --
     int SnapImage() override { return py_call(py_, "snap_image"); }
 
+    // Store the Python array in img_arr_ (so the pointer we hand to CMMCore
+    // stays valid until the next call) and return its data pointer.
+    //
+    // The array must be C-contiguous. We must NOT rely on nanobind's implicit
+    // conversion (nb::cast<ndarray<c_contig>> on a non-contiguous array): that
+    // conversion produces a temporary copy owned only by the local ndarray
+    // handle, so the returned pointer would dangle as soon as it goes out of
+    // scope while img_arr_ still references the original, non-contiguous
+    // array. Instead, make the contiguous copy in Python and keep *that*.
+    const unsigned char *holdImageArray(nb::object arr) {
+        using Arr = nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>;
+        Arr nd;
+        if (!nb::try_cast<Arr>(arr, nd, /*convert=*/false)) {
+            arr = nb::module_::import_("numpy").attr("ascontiguousarray")(arr);
+            nd = nb::cast<Arr>(arr, /*convert=*/false);
+        }
+        img_arr_ = std::move(arr);
+        return static_cast<const unsigned char *>(nd.data());
+    }
+
     const unsigned char *GetImageBuffer() override {
         return py_invoke([&]() -> const unsigned char * {
-            // Zero-copy: store the Python array to prevent GC and return its
-            // data pointer directly. The c_contig constraint will trigger an
-            // implicit copy only if the array is non-contiguous (e.g. a slice).
-            img_arr_ = py_.attr("get_image_buffer")();
-            auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(img_arr_);
-            return static_cast<const unsigned char *>(nd.data());
+            return holdImageArray(py_.attr("get_image_buffer")());
         });
     }
 
     const unsigned char *GetImageBuffer(unsigned channelNr) override {
         return py_invoke([&]() -> const unsigned char * {
-            img_arr_ = py_.attr("get_image_buffer")(channelNr);
-            auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(img_arr_);
-            return static_cast<const unsigned char *>(nd.data());
+            return holdImageArray(py_.attr("get_image_buffer")(channelNr));
         });
     }
 
@@ -661,10 +674,16 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
             // Create an insert_image callable that pushes a frame into
             // CMMCore's circular buffer. Python calls this per frame.
             auto *self = this;
+            auto alive = alive_;
             // insert_image returns False on buffer overflow so Python
             // can stop acquisition when stopOnOverflow is set.
             nb::object inserter = nb::cpp_function(
-                [self, w, h, bpp, nComp](nb::object arr, nb::object metadata) -> bool {
+                [self, alive, w, h, bpp, nComp](nb::object arr, nb::object metadata) -> bool {
+                    // The Python acquisition thread may outlive the bridge
+                    // device (e.g. unloadDevice while a runaway thread is
+                    // still producing frames); `self` is dangling then.
+                    if (!*alive)
+                        throw std::runtime_error("Device has been unloaded");
                     auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
 
                     // Build serialized metadata in MMCore's format
