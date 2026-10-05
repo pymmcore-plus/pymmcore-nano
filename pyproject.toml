@@ -100,6 +100,8 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
 # Let meson find MSVC itself, rather than relying on PATH from ilammy/msvc-dev-cmd.
 # Workaround for https://github.com/pypa/cibuildwheel/issues/2663
 config-settings = { "setup-args" = "--vsenv" }
+# cibuildwheel v4 runs delvewheel by default, which would bundle msvcp140.dll.
+repair-wheel-command = ""
 
 
 # https://docs.astral.sh/ruff/rules/
