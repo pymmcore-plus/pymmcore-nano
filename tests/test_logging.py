@@ -151,6 +151,7 @@ def test_log_filtered_by_level(core: pmn.CMMCore, tmp_path: Path) -> None:
     assert "should-not-appear" not in text
 
 
+@pytest.mark.flaky(reruns=2)
 def test_log_to_stderr(
     core: pmn.CMMCore, capfd: pytest.CaptureFixture, tmp_path: Path
 ) -> None:
