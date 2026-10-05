@@ -37,6 +37,8 @@ jobs:
             python: cp313
           - os: windows-latest
             python: cp314
+          - os: windows-latest
+            python: cp315
 
     steps:
       - uses: actions/checkout@v7

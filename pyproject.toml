@@ -28,6 +28,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Typing :: Typed",
 ]
 dependencies = ["numpy>=1.25"]
@@ -82,8 +84,9 @@ build-verbosity = 1
 # Skip 32-bit builds, musllinux, and PyPy wheels on all platforms
 # Note: use of PTHREAD_MUTEX_RECURSIVE_NP in DeviceThreads.h
 # is specific to glibc and not available in musl-libc
-skip = ["*-manylinux_i686", "*-musllinux*", "*-win32"]
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+# Free-threaded (*t) builds are skipped for now: cp315t fails to import.
+skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "*t-*"]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 test-requires = ["check-wheel-contents"]
 test-groups = ["test"]
 test-command = [
