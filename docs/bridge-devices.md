@@ -104,7 +104,8 @@ These are documented as `typing.Protocol` classes in
   "State" property; see [State devices](#state-devices))
 - `PyAutoFocus` — continuous/incremental focus, offset, scores
 - `PyGeneric` — properties only (no device-specific methods)
-- `PyHub` — peripheral discovery (`detect_installed_devices()`)
+- `PyHub` — peripheral discovery (`detect_installed_devices()`); the reported
+  names are loadable from the hub's adapter with `core.loadDevice()`
 - `PySLM` — spatial light modulator (image display, exposure)
 
 These protocols are `@runtime_checkable`. The bridge does not enforce them

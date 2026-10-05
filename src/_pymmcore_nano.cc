@@ -117,6 +117,24 @@ np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned 
 /** @brief Create a read-only NumPy array using core methods
  *  getImageWidth/getImageHeight/getBytesPerPixel/getNumberOfComponents
  */
+// A 3-component image (e.g. a Python bridge camera with an (h, w, 3) buffer):
+// returned as (h, w, 3) in the camera's own channel order, no reordering.
+np_array build_3component_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned height,
+                                   unsigned byteDepth) {
+    const unsigned elemSize = byteDepth / 3;
+    std::initializer_list<size_t> shape = {height, width, 3};
+    std::initializer_list<int64_t> strides = {static_cast<int64_t>(width) * 3, 3, 1};
+    nb::dlpack::dtype dtype;
+    switch (elemSize) {
+    case 1: dtype = nb::dtype<uint8_t>(); break;
+    case 2: dtype = nb::dtype<uint16_t>(); break;
+    case 4: dtype = nb::dtype<uint32_t>(); break;
+    default: throw std::invalid_argument("Unsupported element size");
+    }
+    size_t nbytes = static_cast<size_t>(height) * width * byteDepth;
+    return make_np_array_from_copy(pBuf, nbytes, shape, strides, dtype);
+}
+
 np_array create_image_array(CMMCore &core, void *pBuf) {
     // Retrieve image properties
     unsigned width = core.getImageWidth();
@@ -125,6 +143,8 @@ np_array create_image_array(CMMCore &core, void *pBuf) {
     unsigned numComponents = core.getNumberOfComponents();
     if (numComponents == 4) {
         return build_rgb_np_array(core, pBuf, width, height, bytesPerPixel);
+    } else if (numComponents == 3) {
+        return build_3component_np_array(core, pBuf, width, height, bytesPerPixel);
     } else {
         return build_grayscale_np_array(core, pBuf, width, height, bytesPerPixel);
     }
@@ -178,7 +198,7 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
 }
 
 void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
-                        long expectedHeight, long bytesPerPixel, long nComponents) {
+                        long expectedHeight, long bytesPerPixel) {
     // Check dtype
     if (pixels.dtype() != nb::dtype<uint8_t>()) {
         throw std::invalid_argument("Pixel array type is wrong. Expected uint8.");
@@ -188,7 +208,7 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
     if (pixels.ndim() != 2 && pixels.ndim() != 3) {
         throw std::invalid_argument(
             "Pixels must be a 2D numpy array [h,w] of uint8, or a 3D numpy array "
-            "[h,w,c] of uint8 with 3 or 4 color channels.");
+            "[h,w,c] of uint8 with c == getSLMBytesPerPixel() (e.g. 4 for an RGB32 SLM).");
     }
 
     // Check shape
@@ -200,8 +220,9 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
                                     std::to_string(pixels.shape(1)) + ").");
     }
 
-    // Check total bytes (accounts for multi-component pixels like RGB)
-    long expectedBytes = expectedWidth * expectedHeight * bytesPerPixel * nComponents;
+    // Check total bytes. As in MMDevice, getSLMBytesPerPixel() is the total
+    // number of bytes per pixel (GenericSLM: 4 bytes per pixel, 3 components).
+    long expectedBytes = expectedWidth * expectedHeight * bytesPerPixel;
     if (static_cast<long>(pixels.nbytes()) != expectedBytes) {
         throw std::invalid_argument("Image size is wrong for this SLM. Expected " +
                                     std::to_string(expectedBytes) + " bytes, but received " +
@@ -291,6 +312,40 @@ void registerAndStoreBridgeAdapter(CMMCore &core, const std::string &adapterName
     core.loadMockDeviceAdapter(adapterName.c_str(), adapter.release());
 }
 
+// loadPyDevice registers a one-off adapter per device under this prefix.
+// Unloading the device unloads that adapter again (see unloadDevice,
+// unloadAllDevices and reset below); otherwise the adapter, and with it the
+// Python device object, would stay alive until the core is destroyed.
+static const char *const kPyBridgeAdapterPrefix = "_PyBridge_";
+
+bool isOneOffBridgeAdapter(const std::string &name) {
+    return name.rfind(kPyBridgeAdapterPrefix, 0) == 0;
+}
+
+// Adapter names of the one-off bridge adapters behind the loaded devices.
+std::vector<std::string> oneOffBridgeAdapters(CMMCore &core) {
+    std::vector<std::string> names;
+    for (const auto &label : core.getLoadedDevices()) {
+        try {
+            std::string lib = core.getDeviceLibrary(label.c_str());
+            if (isOneOffBridgeAdapter(lib))
+                names.push_back(lib);
+        } catch (const CMMError &) {
+            // e.g. the "Core" pseudo-device
+        }
+    }
+    return names;
+}
+
+void unloadOneOffBridgeAdapters(CMMCore &core, const std::vector<std::string> &names) {
+    for (const auto &name : names) {
+        try {
+            core.unloadLibrary(name.c_str());
+        } catch (const CMMError &) {
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////
 ///////////////// main _pymmcore_nano module definition  ///////////////////
 ////////////////////////////////////////////////////////////////////////////
@@ -308,7 +363,10 @@ NB_MODULE(_pymmcore_nano, m) {
         m, "DeviceAdapter",
         "A collection of Python device classes that acts as an MM device "
         "adapter library. Add device classes with add_device_class(), then "
-        "register with core.loadPyDeviceAdapter(name, adapter).")
+        "register with core.loadPyDeviceAdapter(name, adapter). The core receives "
+        "a copy of the registered classes, so the adapter can be registered with "
+        "several cores; classes added afterwards are not seen by cores that "
+        "already registered it.")
         .def(nb::init<>())
         .def("add_device_class", &PyBridgeAdapter::addDeviceClass, "name"_a, "device_class"_a,
              "device_type"_a, "description"_a,
@@ -338,6 +396,9 @@ NB_MODULE(_pymmcore_nano, m) {
     nb::class_<DeviceCallbacks>(m, "DeviceCallbacks",
                                 "Notification callbacks for communicating device state changes "
                                 "to CMMCore. Passed to initialize() as the second argument.")
+        .def_prop_ro("label", &DeviceCallbacks::getLabel,
+                     "The label CMMCore assigned to this device.")
+        .def("get_label", &DeviceCallbacks::getLabel)
         .def("on_property_changed", &DeviceCallbacks::onPropertyChanged, "name"_a, "value"_a)
         .def("on_properties_changed", &DeviceCallbacks::onPropertiesChanged)
         .def("on_stage_position_changed", &DeviceCallbacks::onStagePositionChanged, "pos"_a)
@@ -846,7 +907,20 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
     // and a basic message will be propagated, for example:
     // CMMError('Failed to load device "SomeDevice" from adapter module
     // "SomeModule"')
-    nb::exception<CMMError>(m, "CMMError", PyExc_RuntimeError);
+    static nb::object cmm_error_type =
+        nb::exception<CMMError>(m, "CMMError", PyExc_RuntimeError);
+    // Translate with the full message, including the underlying errors (as
+    // pymmcore does): device error text (e.g. the Python traceback of a bridge
+    // device error) lives in the underlying CMMError, which what() omits.
+    nb::register_exception_translator(
+        [](const std::exception_ptr &p, void *) {
+            try {
+                std::rethrow_exception(p);
+            } catch (const CMMError &e) {
+                PyErr_SetString(cmm_error_type.ptr(), e.getFullMsg().c_str());
+            }
+        },
+        nullptr);
     nb::exception<MetadataKeyError>(m, "MetadataKeyError", PyExc_KeyError);
     nb::exception<MetadataIndexError>(m, "MetadataIndexError", PyExc_IndexError);
 
@@ -879,12 +953,33 @@ programming.
         .def_static("getMMDeviceModuleInterfaceVersion", &CMMCore::getMMDeviceModuleInterfaceVersion RGIL)
         .def_static("getMMDeviceDeviceInterfaceVersion", &CMMCore::getMMDeviceDeviceInterfaceVersion RGIL)
         .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a RGIL)
-        .def("unloadDevice", &CMMCore::unloadDevice, "label"_a RGIL)
-        .def("unloadAllDevices", &CMMCore::unloadAllDevices)
+        .def("unloadDevice",
+             [](CMMCore &self, const char *label) {
+                std::string lib;
+                try {
+                    lib = self.getDeviceLibrary(label);
+                } catch (const CMMError &) {
+                }
+                self.unloadDevice(label);
+                if (isOneOffBridgeAdapter(lib))
+                    unloadOneOffBridgeAdapters(self, {lib});
+             },
+             "label"_a RGIL)
+        .def("unloadAllDevices",
+             [](CMMCore &self) {
+                auto names = oneOffBridgeAdapters(self);
+                self.unloadAllDevices();
+                unloadOneOffBridgeAdapters(self, names);
+             } RGIL)
         .def("initializeAllDevices", &CMMCore::initializeAllDevices RGIL)
         .def("initializeDevice", &CMMCore::initializeDevice, "label"_a RGIL)
         .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a RGIL)
-        .def("reset", &CMMCore::reset RGIL)
+        .def("reset",
+             [](CMMCore &self) {
+                auto names = oneOffBridgeAdapters(self);
+                self.reset();
+                unloadOneOffBridgeAdapters(self, names);
+             } RGIL)
         .def("unloadLibrary", &CMMCore::unloadLibrary, "moduleName"_a RGIL)
         .def("updateCoreProperties", &CMMCore::updateCoreProperties RGIL)
         .def("getCoreErrorText", &CMMCore::getCoreErrorText, "code"_a RGIL)
@@ -1661,9 +1756,7 @@ MMCore will send notifications on internal events using this interface
                 long expectedWidth = self.getSLMWidth(slmLabel);
                 long expectedHeight = self.getSLMHeight(slmLabel);
                 long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
-                long nComponents = self.getSLMNumberOfComponents(slmLabel);
-                validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel,
-                                   nComponents);
+                validate_slm_image(pixels, expectedWidth, expectedHeight, bytesPerPixel);
 
                 // Cast the numpy array to a pointer to unsigned char
                 self.setSLMImage(slmLabel, reinterpret_cast<unsigned char *>(pixels.data()));
@@ -1700,11 +1793,9 @@ MMCore will send notifications on internal events using this interface
                 long expectedWidth = self.getSLMWidth(slmLabel);
                 long expectedHeight = self.getSLMHeight(slmLabel);
                 long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
-                long nComponents = self.getSLMNumberOfComponents(slmLabel);
                 std::vector<unsigned char *> inputVector;
                 for (auto &image : imageSequence) {
-                    validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel,
-                                       nComponents);
+                    validate_slm_image(image, expectedWidth, expectedHeight, bytesPerPixel);
                     inputVector.push_back(reinterpret_cast<unsigned char *>(image.data()));
                 }
                 self.loadSLMSequence(slmLabel, inputVector);
@@ -1804,11 +1895,16 @@ MMCore will send notifications on internal events using this interface
                 auto adapter = std::make_unique<PyBridgeAdapter>();
                 adapter->addDevice(label, py_device, type);
 
-                std::string adapterName = "_PyBridge_" + std::to_string(counter.fetch_add(1));
+                std::string adapterName =
+                    kPyBridgeAdapterPrefix + std::to_string(counter.fetch_add(1));
                 registerAndStoreBridgeAdapter(self, adapterName, std::move(adapter));
-                {
+                try {
                     nb::gil_scoped_release release;
                     self.loadDevice(label, adapterName.c_str(), label);
+                } catch (...) {
+                    nb::gil_scoped_release release;
+                    unloadOneOffBridgeAdapters(self, {adapterName});
+                    throw;
                 }
             },
             "label"_a, "py_device"_a, "type"_a)
@@ -1816,12 +1912,9 @@ MMCore will send notifications on internal events using this interface
         .def("loadPyDeviceAdapter",
             [](CMMCore& self, const char* adapterName,
                PyBridgeAdapter* adapter) {
-                // Move the adapter contents into a new owned instance.
-                // The Python-side DeviceAdapter is left in a "loaded"
-                // state — add_device/add_device_class will raise if
-                // called again.
-                auto owned = std::make_unique<PyBridgeAdapter>(std::move(*adapter));
-                registerAndStoreBridgeAdapter(self, adapterName, std::move(owned));
+                // CMMCore takes ownership of a copy; the Python-side
+                // DeviceAdapter stays usable (e.g. for another core).
+                registerAndStoreBridgeAdapter(self, adapterName, adapter->clone());
             },
             "adapter_name"_a, "adapter"_a,
             nb::sig("def loadPyDeviceAdapter(self, adapter_name: str,"

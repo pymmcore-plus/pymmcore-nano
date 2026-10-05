@@ -14,7 +14,10 @@
 #include "MMDevice.h"
 #include "MockDeviceAdapter.h"
 
+#include "Error.h" // CMMError (mmcore)
+
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -182,6 +185,17 @@ class DeviceCallbacks {
         onStateChanged_ = onStateChanged;
     }
 
+    // The label CMMCore assigned to this device (CDeviceBase::GetLabel). This
+    // is the only way a device instantiated by the bridge (loadPyDeviceAdapter)
+    // can learn its own label.
+    std::string getLabel() const {
+        checkAlive();
+        char buf[MM::MaxStrLength];
+        buf[0] = '\0';
+        dev_->GetLabel(buf);
+        return std::string(buf);
+    }
+
     void onPropertyChanged(const std::string &name, const std::string &value) {
         checkAlive();
         nb::gil_scoped_release release;
@@ -281,14 +295,22 @@ struct PyCallbacks {
     }
 };
 
+// Converts a Python error (its formatted traceback) into an MM device error
+// code, recording the text on the device. See PyBridgeDeviceBase::reportPyError.
+using PyErrorFn = std::function<int(const std::string &)>;
+
 // Build an ActionLambda that forwards property actions to Python callables.
 // Handles get/set and optionally sequencing (IsSequenceable, AfterLoadSequence,
 // StartSequence, StopSequence).
 // Returns the shared seq_max_length pointer (may be null if not sequenceable)
 // so createPropertyFactory can pass it to PropertyHandle.
+// Python errors are reported through onError as a device error code, like a
+// C++ action handler returning an error, so CMMCore's own error handling
+// (e.g. the per-property catch in getSystemState()) applies.
 inline std::pair<std::unique_ptr<MM::ActionFunctor>, std::shared_ptr<std::atomic<long>>>
 makePropertyAction(nb::object getter, nb::object setter, long seqMaxLength,
-                   nb::object seqLoader, nb::object seqStarter, nb::object seqStopper) {
+                   nb::object seqLoader, nb::object seqStarter, nb::object seqStopper,
+                   PyErrorFn onError) {
     bool hasGetSet = !getter.is_none() || !setter.is_none();
     // maxLength == 0 means not sequenceable — callbacks are ignored even if
     // provided, since CMMCore won't invoke them on a non-sequenceable property.
@@ -300,7 +322,7 @@ makePropertyAction(nb::object getter, nb::object setter, long seqMaxLength,
     auto cbs = std::make_shared<PyCallbacks>(
         PyCallbacks{getter, setter, seqLoader, seqStarter, seqStopper, seqMaxPtr});
     auto functor = std::make_unique<MM::ActionLambda>(
-        [cbs](MM::PropertyBase *pProp, MM::ActionType eAct) -> int {
+        [cbs, onError](MM::PropertyBase *pProp, MM::ActionType eAct) -> int {
             nb::gil_scoped_acquire gil;
             try {
                 if (eAct == MM::BeforeGet && !cbs->getter.is_none()) {
@@ -329,7 +351,7 @@ makePropertyAction(nb::object getter, nb::object setter, long seqMaxLength,
                 std::string msg = e.what();
                 e.restore();
                 PyErr_Clear();
-                throw std::runtime_error(msg);
+                return onError(msg);
             }
             return DEVICE_OK;
         });
@@ -347,7 +369,7 @@ makePropertyAction(nb::object getter, nb::object setter, long seqMaxLength,
 
 template <typename TDevice>
 nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>> canCreate,
-                                 std::shared_ptr<std::atomic<bool>> alive) {
+                                 std::shared_ptr<std::atomic<bool>> alive, PyErrorFn onError) {
     // Type-erased CreateProperty
     auto doCreate = [](MM::Device *d, const char *name, const char *val, MM::PropertyType t,
                        bool ro, MM::ActionFunctor *act, bool preInit) -> int {
@@ -355,7 +377,7 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
     };
 
     return nb::cpp_function(
-        [dev, doCreate, canCreate, alive](
+        [dev, doCreate, canCreate, alive, onError](
             const std::string &name, const std::string &defaultValue, int mmType, bool readOnly,
             nb::object getter, nb::object setter, bool preInit, nb::object limits,
             nb::object allowedValues, long sequenceMaxLength, nb::object sequenceLoader,
@@ -372,7 +394,7 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
 
             auto [action, seqMaxPtr] =
                 makePropertyAction(getter, setter, sequenceMaxLength, sequenceLoader,
-                                   sequenceStarter, sequenceStopper);
+                                   sequenceStarter, sequenceStopper, onError);
 
             int ret = doCreate(dev, name.c_str(), defaultValue.c_str(),
                                static_cast<MM::PropertyType>(mmType), readOnly, action.get(),
@@ -420,9 +442,9 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
 template <typename TDevice>
 int initializeWithPropertyFactory(TDevice *dev, nb::object &py,
                                   std::shared_ptr<std::atomic<bool>> alive,
-                                  MM::Core *coreCallback) {
+                                  MM::Core *coreCallback, PyErrorFn onError) {
     auto canCreate = std::make_shared<std::atomic<bool>>(true);
-    nb::object factory = createPropertyFactory(dev, canCreate, alive);
+    nb::object factory = createPropertyFactory(dev, canCreate, alive, onError);
 
     // Create DeviceCallbacks — valid for the device's lifetime.
     // Heap-allocated, Python takes ownership.
@@ -462,6 +484,71 @@ template <typename TDevice> class PyBridgeDeviceBase {
     std::string deviceName_;
     std::string deviceDescription_;
     std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
+    // The bridge device itself and accessors for its protected CDeviceBase
+    // error/log methods (set by the PYBRIDGE_COMMON_OVERRIDES constructor,
+    // where the conversion and the protected members are accessible).
+    TDevice *self_ = nullptr;
+    void (*setErrorText_)(TDevice *, int, const char *) = nullptr;
+    void (*logMessage_)(TDevice *, const char *) = nullptr;
+
+  public:
+    // Error code under which Python exceptions are reported to CMMCore.
+    static constexpr int DEVICE_PYTHON_ERROR = 10100;
+
+    // Record a Python error on the device (SetErrorText) and return the error
+    // code, mirroring a C++ adapter that returns an error from a device call.
+    // `what` is nanobind's formatted traceback; its last line ("ExcType: msg")
+    // is placed first so that it survives MM::MaxStrLength truncation when
+    // CMMCore retrieves the error text. The full traceback is also sent to
+    // the core log.
+    int reportPyError(const std::string &what) const {
+        std::string headline = what;
+        auto end = what.find_last_not_of("\n ");
+        if (end != std::string::npos) {
+            auto start = what.rfind('\n', end);
+            headline = what.substr(start == std::string::npos ? 0 : start + 1,
+                                   end - (start == std::string::npos ? 0 : start + 1) + 1);
+        }
+        std::string text = headline + "\n" + what;
+        auto *dev = const_cast<TDevice *>(self_);
+        if (dev && setErrorText_)
+            setErrorText_(dev, DEVICE_PYTHON_ERROR, text.c_str());
+        if (dev && logMessage_)
+            logMessage_(dev, what.c_str());
+        return DEVICE_PYTHON_ERROR;
+    }
+
+    PyErrorFn pyErrorFn() const {
+        return [this](const std::string &what) { return this->reportPyError(what); };
+    }
+
+  protected:
+    // Device-aware versions of the free helpers. Inside the bridge classes,
+    // unqualified calls resolve to these (class scope hides the namespace
+    // scope). Int-returning calls convert Python errors into device error
+    // codes; value-returning calls (py_get) have no error channel in the MM
+    // interface and keep throwing.
+    template <typename... Args>
+    int py_call(const nb::object &py, const char *attr, Args &&...args) const {
+        try {
+            return ::py_call(py, attr, std::forward<Args>(args)...);
+        } catch (const std::runtime_error &e) {
+            return reportPyError(e.what());
+        }
+    }
+
+    template <typename F> auto py_invoke(F &&fn) const -> decltype(fn()) {
+        using R = decltype(fn());
+        if constexpr (std::is_same_v<R, int>) {
+            try {
+                return ::py_invoke(std::forward<F>(fn));
+            } catch (const std::runtime_error &e) {
+                return reportPyError(e.what());
+            }
+        } else {
+            return ::py_invoke(std::forward<F>(fn));
+        }
+    }
 
     PyBridgeDeviceBase(nb::object py_dev, std::string name, std::string description = "")
         : py_(std::move(py_dev)), deviceName_(std::move(name)),
@@ -476,8 +563,9 @@ template <typename TDevice> class PyBridgeDeviceBase {
     }
 
     int initializeCommon(TDevice *dev, MM::Core *coreCallback) {
-        nb::gil_scoped_acquire gil;
-        return initializeWithPropertyFactory(dev, py_, alive_, coreCallback);
+        return py_invoke([&]() -> int {
+            return initializeWithPropertyFactory(dev, py_, alive_, coreCallback, pyErrorFn());
+        });
     }
 
     // Per-device-type hooks around the Python initialize_bridge() call.
@@ -505,15 +593,27 @@ template <typename TDevice> class PyBridgeDeviceBase {
   public:                                                                                      \
     ClassName(nb::object py_dev, std::string name, std::string description = "")               \
         : PyBridgeDeviceBase<ClassName>(std::move(py_dev), std::move(name),                    \
-                                        std::move(description)) {}                             \
+                                        std::move(description)) {                              \
+        this->self_ = this;                                                                    \
+        this->setErrorText_ = [](ClassName *d, int code, const char *text) {                   \
+            d->SetErrorText(code, text);                                                       \
+        };                                                                                     \
+        this->logMessage_ = [](ClassName *d, const char *text) {                               \
+            d->LogMessage(text, false);                                                        \
+        };                                                                                     \
+    }                                                                                          \
     int Initialize() override {                                                                \
-        int ret = this->beforePyInitialize();                                                  \
-        if (ret != DEVICE_OK)                                                                  \
-            return ret;                                                                        \
-        ret = this->initializeCommon(this, this->GetCoreCallback());                           \
-        if (ret != DEVICE_OK)                                                                  \
-            return ret;                                                                        \
-        return this->afterPyInitialize();                                                      \
+        try {                                                                                  \
+            int ret = this->beforePyInitialize();                                              \
+            if (ret != DEVICE_OK)                                                              \
+                return ret;                                                                    \
+            ret = this->initializeCommon(this, this->GetCoreCallback());                       \
+            if (ret != DEVICE_OK)                                                              \
+                return ret;                                                                    \
+            return this->afterPyInitialize();                                                  \
+        } catch (const std::runtime_error &e) {                                                \
+            return this->reportPyError(e.what());                                              \
+        }                                                                                      \
     }                                                                                          \
     int Shutdown() override { return this->shutdownCommon(); }                                 \
     bool Busy() override { return this->busyCommon(); }                                        \
@@ -626,12 +726,16 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     std::vector<double> exposureSeq_;
 
     int IsExposureSequenceable(bool &f) const override {
-        f = py_get<bool>(py_, "is_exposure_sequenceable");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            f = py_get<bool>(py_, "is_exposure_sequenceable");
+            return DEVICE_OK;
+        });
     }
     int GetExposureSequenceMaxLength(long &nrEvents) const override {
-        nrEvents = py_get<long>(py_, "get_exposure_sequence_max_length");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            nrEvents = py_get<long>(py_, "get_exposure_sequence_max_length");
+            return DEVICE_OK;
+        });
     }
     int ClearExposureSequence() override {
         exposureSeq_.clear();
@@ -733,8 +837,10 @@ class PyBridgeShutter : public CShutterBase<PyBridgeShutter>,
     int SetOpen(bool open) override { return py_call(py_, "set_open", open); }
 
     int GetOpen(bool &open) override {
-        open = py_get<bool>(py_, "get_open");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            open = py_get<bool>(py_, "get_open");
+            return DEVICE_OK;
+        });
     }
 
     int Fire(double deltaT) override { return py_call(py_, "fire", deltaT); }
@@ -751,8 +857,10 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
     // -- MM::Stage: position --
     int SetPositionUm(double pos) override { return py_call(py_, "set_position_um", pos); }
     int GetPositionUm(double &pos) override {
-        pos = py_get<double>(py_, "get_position_um");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            pos = py_get<double>(py_, "get_position_um");
+            return DEVICE_OK;
+        });
     }
     int SetRelativePositionUm(double d) override {
         return py_call(py_, "set_relative_position_um", d);
@@ -761,8 +869,10 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
         return py_call(py_, "set_position_steps", steps);
     }
     int GetPositionSteps(long &steps) override {
-        steps = py_get<long>(py_, "get_position_steps");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            steps = py_get<long>(py_, "get_position_steps");
+            return DEVICE_OK;
+        });
     }
     int SetAdapterOriginUm(double d) override {
         return py_call(py_, "set_adapter_origin_um", d);
@@ -784,8 +894,11 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
 
     // -- MM::Stage: focus --
     int GetFocusDirection(MM::FocusDirection &direction) override {
-        direction = static_cast<MM::FocusDirection>(py_get<int>(py_, "get_focus_direction"));
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            direction =
+                static_cast<MM::FocusDirection>(py_get<int>(py_, "get_focus_direction"));
+            return DEVICE_OK;
+        });
     }
     bool IsContinuousFocusDrive() const override {
         return py_get<bool>(py_, "is_continuous_focus_drive");
@@ -795,12 +908,16 @@ class PyBridgeStage : public CStageBase<PyBridgeStage>,
     std::vector<double> stageSeq_;
 
     int IsStageSequenceable(bool &f) const override {
-        f = py_get<bool>(py_, "is_stage_sequenceable");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            f = py_get<bool>(py_, "is_stage_sequenceable");
+            return DEVICE_OK;
+        });
     }
     int GetStageSequenceMaxLength(long &nrEvents) const override {
-        nrEvents = py_get<long>(py_, "get_stage_sequence_max_length");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            nrEvents = py_get<long>(py_, "get_stage_sequence_max_length");
+            return DEVICE_OK;
+        });
     }
     int ClearStageSequence() override {
         stageSeq_.clear();
@@ -838,11 +955,15 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
     // adapter that doesn't override SetPositionUm.
     bool usesSteps_ = false;
     bool hasSetOrigin_ = false;
+    bool hasSetXOrigin_ = false;
+    bool hasSetYOrigin_ = false;
 
     int beforePyInitialize() {
         nb::gil_scoped_acquire gil;
         usesSteps_ = !nb::hasattr(py_, "set_position_um");
         hasSetOrigin_ = nb::hasattr(py_, "set_origin");
+        hasSetXOrigin_ = nb::hasattr(py_, "set_x_origin");
+        hasSetYOrigin_ = nb::hasattr(py_, "set_y_origin");
         return DEVICE_OK;
     }
 
@@ -918,8 +1039,14 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
             return SetAdapterOriginUm(0.0, 0.0);
         return py_call(py_, "set_origin");
     }
-    int SetXOrigin() override { return py_call(py_, "set_x_origin"); }
-    int SetYOrigin() override { return py_call(py_, "set_y_origin"); }
+    // Without device-specific methods, report DEVICE_UNSUPPORTED_COMMAND as
+    // CXYStageBase does for a C++ adapter that doesn't override these.
+    int SetXOrigin() override {
+        return hasSetXOrigin_ ? py_call(py_, "set_x_origin") : CXYStageBase::SetXOrigin();
+    }
+    int SetYOrigin() override {
+        return hasSetYOrigin_ ? py_call(py_, "set_y_origin") : CXYStageBase::SetYOrigin();
+    }
 
     // -- MM::XYStage: limits + step size --
     int GetLimitsUm(double &xMin, double &xMax, double &yMin, double &yMax) override {
@@ -949,12 +1076,16 @@ class PyBridgeXYStage : public CXYStageBase<PyBridgeXYStage>,
     std::vector<std::pair<double, double>> xySeq_;
 
     int IsXYStageSequenceable(bool &f) const override {
-        f = py_get<bool>(py_, "is_xy_stage_sequenceable");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            f = py_get<bool>(py_, "is_xy_stage_sequenceable");
+            return DEVICE_OK;
+        });
     }
     int GetXYStageSequenceMaxLength(long &nrEvents) const override {
-        nrEvents = py_get<long>(py_, "get_xy_stage_sequence_max_length");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            nrEvents = py_get<long>(py_, "get_xy_stage_sequence_max_length");
+            return DEVICE_OK;
+        });
     }
     int ClearXYStageSequence() override {
         xySeq_.clear();
@@ -1027,8 +1158,10 @@ class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus>,
         return py_call(py_, "set_continuous_focusing", state);
     }
     int GetContinuousFocusing(bool &state) override {
-        state = py_get<bool>(py_, "get_continuous_focusing");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            state = py_get<bool>(py_, "get_continuous_focusing");
+            return DEVICE_OK;
+        });
     }
     bool IsContinuousFocusLocked() override {
         return py_get<bool>(py_, "is_continuous_focus_locked");
@@ -1036,16 +1169,22 @@ class PyBridgeAutoFocus : public CAutoFocusBase<PyBridgeAutoFocus>,
     int FullFocus() override { return py_call(py_, "full_focus"); }
     int IncrementalFocus() override { return py_call(py_, "incremental_focus"); }
     int GetLastFocusScore(double &score) override {
-        score = py_get<double>(py_, "get_last_focus_score");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            score = py_get<double>(py_, "get_last_focus_score");
+            return DEVICE_OK;
+        });
     }
     int GetCurrentFocusScore(double &score) override {
-        score = py_get<double>(py_, "get_current_focus_score");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            score = py_get<double>(py_, "get_current_focus_score");
+            return DEVICE_OK;
+        });
     }
     int GetOffset(double &offset) override {
-        offset = py_get<double>(py_, "get_offset");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            offset = py_get<double>(py_, "get_offset");
+            return DEVICE_OK;
+        });
     }
     int SetOffset(double offset) override { return py_call(py_, "set_offset", offset); }
 };
@@ -1061,13 +1200,17 @@ class PyBridgeSignalIO : public CSignalIOBase<PyBridgeSignalIO>,
     // -- MM::SignalIO: core --
     int SetGateOpen(bool open) override { return py_call(py_, "set_gate_open", open); }
     int GetGateOpen(bool &open) override {
-        open = py_get<bool>(py_, "get_gate_open");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            open = py_get<bool>(py_, "get_gate_open");
+            return DEVICE_OK;
+        });
     }
     int SetSignal(double volts) override { return py_call(py_, "set_signal", volts); }
     int GetSignal(double &volts) override {
-        volts = py_get<double>(py_, "get_signal");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            volts = py_get<double>(py_, "get_signal");
+            return DEVICE_OK;
+        });
     }
     int GetLimits(double &minVolts, double &maxVolts) override {
         return py_invoke([&]() -> int {
@@ -1082,12 +1225,16 @@ class PyBridgeSignalIO : public CSignalIOBase<PyBridgeSignalIO>,
     std::vector<double> daSeq_;
 
     int IsDASequenceable(bool &f) const override {
-        f = py_get<bool>(py_, "is_da_sequenceable");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            f = py_get<bool>(py_, "is_da_sequenceable");
+            return DEVICE_OK;
+        });
     }
     int GetDASequenceMaxLength(long &nrEvents) const override {
-        nrEvents = py_get<long>(py_, "get_da_sequence_max_length");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            nrEvents = py_get<long>(py_, "get_da_sequence_max_length");
+            return DEVICE_OK;
+        });
     }
     int ClearDASequence() override {
         daSeq_.clear();
@@ -1246,10 +1393,11 @@ class PyBridgeGeneric : public CGenericBase<PyBridgeGeneric>,
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeGeneric)
 };
 
-// Forward declaration — PyBridgeHub::DetectInstalledDevices needs this.
+// Forward declarations — PyBridgeHub::DetectInstalledDevices needs these.
 inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
                                       const std::string &name,
                                       const std::string &description = "");
+class PyBridgeAdapter;
 
 // ============================================================================
 // PyBridgeHub
@@ -1258,32 +1406,19 @@ inline MM::Device *createBridgeDevice(nb::object py_dev, MM::DeviceType type,
 class PyBridgeHub : public HubBase<PyBridgeHub>, private PyBridgeDeviceBase<PyBridgeHub> {
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeHub)
 
+    // The adapter that created this hub (set by PyBridgeAdapter::CreateDevice),
+    // so that discovered peripherals can be made loadable through it.
+    PyBridgeAdapter *adapter_ = nullptr;
+
+  public:
+    void setAdapter(PyBridgeAdapter *adapter) { adapter_ = adapter; }
+
     // Discover peripherals by calling Python's detect_installed_devices(),
-    // which returns a list of (name, py_device, device_type) tuples.
-    // Each is wrapped in a bridge device and registered with HubBase.
-    int DetectInstalledDevices() override {
-        ClearInstalledDevices();
-        return py_invoke([&]() -> int {
-            nb::object peripherals = py_.attr("detect_installed_devices")();
-            for (auto item : peripherals) {
-                auto tup = nb::cast<nb::tuple>(item);
-                auto name = nb::cast<std::string>(tup[0]);
-                nb::object py_dev = tup[1];
-                auto type = nb::cast<MM::DeviceType>(tup[2]);
-                // Extract description from the Python object's class docstring.
-                std::string desc;
-                nb::object py_type =
-                    nb::borrow(reinterpret_cast<PyObject *>(Py_TYPE(py_dev.ptr())));
-                nb::object doc = py_type.attr("__doc__");
-                if (!doc.is_none())
-                    desc = nb::cast<std::string>(nb::str(doc));
-                MM::Device *pDev = createBridgeDevice(py_dev, type, name, desc);
-                if (pDev)
-                    AddInstalledDevice(pDev);
-            }
-            return DEVICE_OK;
-        });
-    }
+    // which returns a list of (name, py_device_or_class, device_type) tuples.
+    // Each is wrapped in a prototype bridge device registered with HubBase
+    // (for getInstalledDevices()), and registered with the adapter so that
+    // loadDevice(label, adapter, name) can create it, as for C++ hubs.
+    int DetectInstalledDevices() override;
 };
 
 // ============================================================================
@@ -1294,10 +1429,13 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     PYBRIDGE_COMMON_OVERRIDES(PyBridgeSLM)
 
     // -- MM::SLM --
+    // As in MMDevice (see GenericSLM: GetBytesPerPixel() == 4 with 3
+    // components), GetBytesPerPixel() is the total number of bytes per pixel.
+    // An 8-bit image with bytesPerPixel > 1 is presented as (h, w, bytesPerPixel).
     int SetImage(unsigned char *pixels) override {
         ensureSLMDimsCached();
         size_t h = cachedH_, w = cachedW_;
-        size_t pixDepth = cachedNComp_ * cachedBpp_;
+        size_t pixDepth = cachedBpp_;
         return py_invoke([&]() -> int {
             nb::ndarray<nb::numpy, uint8_t, nb::c_contig> arr;
             if (pixDepth == 1)
@@ -1357,12 +1495,16 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     bool usingSeq32_ = false;
 
     int IsSLMSequenceable(bool &f) const override {
-        f = py_get<bool>(py_, "is_slm_sequenceable");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            f = py_get<bool>(py_, "is_slm_sequenceable");
+            return DEVICE_OK;
+        });
     }
     int GetSLMSequenceMaxLength(long &nrEvents) const override {
-        nrEvents = py_get<long>(py_, "get_slm_sequence_max_length");
-        return DEVICE_OK;
+        return py_invoke([&]() -> int {
+            nrEvents = py_get<long>(py_, "get_slm_sequence_max_length");
+            return DEVICE_OK;
+        });
     }
     int ClearSLMSequence() override {
         slmSeq8_.clear();
@@ -1372,7 +1514,7 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     }
     int AddToSLMSequence(const unsigned char *const image) override {
         ensureSLMDimsCached();
-        size_t nbytes = (size_t)cachedH_ * cachedW_ * cachedNComp_ * cachedBpp_;
+        size_t nbytes = (size_t)cachedH_ * cachedW_ * cachedBpp_;
         slmSeq8_.emplace_back(image, image + nbytes);
         usingSeq32_ = false;
         return DEVICE_OK;
@@ -1387,7 +1529,7 @@ class PyBridgeSLM : public CSLMBase<PyBridgeSLM>, private PyBridgeDeviceBase<PyB
     int SendSLMSequence() override {
         ensureSLMDimsCached();
         size_t h = cachedH_, w = cachedW_;
-        size_t pixDepth = (size_t)cachedNComp_ * cachedBpp_;
+        size_t pixDepth = cachedBpp_;
         return py_invoke([&]() -> int {
             nb::list py_seq;
             if (usingSeq32_) {
@@ -1470,15 +1612,21 @@ class PyBridgeAdapter : public MockDeviceAdapter {
   public:
     PyBridgeAdapter() = default;
 
-    // Move constructor: leaves the source marked as loaded so it
-    // rejects further modifications.
-    PyBridgeAdapter(PyBridgeAdapter &&other) noexcept
-        : devices_(std::move(other.devices_)), loaded_(other.loaded_) {
-        other.loaded_ = true;
-    }
+    PyBridgeAdapter(PyBridgeAdapter &&) = delete;
     PyBridgeAdapter &operator=(PyBridgeAdapter &&) = delete;
     PyBridgeAdapter(const PyBridgeAdapter &) = delete;
     PyBridgeAdapter &operator=(const PyBridgeAdapter &) = delete;
+
+    // Copy of the registered entries, for handing to CMMCore (which takes
+    // ownership of the copy). The Python-side DeviceAdapter stays intact, so
+    // it can be registered with several cores, and a failed registration
+    // loses nothing.
+    std::unique_ptr<PyBridgeAdapter> clone() const {
+        nb::gil_scoped_acquire gil;
+        auto copy = std::make_unique<PyBridgeAdapter>();
+        copy->devices_ = devices_;
+        return copy;
+    }
 
     ~PyBridgeAdapter() {
         try {
@@ -1514,20 +1662,44 @@ class PyBridgeAdapter : public MockDeviceAdapter {
         }
     }
 
+    // Register a peripheral reported by a hub's detect_installed_devices(),
+    // so that CreateDevice(name) can create it. `py_obj` is a device instance
+    // (used as-is when loaded) or a device class (instantiated when loaded).
+    void registerDiscovered(const std::string &name, nb::object py_obj, MM::DeviceType type,
+                            const std::string &description) {
+        bool is_class = PyType_Check(py_obj.ptr());
+        for (auto &d : devices_) {
+            if (d.name == name) {
+                d = {name, description, std::move(py_obj), type, is_class};
+                return;
+            }
+        }
+        devices_.push_back({name, description, std::move(py_obj), type, is_class});
+    }
+
     MM::Device *CreateDevice(const char *name) override {
         nb::gil_scoped_acquire gil;
         for (auto &d : devices_) {
             if (d.name == name) {
+                MM::Device *dev = nullptr;
                 try {
                     nb::object py_dev = d.is_class ? d.py_obj() : d.py_obj;
-                    return createBridgeDevice(py_dev, d.type, d.name, d.description);
+                    dev = createBridgeDevice(py_dev, d.type, d.name, d.description);
                 } catch (nb::python_error &e) {
+                    // Surface the Python error instead of a bare "failed to
+                    // instantiate device" from CMMCore.
+                    std::string msg = e.what();
                     e.restore();
                     PyErr_Clear();
-                    return nullptr;
-                } catch (...) {
-                    return nullptr;
+                    throw CMMError("Failed to instantiate Python device \"" + d.name +
+                                   "\": " + msg);
+                } catch (const std::exception &e) {
+                    throw CMMError("Failed to instantiate Python device \"" + d.name +
+                                   "\": " + e.what());
                 }
+                if (auto *hub = dynamic_cast<PyBridgeHub *>(dev))
+                    hub->setAdapter(this);
+                return dev;
             }
         }
         return nullptr;
@@ -1535,3 +1707,32 @@ class PyBridgeAdapter : public MockDeviceAdapter {
 
     void DeleteDevice(MM::Device *device) override { delete device; }
 };
+
+inline int PyBridgeHub::DetectInstalledDevices() {
+    ClearInstalledDevices();
+    return py_invoke([&]() -> int {
+        nb::object peripherals = py_.attr("detect_installed_devices")();
+        for (auto item : peripherals) {
+            auto tup = nb::cast<nb::tuple>(item);
+            auto name = nb::cast<std::string>(tup[0]);
+            nb::object py_obj = tup[1];
+            auto type = nb::cast<MM::DeviceType>(tup[2]);
+            bool is_class = PyType_Check(py_obj.ptr());
+            // The prototype needs an instance; a class is instantiated for it.
+            nb::object py_dev = is_class ? py_obj() : py_obj;
+            // Extract description from the Python object's class docstring.
+            std::string desc;
+            nb::object py_type =
+                nb::borrow(reinterpret_cast<PyObject *>(Py_TYPE(py_dev.ptr())));
+            nb::object doc = py_type.attr("__doc__");
+            if (!doc.is_none())
+                desc = nb::cast<std::string>(nb::str(doc));
+            MM::Device *pDev = createBridgeDevice(py_dev, type, name, desc);
+            if (pDev)
+                AddInstalledDevice(pDev);
+            if (adapter_)
+                adapter_->registerDiscovered(name, py_obj, type, desc);
+        }
+        return DEVICE_OK;
+    });
+}

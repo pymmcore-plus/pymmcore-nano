@@ -1332,6 +1332,9 @@ def test_slm_rgb_image() -> None:
         def get_number_of_components(self) -> int:
             return 3
 
+        def get_bytes_per_pixel(self) -> int:
+            return 3  # total bytes per pixel, as in MM::SLM::GetBytesPerPixel
+
     core = CMMCore()
     slm = RGBSlm(width=8, height=4)
     core.loadPyDevice("SLM", slm, DeviceType.SLMDevice)

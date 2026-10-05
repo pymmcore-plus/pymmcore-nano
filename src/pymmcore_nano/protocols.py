@@ -59,6 +59,12 @@ class PyDevice(Protocol):
         MM devices, the bridge calls this `initialize_bridge()` instead. This leaves
         downstream devices free to implement `initialize()` as desired (which
         will likely be called inside of `initialize_bridge()`).
+
+        `notify.label` is the label CMMCore assigned to the device.
+
+        Exceptions raised by any method of a Python device are reported to CMMCore
+        as device errors (like a C++ adapter returning an error code), so they
+        surface as `CMMError` with the exception line followed by the traceback.
         """
         ...
 
@@ -271,7 +277,8 @@ class PyXYStepperStage(PyDevice, Protocol):
     def home(self) -> None: ...
     def stop(self) -> None: ...
     def move(self, vx: float, vy: float) -> None: ...
-    # origin
+    # origin (optional: without them, setOriginX/Y report "unsupported command"
+    # like CXYStageBase)
     def set_x_origin(self) -> None: ...
     def set_y_origin(self) -> None: ...
     # limits
@@ -328,7 +335,12 @@ class PyHub(PyDevice, Protocol):
     """Protocol for Python hub devices."""
 
     def detect_installed_devices(self) -> Sequence[tuple[str, object, int]]:
-        """Return peripherals as (name, py_device, device_type) tuples."""
+        """Return peripherals as (name, py_device_or_class, device_type) tuples.
+
+        As for C++ hubs, the names become loadable from the hub's device adapter:
+        `core.loadDevice(label, core.getDeviceLibrary(hub_label), name)`. A device
+        *instance* is loaded as-is; a device *class* is instantiated on each load.
+        """
         ...
 
 
@@ -345,7 +357,15 @@ class PySLM(PyDevice, Protocol):
     def get_width(self) -> int: ...
     def get_height(self) -> int: ...
     def get_number_of_components(self) -> int: ...
-    def get_bytes_per_pixel(self) -> int: ...
+    def get_bytes_per_pixel(self) -> int:
+        """Total bytes per pixel (e.g. 4 for an RGB32 SLM with 3 components).
+
+        Images are validated against width * height * bytes-per-pixel, and an 8-bit
+        image with more than one byte per pixel is passed to `set_image` as an
+        `(h, w, bytes_per_pixel)` array.
+        """
+        ...
+
     # sequencing
     def is_slm_sequenceable(self) -> bool: ...
     def get_slm_sequence_max_length(self) -> int: ...
