@@ -124,7 +124,7 @@ def test_log_all_levels_to_file(core: pmn.CMMCore, tmp_path: Path) -> None:
         pmn.LogLevel.LogLevelError: "[ERR,",
         pmn.LogLevel.LogLevelCritical: "[CRT,",
     }
-    for level, tag in level_tags.items():
+    for level in level_tags:
         core.log(f"msg-{level.name}", level)
 
     # wait for the last message to appear
@@ -180,7 +180,10 @@ def test_rotation_creates_backup_files(core: pmn.CMMCore, tmp_path: Path) -> Non
 
     # write enough to trigger rotation
     for i in range(200):
-        core.log(f"rotation-fill-{i:04d}-padding-to-make-line-longer", pmn.LogLevel.LogLevelInfo)
+        core.log(
+            f"rotation-fill-{i:04d}-padding-to-make-line-longer",
+            pmn.LogLevel.LogLevelInfo,
+        )
 
     def _all_log_text() -> str:
         return "".join(f.read_text() for f in tmp_path.iterdir())
@@ -188,7 +191,9 @@ def test_rotation_creates_backup_files(core: pmn.CMMCore, tmp_path: Path) -> Non
     _wait_until(lambda: "rotation-fill-0199" in _all_log_text())
 
     # check that at least one rotated file was created
-    rotated = [f for f in tmp_path.iterdir() if f.name.startswith("test") and f != logfile]
+    rotated = [
+        f for f in tmp_path.iterdir() if f.name.startswith("test") and f != logfile
+    ]
     assert len(rotated) > 0, f"Expected rotated log files in {tmp_path}"
     # should not exceed maxBackupCount
     assert len(rotated) <= 2

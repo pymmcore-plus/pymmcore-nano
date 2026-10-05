@@ -1061,21 +1061,30 @@ MMCore will send notifications on internal events using this interface
         .def("getPixelSizeAffine",
              [](CMMCore &self) {
                 std::vector<double> v;
-                { nb::gil_scoped_release gil; v = self.getPixelSizeAffine(); }
+                {
+                    nb::gil_scoped_release gil;
+                    v = self.getPixelSizeAffine();
+                }
                 return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
              },
              nb::sig("def getPixelSizeAffine(self) -> tuple[float, float, float, float, float, float]"))
         .def("getPixelSizeAffine",
              [](CMMCore &self, bool cached) {
                 std::vector<double> v;
-                { nb::gil_scoped_release gil; v = self.getPixelSizeAffine(cached); }
+                {
+                    nb::gil_scoped_release gil;
+                    v = self.getPixelSizeAffine(cached);
+                }
                 return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
              }, "cached"_a,
              nb::sig("def getPixelSizeAffine(self, cached: bool) -> tuple[float, float, float, float, float, float]"))
         .def("getPixelSizeAffineByID",
              [](CMMCore &self, const char *resolutionID) {
                 std::vector<double> v;
-                { nb::gil_scoped_release gil; v = self.getPixelSizeAffineByID(resolutionID); }
+                {
+                    nb::gil_scoped_release gil;
+                    v = self.getPixelSizeAffineByID(resolutionID);
+                }
                 return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
              }, "resolutionID"_a,
              nb::sig("def getPixelSizeAffineByID(self, resolutionID: str) -> tuple[float, float, float, float, float, float]"))
