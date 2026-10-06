@@ -113,8 +113,12 @@ These are documented as `typing.Protocol` classes in
 - `PyGeneric` — properties only (no device-specific methods)
 - `PyHub` — peripheral discovery (`detect_installed_devices()`); the reported
   names are loadable from the hub's adapter with `core.loadDevice()`, also
-  before `getInstalledDevices()` was called (as a config file does)
-- `PySLM` — spatial light modulator (image display, exposure)
+  before `getInstalledDevices()` was called (as a config file does). As for
+  C++ hubs, each reported peripheral is wrapped in a prototype device (for
+  `getInstalledDevices()`), which the hub releases when it is destroyed
+- `PySLM` — spatial light modulator (image display, exposure). `set_image()`
+  and `load_slm_sequence()` receive arrays that own their data (copies of
+  CMMCore's buffers), so a device may keep them
 - `PySignalIO`, `PyMagnifier`, `PySerial`, `PyGalvo` — the remaining MM
   device types
 
@@ -129,7 +133,20 @@ a C++ adapter reports an error code: the device records the exception line
 and traceback as its error text (code 10100), the traceback goes to the core
 log, and CMMCore raises `CMMError`. A `NotImplementedError` is reported as
 `DEVICE_UNSUPPORTED_COMMAND`, the code the C++ base classes return for
-optional methods an adapter does not override. `shutdown()` is called at most
+optional methods an adapter does not override.
+
+MM methods that return a value instead of an error code (`get_exposure`,
+`get_image_width`, `get_position_um` via `getPosition`, ...) have no error
+channel in the device interface. For most of them the exception propagates
+through CMMCore and reaches the caller as a `CMMError` with the same text.
+Three are called by CMMCore from code that cannot tolerate an exception and
+therefore never raise: `busy()` (the core's wait loops, `reset()`),
+`is_capturing()` (`CMMCore::isSequenceRunning()` is `noexcept`) and
+`get_number_of_positions()` (`getNumberOfStates()` promises not to throw).
+An error in these is recorded on the device and logged, and `False` / `0` is
+reported, as for a C++ adapter that has no way to fail there.
+
+`shutdown()` is called at most
 once: an exception there is reported like any device error (`unloadDevice()`
 raises and the device stays loaded, as for a C++ `Shutdown()` failure), and
 the next unload succeeds without calling it again. That second `Shutdown()`
@@ -188,7 +205,10 @@ def initialize_bridge(self, create_property, notify):
 After `initialize_bridge()` returns, the factory is invalidated. Calling it
 later raises `RuntimeError`. `PropertyHandle.set_limits()`,
 `set_allowed_values()` and `set_sequence_max_length()` stay valid for the
-device's lifetime.
+device's lifetime. They raise `RuntimeError` when CDeviceBase rejects the
+change (e.g. limits on a String property, or on a property with allowed
+values), rather than leaving the Python device believing a constraint is in
+place that CMMCore does not enforce.
 
 ### Pre-init properties
 
@@ -333,7 +353,13 @@ derived from it:
   `unloadAllDevices`, `reset` and `loadSystemConfiguration` bindings)
 - `shutdown()` runs once, with the device still alive (so `notify` works,
   e.g. to report `acq_finished()`); afterwards `notify` and the
-  `PropertyHandle`s raise `RuntimeError("Device has been unloaded")`
+  `PropertyHandle`s raise `RuntimeError("Device has been unloaded")`. The
+  same happens when a bridge device is destroyed without `Shutdown()` (a
+  hub's peripheral prototype), so a handle never refers to a deleted device
+- A camera's `insert_image` holds a per-device mutex while it uses the bridge
+  device, and the destructor takes it while invalidating the device, so a
+  frame arriving from a runaway acquisition thread during `unloadDevice()`
+  raises instead of using freed memory
 - Property getter/setter callables are wrapped in a
   `shared_ptr<PyCallbacks>` whose destructor acquires the GIL — this
   handles the case where `~CDeviceBase` destroys `ActionLambda` captures

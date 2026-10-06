@@ -325,7 +325,10 @@ class PyMMEventCallback : public MMEventCallback {
 void registerAndStoreBridgeAdapter(CMMCore &core, const std::string &adapterName,
                                    std::unique_ptr<PyBridgeAdapter> adapter) {
     adapter->markLoaded();
-    core.loadMockDeviceAdapter(adapterName.c_str(), adapter.release());
+    // CPluginManager::LoadMockAdapter rejects a duplicate name before it takes
+    // ownership of the pointer, so release ours only once it has succeeded.
+    core.loadMockDeviceAdapter(adapterName.c_str(), adapter.get());
+    adapter.release();
 }
 
 // loadPyDevice registers a one-off adapter per device under this prefix.
@@ -951,6 +954,21 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
                 std::rethrow_exception(p);
             } catch (const CMMError &e) {
                 PyErr_SetString(cmm_error_type.ptr(), e.getFullMsg().c_str());
+            }
+        },
+        nullptr);
+    // A Python error from a bridge device method that has no error code to
+    // return (e.g. get_exposure, get_image_width): report it as a CMMError
+    // with the exception line first and the traceback below, like the device
+    // errors CMMCore raises itself.
+    nb::register_exception_translator(
+        [](const std::exception_ptr &p, void *) {
+            try {
+                std::rethrow_exception(p);
+            } catch (const PyError &e) {
+                std::string what = e.what();
+                std::string msg = e.headline == what ? what : e.headline + "\n" + what;
+                PyErr_SetString(cmm_error_type.ptr(), msg.c_str());
             }
         },
         nullptr);

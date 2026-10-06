@@ -9,6 +9,10 @@ that establishes the expected behavior.
 from __future__ import annotations
 
 import gc
+import os
+import subprocess
+import sys
+import textwrap
 import weakref
 from typing import TYPE_CHECKING
 
@@ -19,8 +23,11 @@ from pymmcore_nano import CMMCore, DeviceAdapter, DeviceType
 
 from test_bridge_devices import (
     MinimalCamera,
+    MinimalGeneric,
     MinimalHub,
     MinimalSLM,
+    MinimalStage,
+    MinimalState,
     MinimalXYStepper,
 )
 
@@ -822,3 +829,268 @@ def test_continuous_acquisition_passes_none() -> None:
     core.startContinuousSequenceAcquisition(0)
     core.startSequenceAcquisition(5, 0, True)
     assert seen == [None, 5]
+
+
+# ---------------------------------------------------------------------------
+# 14. A Python exception in is_capturing() terminated the process.
+#
+#     PyBridgeCamera::IsCapturing() let the PyError escape, and
+#     CMMCore::isSequenceRunning() is declared MMCORE_NOEXCEPT (MMCore.h) and
+#     only catches CMMError, so std::terminate was called.  Acquisition loops
+#     poll isSequenceRunning() continuously.  The same applies to Busy() (the
+#     core's wait loops, reset()) and GetNumberOfPositions()
+#     (CMMCore::getNumberOfStates() promises not to throw).  These now record
+#     the error on the device and return false / 0.
+# ---------------------------------------------------------------------------
+
+
+def _run_in_subprocess(code: str) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, "PYTHONPATH": os.path.dirname(os.path.abspath(__file__))}
+    return subprocess.run(
+        [sys.executable, "-X", "faulthandler", "-c", textwrap.dedent(code)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
+
+
+def test_error_in_is_capturing_does_not_abort_the_process() -> None:
+    res = _run_in_subprocess(
+        """
+        from pymmcore_nano import CMMCore, DeviceType
+        from test_bridge_devices import MinimalCamera
+
+        class Cam(MinimalCamera):
+            def is_capturing(self):
+                raise RuntimeError("camera link lost")
+
+        core = CMMCore()
+        core.loadPyDevice("C", Cam(), DeviceType.CameraDevice)
+        core.initializeDevice("C")
+        core.setCameraDevice("C")
+        assert core.isSequenceRunning() is False
+        print("SURVIVED")
+        """
+    )
+    assert "SURVIVED" in res.stdout, (res.stdout, res.stderr[-1500:])
+
+
+def test_error_in_busy_is_reported_not_raised() -> None:
+    class Dev(MinimalGeneric):
+        def busy(self) -> bool:
+            raise RuntimeError("controller unreachable")
+
+    core = CMMCore()
+    core.loadPyDevice("D", Dev(), DeviceType.GenericDevice)
+    core.initializeDevice("D")
+    assert core.deviceBusy("D") is False
+    core.waitForDevice("D")  # must not raise or hang
+    core.reset()  # waitForSystem() runs inside reset()
+
+
+def test_error_in_get_number_of_positions_is_reported_not_raised() -> None:
+    class Wheel(MinimalState):
+        def get_number_of_positions(self) -> int:
+            raise RuntimeError("no wheel")
+
+    core = CMMCore()
+    core.loadPyDevice("W", Wheel(), DeviceType.StateDevice)
+    core.initializeDevice("W")
+    assert core.getNumberOfStates("W") == 0
+
+
+# ---------------------------------------------------------------------------
+# 15. Errors from value-returning methods reached Python as a bare
+#     RuntimeError (nanobind's default translation of std::runtime_error).
+#     They are now CMMError, with the exception line first and the traceback
+#     below, like the device errors CMMCore raises itself.
+# ---------------------------------------------------------------------------
+
+
+def test_error_in_value_returning_method_is_a_cmm_error() -> None:
+    class Cam(MinimalCamera):
+        def get_exposure(self) -> float:
+            raise ValueError("exposure register unreadable")
+
+    core = CMMCore()
+    core.loadPyDevice("C", Cam(), DeviceType.CameraDevice)
+    core.initializeDevice("C")
+    core.setCameraDevice("C")
+    with pytest.raises(pmn.CMMError) as ei:
+        core.getExposure()
+    lines = str(ei.value).splitlines()
+    assert lines[0] == "ValueError: exposure register unreadable"
+    assert "Traceback" in str(ei.value)
+
+
+# ---------------------------------------------------------------------------
+# 16. Hub peripheral prototypes leaked the Python device objects.
+#
+#     PyBridgeHub::DetectInstalledDevices() wraps every reported peripheral in
+#     a prototype bridge device (HubBase::AddInstalledDevice) holding an
+#     nb::object reference to the Python instance.  MMDevice's HubBase
+#     destructor is `virtual ~HubBase() {}`, so the prototypes -- and the
+#     Python objects they referenced -- outlived the hub, the adapter and the
+#     core.  ~PyBridgeHub() now calls ClearInstalledDevices().
+# ---------------------------------------------------------------------------
+
+
+def test_hub_prototypes_are_released_when_the_hub_is_unloaded() -> None:
+    made: list[weakref.ref] = []
+
+    def factory() -> MinimalStage:
+        d = MinimalStage()
+        made.append(weakref.ref(d))
+        return d
+
+    class Hub(MinimalHub):
+        def detect_installed_devices(self):
+            return [("S1", factory, DeviceType.StageDevice)]
+
+    core = CMMCore()
+    core.loadPyDevice("H", Hub(), DeviceType.HubDevice)
+    core.initializeDevice("H")
+    assert core.getInstalledDevices("H") == ["S1"]
+    gc.collect()
+    assert [r() is not None for r in made] == [True]  # the prototype's instance
+
+    core.unloadDevice("H")
+    gc.collect()
+    assert all(r() is None for r in made), "prototype instances outlive the hub"
+
+
+# ---------------------------------------------------------------------------
+# 17. PropertyHandle / DeviceCallbacks stayed "alive" after a bridge device
+#     was destroyed without Shutdown().
+#
+#     alive_ was only cleared in shutdownCommon().  A hub prototype replaced by
+#     PyBridgeAdapter::CreateDevice's DetectInstalledDevices() fallback (which
+#     calls ClearInstalledDevices()) left the handles created in its
+#     create_pre_init_properties() pointing at freed memory while checkAlive()
+#     still passed.  The destructor now clears alive_.
+# ---------------------------------------------------------------------------
+
+
+def test_handle_of_a_destroyed_prototype_raises() -> None:
+    handles: list[pmn.PropertyHandle] = []
+
+    class Stage(MinimalStage):
+        def create_pre_init_properties(self, create_property: CreatePropertyFn) -> None:
+            handles.append(
+                create_property(
+                    "Port", "COM1", 1, False, pre_init=True, allowed_values=["COM1"]
+                )
+            )
+
+    class Hub(MinimalHub):
+        def detect_installed_devices(self):
+            return [("S1", Stage, DeviceType.StageDevice)]
+
+    core = CMMCore()
+    core.loadPyDevice("H", Hub(), DeviceType.HubDevice)
+    core.initializeDevice("H")
+    core.getInstalledDevices("H")  # prototype #1 -> handles[0]
+    assert len(handles) == 1
+    with pytest.raises(pmn.CMMError):
+        # unknown name: the adapter re-detects, deleting prototype #1
+        core.loadDevice("X", core.getDeviceLibrary("H"), "NoSuchDevice")
+    assert len(handles) == 2
+    with pytest.raises(RuntimeError, match="Device has been unloaded"):
+        handles[0].set_allowed_values(["COM3"])
+    handles[1].set_allowed_values(["COM3"])  # the live prototype still works
+
+
+# ---------------------------------------------------------------------------
+# 18. PropertyHandle.set_limits() / set_allowed_values() ignored the device
+#     error code.
+#
+#     CDeviceBase::SetPropertyLimits returns DEVICE_INVALID_PROPERTY_LIMTS for
+#     a String property; the handle discarded it, so the Python device believed
+#     the constraint was in place while CMMCore enforced none.
+# ---------------------------------------------------------------------------
+
+
+def test_set_limits_on_a_string_property_raises() -> None:
+    class Dev(MinimalGeneric):
+        def initialize_bridge(
+            self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+        ) -> None:
+            super().initialize_bridge(create_property, notify)
+            self.h = create_property(
+                "Mode", "a", 1, False, getter=lambda: "a", setter=lambda v: None
+            )
+
+    core = CMMCore()
+    dev = Dev()
+    core.loadPyDevice("D", dev, DeviceType.GenericDevice)
+    core.initializeDevice("D")
+    with pytest.raises(RuntimeError, match="Cannot set limits"):
+        dev.h.set_limits(0.0, 5.0)
+    assert not core.hasPropertyLimits("D", "Mode")
+    # the same check applies to create_property(limits=...)
+    core.loadPyDevice("D2", _StringWithLimits(), DeviceType.GenericDevice)
+    with pytest.raises(pmn.CMMError, match="Cannot set limits"):
+        core.initializeDevice("D2")
+
+
+class _StringWithLimits(MinimalGeneric):
+    def initialize_bridge(
+        self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+    ) -> None:
+        super().initialize_bridge(create_property, notify)
+        create_property("Mode", "a", 1, False, getter=lambda: "a", limits=(0, 1))
+
+
+# ---------------------------------------------------------------------------
+# 19. loadPyDeviceAdapter() with a name that is already loaded leaked the
+#     adapter copy: registerAndStoreBridgeAdapter released the unique_ptr
+#     before CPluginManager::LoadMockAdapter checked the name and threw.
+# ---------------------------------------------------------------------------
+
+
+def test_duplicate_adapter_name_raises_without_leaking() -> None:
+    class First(MinimalGeneric):
+        pass
+
+    class Second(MinimalGeneric):
+        pass
+
+    core = CMMCore()
+    a1 = DeviceAdapter()
+    a1.add_device_class("Dev", First, DeviceType.GenericDevice, "")
+    core.loadPyDeviceAdapter("Dup", a1)
+    a2 = DeviceAdapter()
+    a2.add_device_class("Dev", Second, DeviceType.GenericDevice, "")
+    with pytest.raises(pmn.CMMError, match="already loaded"):
+        core.loadPyDeviceAdapter("Dup", a2)
+    ref = weakref.ref(Second)
+    del a2, Second
+    gc.collect()
+    assert ref() is None, "the rejected adapter copy kept the class alive"
+    core.loadDevice("D", "Dup", "Dev")  # the first registration is intact
+    core.initializeDevice("D")
+
+
+# ---------------------------------------------------------------------------
+# 20. PropertyHandle.set_sequence_max_length() was silently ignored for a
+#     property created without getter, setter or sequence_max_length (no
+#     ActionLambda is attached, so CMMCore never asks it IsSequenceable).
+# ---------------------------------------------------------------------------
+
+
+def test_set_sequence_max_length_without_handler_raises() -> None:
+    class Dev(MinimalGeneric):
+        def initialize_bridge(
+            self, create_property: CreatePropertyFn, notify: DeviceCallbacks
+        ) -> None:
+            super().initialize_bridge(create_property, notify)
+            self.h = create_property("Static", "1", 3, False)
+
+    core = CMMCore()
+    dev = Dev()
+    core.loadPyDevice("D", dev, DeviceType.GenericDevice)
+    core.initializeDevice("D")
+    with pytest.raises(RuntimeError, match="no action handler"):
+        dev.h.set_sequence_max_length(10)
+    assert not core.isPropertySequenceable("D", "Static")

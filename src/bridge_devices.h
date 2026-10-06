@@ -20,6 +20,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -145,20 +146,36 @@ class PropertyHandle {
         };
     }
 
+    // CDeviceBase reports e.g. DEVICE_INVALID_PROPERTY_LIMTS for limits on a
+    // String property, or DEVICE_INVALID_PROPERTY for an unknown name; a
+    // Python device must not believe a constraint is in place when it is not.
     void setLimits(double lo, double hi) {
         checkAlive();
-        vt_.setPropertyLimits(dev_, name_.c_str(), lo, hi);
+        int ret = vt_.setPropertyLimits(dev_, name_.c_str(), lo, hi);
+        if (ret != DEVICE_OK)
+            throw std::runtime_error("Cannot set limits (" + std::to_string(lo) + ", " +
+                                     std::to_string(hi) + ") on property '" + name_ +
+                                     "' (device error " + std::to_string(ret) +
+                                     "; limits need a Float or Integer property without "
+                                     "allowed values)");
     }
 
     void setAllowedValues(std::vector<std::string> values) {
         checkAlive();
-        vt_.setAllowedValues(dev_, name_.c_str(), values);
+        int ret = vt_.setAllowedValues(dev_, name_.c_str(), values);
+        if (ret != DEVICE_OK)
+            throw std::runtime_error("Cannot set allowed values on property '" + name_ +
+                                     "' (device error " + std::to_string(ret) + ")");
     }
 
     void setSequenceMaxLength(long maxLength) {
         checkAlive();
-        if (seqMaxLength_)
-            *seqMaxLength_ = maxLength;
+        if (!seqMaxLength_)
+            throw std::runtime_error(
+                "Property '" + name_ +
+                "' has no action handler (it was created without getter, setter or "
+                "sequence_max_length), so it cannot be made sequenceable");
+        *seqMaxLength_ = maxLength;
     }
 };
 
@@ -505,6 +522,10 @@ template <typename TDevice> class PyBridgeDeviceBase {
     std::string deviceName_;
     std::string deviceDescription_;
     std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
+    // Held while a device thread uses the bridge device through a callback
+    // (PyBridgeCamera's insert_image) and while the destructor clears alive_,
+    // so that "alive" cannot change between the check and the use.
+    std::shared_ptr<std::mutex> callbackMutex_ = std::make_shared<std::mutex>();
     // The bridge device itself and accessors for its protected CDeviceBase
     // error/log methods (set by the PYBRIDGE_COMMON_OVERRIDES constructor,
     // where the conversion and the protected members are accessible).
@@ -570,6 +591,23 @@ template <typename TDevice> class PyBridgeDeviceBase {
         }
     }
 
+    // For the few value-returning MM methods that CMMCore calls from code that
+    // cannot tolerate an exception (CMMCore::isSequenceRunning() is noexcept,
+    // CMMCore::getNumberOfStates() promises not to throw, Busy() runs in the
+    // wait loops and in reset()): a Python error is recorded on the device and
+    // logged, as for a C++ adapter that has no error channel there, and
+    // `fallback` is returned.
+    template <typename T> T py_get_noexcept(const char *attr, T fallback) const {
+        try {
+            return ::py_get<T>(py_, attr);
+        } catch (const PyError &e) {
+            reportPyError(e);
+        } catch (const std::exception &e) {
+            reportPyError(e.what());
+        }
+        return fallback;
+    }
+
     template <typename F> auto py_invoke(F &&fn) const -> decltype(fn()) {
         using R = decltype(fn());
         if constexpr (std::is_same_v<R, int>) {
@@ -589,7 +627,15 @@ template <typename TDevice> class PyBridgeDeviceBase {
         : py_(std::move(py_dev)), deviceName_(std::move(name)),
           deviceDescription_(std::move(description)) {}
 
+    // A bridge device may be destroyed without Shutdown() (a hub's peripheral
+    // prototype, or a device LoadedDeviceAdapter::LoadDevice rejects), so the
+    // PropertyHandles and DeviceCallbacks that refer to it are invalidated
+    // here as well, not only in shutdownCommon().
     ~PyBridgeDeviceBase() {
+        {
+            std::lock_guard<std::mutex> guard(*callbackMutex_);
+            *alive_ = false;
+        }
         try {
             nb::gil_scoped_acquire gil;
             py_.reset();
@@ -650,7 +696,7 @@ template <typename TDevice> class PyBridgeDeviceBase {
         return ret;
     }
 
-    bool busyCommon() { return py_get<bool>(py_, "busy"); }
+    bool busyCommon() { return py_get_noexcept<bool>("busy", false); }
 
     void getNameCommon(char *name) const {
         CDeviceUtils::CopyLimitedString(name, deviceName_.c_str());
@@ -887,7 +933,9 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     int StopExposureSequence() override { return py_call(py_, "stop_exposure_sequence"); }
 
     // -- MM::Camera: sequence acquisition --
-    bool IsCapturing() override { return py_get<bool>(py_, "is_capturing"); }
+    // CMMCore::isSequenceRunning() is noexcept: an exception here would
+    // terminate the process.
+    bool IsCapturing() override { return py_get_noexcept<bool>("is_capturing", false); }
 
     int StartSequenceAcquisition(long numImages, double interval_ms,
                                  bool stopOnOverflow) override {
@@ -908,15 +956,12 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
             // CMMCore's circular buffer. Python calls this per frame.
             auto *self = this;
             auto alive = alive_;
+            auto mutex = callbackMutex_;
             // insert_image returns False on buffer overflow so Python
             // can stop acquisition when stopOnOverflow is set.
             nb::object inserter = nb::cpp_function(
-                [self, alive, w, h, bpp, nComp](nb::object arr, nb::object metadata) -> bool {
-                    // The Python acquisition thread may outlive the bridge
-                    // device (e.g. unloadDevice while a runaway thread is
-                    // still producing frames); `self` is dangling then.
-                    if (!*alive)
-                        throw std::runtime_error("Device has been unloaded");
+                [self, alive, mutex, w, h, bpp, nComp](nb::object arr,
+                                                       nb::object metadata) -> bool {
                     auto [obj, nd] = contiguousImageArray(std::move(arr));
                     checkImageBytes(nd.nbytes(), static_cast<size_t>(w) * h * bpp);
 
@@ -940,6 +985,14 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                     int ret;
                     {
                         nb::gil_scoped_release release;
+                        // The Python acquisition thread may outlive the bridge
+                        // device (e.g. unloadDevice while a runaway thread is
+                        // still producing frames); `self` is dangling then. The
+                        // mutex keeps the destructor from clearing `alive`
+                        // between this check and the use of `self`.
+                        std::lock_guard<std::mutex> guard(*mutex);
+                        if (!*alive)
+                            throw std::runtime_error("Device has been unloaded");
                         ret = self->GetCoreCallback()->InsertImage(
                             self, static_cast<const unsigned char *>(nd.data()), w, h, bpp,
                             nComp, mdStr.c_str());
@@ -1278,9 +1331,11 @@ class PyBridgeState : public CStateDeviceBase<PyBridgeState>,
     // GetPositionLabel, SetPositionLabel, GetLabelPosition, SetGateOpen,
     // GetGateOpen — all driven by the "State" and "Label" properties.
     // The only pure virtual remaining is GetNumberOfPositions.
+    // CMMCore::getNumberOfStates() documents that it does not throw (it
+    // returns -1 for a non-state device); an error here is recorded on the
+    // device and reported as 0 positions.
     unsigned long GetNumberOfPositions() const override {
-        return py_invoke(
-            [&]() { return nb::cast<unsigned long>(py_.attr("get_number_of_positions")()); });
+        return py_get_noexcept<unsigned long>("get_number_of_positions", 0);
     }
 };
 
@@ -1559,6 +1614,17 @@ class PyBridgeHub : public HubBase<PyBridgeHub>, private PyBridgeDeviceBase<PyBr
     PyBridgeAdapter *adapter_ = nullptr;
 
   public:
+    // HubBase does not delete the devices added with AddInstalledDevice()
+    // (MMDevice's `virtual ~HubBase() {}`); the prototypes, and the Python
+    // objects they reference, would outlive the hub and the core.
+    ~PyBridgeHub() {
+        try {
+            nb::gil_scoped_acquire gil;
+            ClearInstalledDevices();
+        } catch (...) {
+        }
+    }
+
     void setAdapter(PyBridgeAdapter *adapter) { adapter_ = adapter; }
 
     // Discover peripherals by calling Python's detect_installed_devices(),

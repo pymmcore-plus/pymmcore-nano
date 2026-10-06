@@ -67,6 +67,9 @@ class PyDevice(Protocol):
         surface as `CMMError` with the exception line followed by the traceback.
         A `NotImplementedError` is reported as the "Unsupported device command"
         error, like a C++ base class method that the adapter does not override.
+        `busy()`, `is_capturing()` and `get_number_of_positions()` are called by
+        CMMCore from code that cannot tolerate an exception; an error in them is
+        recorded on the device and logged, and False / 0 is reported.
         """
         ...
 
@@ -94,7 +97,13 @@ class PyDevice(Protocol):
         """
         ...
 
-    def busy(self) -> bool: ...
+    def busy(self) -> bool:
+        """Return True while the device is busy.
+
+        Called from CMMCore's wait loops and from `reset()`: an exception here is
+        recorded on the device and logged, and False is reported.
+        """
+        ...
 
 
 @runtime_checkable
@@ -134,7 +143,14 @@ class PyCamera(PyDevice, Protocol):
     def load_exposure_sequence(self, sequence: list[float]) -> None: ...
     def start_exposure_sequence(self) -> None: ...
     def stop_exposure_sequence(self) -> None: ...
-    def is_capturing(self) -> bool: ...
+    def is_capturing(self) -> bool:
+        """Return True while a sequence acquisition is running.
+
+        `CMMCore.isSequenceRunning()` is `noexcept` in C++: an exception here is
+        recorded on the device and logged, and False is reported.
+        """
+        ...
+
     def start_sequence_acquisition(
         self,
         num_images: int | None,
@@ -348,7 +364,13 @@ class PyState(PyDevice, Protocol):
       notify CMMCore of both State and Label.
     """
 
-    def get_number_of_positions(self) -> int: ...
+    def get_number_of_positions(self) -> int:
+        """Return the number of positions.
+
+        `CMMCore.getNumberOfStates()` does not throw: an exception here is
+        recorded on the device and logged, and 0 is reported.
+        """
+        ...
 
 
 @runtime_checkable
@@ -395,7 +417,10 @@ class PyHub(PyDevice, Protocol):
 class PySLM(PyDevice, Protocol):
     """Protocol for Python SLM devices."""
 
-    def set_image(self, pixels: np.ndarray) -> None: ...
+    def set_image(self, pixels: np.ndarray) -> None:
+        """Load an image. `pixels` owns its data and may be kept by the device."""
+        ...
+
     def display_image(self) -> None: ...
     def set_pixels_to(self, intensity: int) -> None: ...
     def set_pixels_to_rgb(self, r: int, g: int, b: int) -> None: ...
