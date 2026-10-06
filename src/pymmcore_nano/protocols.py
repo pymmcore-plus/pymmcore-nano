@@ -85,8 +85,12 @@ class PyDevice(Protocol):
         """Shut down the device.
 
         `notify` is still usable here (e.g. to report `acq_finished()` after a
-        camera stops its acquisition thread) and is invalidated afterwards. An
-        exception raised here is logged, but does not fail `unloadDevice()`.
+        camera stops its acquisition thread) and is invalidated afterwards.
+
+        Called at most once. An exception raised here is reported like any device
+        error (`unloadDevice()` raises and, as for a C++ device whose `Shutdown()`
+        fails, the device stays loaded), but the next unload succeeds without
+        calling `shutdown()` again.
         """
         ...
 
@@ -115,8 +119,12 @@ class PyCamera(PyDevice, Protocol):
     def get_image_buffer(self, channel: int = 0) -> np.ndarray:
         """Return the last snapped image.
 
-        The array must hold at least `width * height * bytes_per_pixel` bytes;
-        a smaller array is rejected (CMMCore would read past its end).
+        The array must hold exactly `width * height * bytes_per_pixel` bytes;
+        any other size is rejected (a smaller array would be read past its end,
+        a larger one means the reported format does not match the data). A
+        non-contiguous or read-only array is copied (CMMCore may hand the buffer
+        to an image processor, which writes into it); a C-contiguous writable
+        one is used as is, and kept referenced until the next call.
         """
         ...
 
@@ -141,8 +149,9 @@ class PyCamera(PyDevice, Protocol):
         metadata)` for each frame, synchronously or from a background thread.
         `insert_image` returns True on success, False when CMMCore's circular
         buffer is full. Stop acquiring when it returns False. Each array must
-        hold at least `width * height * bytes_per_pixel` bytes (as reported when
-        the acquisition started), or `insert_image` raises.
+        hold exactly `width * height * bytes_per_pixel` bytes (as reported when
+        the acquisition started), or `insert_image` raises. A non-contiguous or
+        read-only array is copied; a C-contiguous writable one is used as is.
         """
         ...
 
@@ -367,11 +376,13 @@ class PyHub(PyDevice, Protocol):
     """Protocol for Python hub devices."""
 
     def detect_installed_devices(self) -> Sequence[tuple[str, object, int]]:
-        """Return peripherals as (name, py_device_or_class, device_type) tuples.
+        """Return peripherals as (name, py_device_or_factory, device_type) tuples.
 
         As for C++ hubs, the names become loadable from the hub's device adapter:
         `core.loadDevice(label, core.getDeviceLibrary(hub_label), name)`. A device
-        *instance* is loaded as-is; a device *class* is instantiated on each load.
+        *instance* is loaded as-is; a device *class*, or any other zero-argument
+        callable without an `initialize_bridge` attribute (a factory), is called
+        on each load.
 
         Called by `CMMCore.getInstalledDevices()`, and also when a device name
         unknown to the adapter is loaded (so that a configuration file can load

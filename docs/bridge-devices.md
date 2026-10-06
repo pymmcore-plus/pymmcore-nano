@@ -129,9 +129,12 @@ a C++ adapter reports an error code: the device records the exception line
 and traceback as its error text (code 10100), the traceback goes to the core
 log, and CMMCore raises `CMMError`. A `NotImplementedError` is reported as
 `DEVICE_UNSUPPORTED_COMMAND`, the code the C++ base classes return for
-optional methods an adapter does not override. Exceptions in `shutdown()` are
-logged only: a Shutdown error would leave the device loaded and terminate the
-process when the core is destroyed (`~DeviceManager` calls Shutdown again).
+optional methods an adapter does not override. `shutdown()` is called at most
+once: an exception there is reported like any device error (`unloadDevice()`
+raises and the device stays loaded, as for a C++ `Shutdown()` failure), and
+the next unload succeeds without calling it again. That second `Shutdown()`
+must not fail, because `~DeviceManager` calls it from a destructor, where an
+error would terminate the process.
 
 ## Property System
 
@@ -303,10 +306,15 @@ derived from it:
   before calling into CMMCore, which is what makes it safe to call them from a
   camera's acquisition thread while another thread is inside the core
 - `GetImageBuffer()` returns a pointer into the Python array, which the bridge
-  keeps alive until the next call (a non-contiguous array is copied first);
-  the array must hold at least `width * height * bytes_per_pixel` bytes
+  keeps alive until the next call. A non-contiguous or read-only array is
+  copied first (CMMCore passes camera buffers to image processors as writable
+  memory). The array must hold exactly `width * height * bytes_per_pixel`
+  bytes; a mismatch is reported as a `CMMError` with the reason
 - `insert_image` copies the frame into CMMCore's circular buffer with the
-  GIL released, after checking its size the same way
+  GIL released, after the same contiguity, writability and size checks, and
+  tags it with `BytesPerPixel` and `NumberOfComponents` so that
+  `popNextImage()` can shape frames CMMCore has no `PixelType` name for
+  (e.g. 3-component cameras) without asking the camera
 - GIL acquisition is re-entrant (safe for nested calls)
 
 ## Lifecycle and Cleanup
@@ -323,9 +331,9 @@ derived from it:
 - The one-off adapters created by `loadPyDevice` are unloaded when the last
   device loaded from them is unloaded (see the `unloadDevice`,
   `unloadAllDevices`, `reset` and `loadSystemConfiguration` bindings)
-- `shutdown()` runs with the device still alive (so `notify` works, e.g. to
-  report `acq_finished()`); afterwards `notify` and the `PropertyHandle`s
-  raise `RuntimeError("Device has been unloaded")`
+- `shutdown()` runs once, with the device still alive (so `notify` works,
+  e.g. to report `acq_finished()`); afterwards `notify` and the
+  `PropertyHandle`s raise `RuntimeError("Device has been unloaded")`
 - Property getter/setter callables are wrapped in a
   `shared_ptr<PyCallbacks>` whose destructor acquires the GIL — this
   handles the case where `~CDeviceBase` destroys `ActionLambda` captures
@@ -333,13 +341,18 @@ derived from it:
 
 ## Known Limitations
 
-- **Image processors**: CMMCore passes camera buffers to an image processor
-  as writable memory, so a read-only (e.g. broadcast) array returned by
-  `get_image_buffer()` or passed to `insert_image()` would be written to.
-- **Sequence frames of 3-component cameras** are tagged `PixelType=Unknown`
-  by CMMCore (it only knows 1, 2, 4 and 8 bytes per pixel), so `popNextImage`
-  falls back to asking the camera for its current dimensions.
 - **`PropertyHandle` / `set_position_label` after initialization** modify the
-  device's property tables without CMMCore's module lock; call them from a
-  device method (which CMMCore calls with the lock held) rather than from an
-  unrelated thread.
+  device's property tables without CMMCore's module lock (MMDevice offers no
+  way for a device to take it); call them from a device method (which CMMCore
+  calls with the lock held) or during initialization, rather than from an
+  unrelated thread. The same applies to a C++ adapter calling
+  `SetPropertyLimits()` from its own thread.
+- **Snapped images are shared, not copied**, as for C++ cameras: the pointer
+  `getImage()` reads from stays valid until the camera's next
+  `GetImageBuffer()`, so two threads must not call `snapImage()`/`getImage()`
+  on the same camera concurrently (CMMCore does not serialize that either).
+- **Calling the core from a camera's acquisition thread**: `stopSequenceAcquisition()`
+  holds the camera's module lock while it waits for the device to stop, so a
+  frame loop that calls a core method on its own camera (e.g. `getExposure`)
+  blocks until the device's stop times out. Use the device's own methods
+  instead, as C++ adapters do.

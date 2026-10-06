@@ -269,6 +269,29 @@ def test_hub_peripherals_are_loadable() -> None:
     assert core.getImage().shape == (32, 64)
 
 
+def test_hub_peripheral_factories_are_called_on_load() -> None:
+    """A hub may report a zero-argument factory instead of a class."""
+    made: list[MinimalCamera] = []
+
+    def make_cam() -> MinimalCamera:
+        made.append(MinimalCamera())
+        return made[-1]
+
+    class FactoryHub(MinimalHub):
+        def detect_installed_devices(self):
+            return [("HubCam", make_cam, DeviceType.CameraDevice)]
+
+    core = CMMCore()
+    core.loadPyDevice("Hub", FactoryHub(), DeviceType.HubDevice)
+    lib = core.getDeviceLibrary("Hub")
+    core.loadDevice("Cam1", lib, "HubCam")
+    core.initializeDevice("Cam1")
+    assert type(made[-1]) is MinimalCamera
+    core.setCameraDevice("Cam1")
+    core.snapImage()
+    assert core.getImage().shape == (32, 64)
+
+
 def test_hub_peripheral_classes_are_instantiated_on_load() -> None:
     """A hub may report device *classes*; each load creates a new instance."""
 
@@ -369,24 +392,37 @@ def test_notify_is_usable_during_shutdown() -> None:
 
 
 class FailingShutdownCamera(MinimalCamera):
+    calls = 0
+
     def shutdown(self) -> None:
+        self.calls += 1
         raise RuntimeError("hardware already gone")
 
 
-@pytest.mark.parametrize("how", ["unloadDevice", "unloadAllDevices", "reset", "del"])
-def test_python_error_in_shutdown_does_not_fail_unload(how: str) -> None:
+@pytest.mark.parametrize("how", ["unloadDevice", "unloadAllDevices", "reset"])
+def test_python_error_in_shutdown_is_reported_once(how: str) -> None:
+    """As for a C++ device whose Shutdown() fails: the unload raises and the
+    device stays loaded. shutdown() is not called again: the next unload
+    succeeds, and destroying the core must not call std::terminate (its
+    ~DeviceManager calls Shutdown() a second time from a destructor)."""
+    core = CMMCore()
+    cam = FailingShutdownCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    unload = getattr(core, how)
+    with pytest.raises(pmn.CMMError, match="hardware already gone"):
+        unload("Cam") if how == "unloadDevice" else unload()
+    assert "Cam" in core.getLoadedDevices()
+    assert cam.calls == 1
+    unload("Cam") if how == "unloadDevice" else unload()
+    assert "Cam" not in core.getLoadedDevices()
+    assert cam.calls == 1
+
+
+def test_python_error_in_shutdown_does_not_abort_core_destruction() -> None:
     core = CMMCore()
     core.loadPyDevice("Cam", FailingShutdownCamera(), DeviceType.CameraDevice)
     core.initializeDevice("Cam")
-    if how == "unloadDevice":
-        core.unloadDevice("Cam")
-    elif how == "unloadAllDevices":
-        core.unloadAllDevices()
-    elif how == "reset":
-        core.reset()
-    if how != "del":
-        assert "Cam" not in core.getLoadedDevices()
-    # destroying the core must not call std::terminate
     del core
     gc.collect()
 
@@ -411,10 +447,102 @@ def test_undersized_snap_buffer_raises() -> None:
     core.initializeDevice("Cam")
     core.setCameraDevice("Cam")
     core.snapImage()
-    # MM::Camera::GetImageBuffer has no error channel: the reason is logged and
-    # CMMCore reports its own "buffer read failed" error.
-    with pytest.raises(pmn.CMMError, match="buffer read failed"):
+    # MM::Camera::GetImageBuffer has no error channel; the bridge raises a
+    # CMMError, which CMMCore::getImage passes through with its text.
+    with pytest.raises(pmn.CMMError, match="4 bytes, but the camera reports"):
         core.getImage()
+
+
+class OversizedSnapCamera(MinimalCamera):
+    def snap_image(self) -> None:
+        # right shape, wrong dtype: twice the bytes the camera reports
+        self._buf = np.zeros((self._height, self._width), dtype=np.uint16)
+
+
+def test_image_buffer_of_wrong_size_is_rejected() -> None:
+    """The byte count must match exactly: a larger array hides a shape/dtype
+    mismatch (here uint16 data for a camera reporting 1 byte per pixel)."""
+    core = CMMCore()
+    core.loadPyDevice("Cam", OversizedSnapCamera(), DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.snapImage()
+    with pytest.raises(pmn.CMMError, match="bytes"):
+        core.getImage()
+
+
+class RaisingBufferCamera(MinimalCamera):
+    def get_image_buffer(self, channel: int = 0) -> np.ndarray:
+        raise RuntimeError("frame grabber timed out")
+
+
+def test_get_image_buffer_error_text_reaches_python() -> None:
+    core = CMMCore()
+    core.loadPyDevice("Cam", RaisingBufferCamera(), DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.snapImage()
+    with pytest.raises(pmn.CMMError, match="frame grabber timed out"):
+        core.getImage()
+
+
+class ReadOnlyCamera(MinimalCamera):
+    """Hands out read-only arrays (e.g. views of a frozen or memory-mapped buffer)."""
+
+    def snap_image(self) -> None:
+        super().snap_image()
+        assert self._buf is not None
+        self._buf.setflags(write=False)
+
+    def start_sequence_acquisition(self, n, interval, insert_image) -> None:
+        for i in range(n):
+            frame = np.full((self._height, self._width), i, dtype=np.uint8)
+            frame.setflags(write=False)
+            insert_image(frame, None)
+
+    def stop_sequence_acquisition(self) -> None:
+        pass
+
+    def is_capturing(self) -> bool:
+        return False
+
+
+def test_read_only_arrays_are_copied_not_shared() -> None:
+    """CMMCore hands camera buffers to image processors as writable memory, so
+    a read-only array must not be handed to it directly (the bridge copies it;
+    a writable array is shared, as before)."""
+    import sys
+
+    core = CMMCore()
+    cam = ReadOnlyCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.snapImage()
+    before = sys.getrefcount(cam._buf)
+    img = core.getImage()
+    np.testing.assert_array_equal(img, cam._buf)
+    # (measured outside the assert: pytest's assertion rewriting keeps a
+    # temporary reference to cam._buf while evaluating the expression)
+    after = sys.getrefcount(cam._buf)
+    assert after == before, "bridge kept the read-only array"
+    assert not cam._buf.flags.writeable
+
+    core.startSequenceAcquisition(2, 0, True)
+    assert core.getRemainingImageCount() == 2
+    np.testing.assert_array_equal(core.popNextImage(), 0)
+    np.testing.assert_array_equal(core.popNextImage(), 1)
+
+    # a writable array is still shared (no copy)
+    plain = MinimalCamera()
+    core.loadPyDevice("Plain", plain, DeviceType.CameraDevice)
+    core.initializeDevice("Plain")
+    core.setCameraDevice("Plain")
+    core.snapImage()
+    before = sys.getrefcount(plain._buf)
+    core.getImage()
+    after = sys.getrefcount(plain._buf)
+    assert after == before + 1
 
 
 class UndersizedSeqCamera(MinimalCamera):
@@ -443,6 +571,57 @@ def test_undersized_inserted_frame_raises() -> None:
     core.startSequenceAcquisition(1, 0, True)
     assert len(cam.errors) == 1 and "bytes" in str(cam.errors[0])
     assert core.getRemainingImageCount() == 0
+
+
+class ColorSeqCamera(MinimalCamera):
+    """(h, w, 3) uint8 frames: 3 bytes per pixel, a format CMMCore tags as
+    PixelType=Unknown in the circular buffer."""
+
+    def __init__(self) -> None:
+        super().__init__(width=8, height=4)
+
+    def get_bytes_per_pixel(self) -> int:
+        return 3
+
+    def get_number_of_components(self) -> int:
+        return 3
+
+    def get_image_buffer_size(self) -> int:
+        return self._width * self._height * 3
+
+    def start_sequence_acquisition(self, n, interval, insert_image) -> None:
+        for _ in range(n):
+            frame = np.zeros((self._height, self._width, 3), dtype=np.uint8)
+            frame[..., 1] = 7
+            insert_image(frame, None)
+
+    def stop_sequence_acquisition(self) -> None:
+        pass
+
+    def is_capturing(self) -> bool:
+        return False
+
+
+def test_pop_next_image_uses_the_frame_format_not_the_camera() -> None:
+    """Sequence frames carry their own pixel format, so popNextImage() shapes
+    them correctly even when the camera's format changed since (and without
+    asking the camera at all)."""
+    core = CMMCore()
+    cam = ColorSeqCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.startSequenceAcquisition(2, 0, True)
+    assert core.getRemainingImageCount() == 2
+    md = pmn.Metadata()
+    img = core.popNextImageMD(md)
+    assert img.shape == (4, 8, 3) and img.dtype == np.uint8
+    np.testing.assert_array_equal(img[..., 1], 7)
+    assert md.GetSingleTag("BytesPerPixel").GetValue() == "3"
+    # the camera now reports a different format; the queued frame keeps its own
+    cam._width, cam._height = 100, 100
+    cam.get_image_width = lambda: 100  # type: ignore[method-assign]
+    assert core.popNextImage().shape == (4, 8, 3)
 
 
 # ---------------------------------------------------------------------------

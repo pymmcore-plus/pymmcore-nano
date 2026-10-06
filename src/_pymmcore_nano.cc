@@ -168,11 +168,23 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
         // Retrieve and log the values of the tags
         width_str = md.GetSingleTag("Width").GetValue();
         height_str = md.GetSingleTag("Height").GetValue();
-        pixel_type = md.GetSingleTag("PixelType").GetValue();
         width = std::stoi(width_str);
         height = std::stoi(height_str);
 
-        if (pixel_type == "GRAY8") {
+        // Frames from Python bridge cameras carry the exact pixel format
+        // (CMMCore's PixelType tag is "Unknown" for e.g. 3 bytes per pixel).
+        Metadata &tags = const_cast<Metadata &>(md);
+        if (tags.HasTag("BytesPerPixel") && tags.HasTag("NumberOfComponents")) {
+            bytesPerPixel = std::stoi(md.GetSingleTag("BytesPerPixel").GetValue());
+            numComponents = std::stoi(md.GetSingleTag("NumberOfComponents").GetValue());
+            if (bytesPerPixel == 0 || numComponents == 0 || bytesPerPixel % numComponents != 0)
+                throw std::runtime_error("Unsupported pixel format.");
+        } else
+            pixel_type = md.GetSingleTag("PixelType").GetValue();
+
+        if (pixel_type.empty()) {
+            // taken from the tags above
+        } else if (pixel_type == "GRAY8") {
             bytesPerPixel = 1;
         } else if (pixel_type == "GRAY16") {
             bytesPerPixel = 2;
@@ -194,6 +206,8 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
     }
     if (numComponents == 4) {
         return build_rgb_np_array(core, pBuf, width, height, bytesPerPixel);
+    } else if (numComponents == 3) {
+        return build_3component_np_array(core, pBuf, width, height, bytesPerPixel);
     } else {
         return build_grayscale_np_array(core, pBuf, width, height, bytesPerPixel);
     }
