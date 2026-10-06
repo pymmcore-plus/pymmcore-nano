@@ -1,0 +1,13 @@
+diff --git a/PluginManager.cpp b/PluginManager.cpp
+index c12eda0..ed0bf79 100644
+--- a/PluginManager.cpp
++++ b/PluginManager.cpp
+@@ -207,6 +207,8 @@ CPluginManager::UnloadPluginLibrary(const char* moduleName)
+    {
+       throw CMMError("Cannot unload device adapter " + ToQuotedString(moduleName), e);
+    }
++
++   moduleMap_.erase(it);
+ }
+
+

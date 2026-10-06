@@ -12,6 +12,8 @@
 #include "MMEventCallback.h"
 #include "ModuleInterface.h"
 
+#include "bridge_devices.h"
+
 namespace nb = nanobind;
 
 using namespace nb::literals;
@@ -175,7 +177,7 @@ np_array create_metadata_array(CMMCore &core, void *pBuf, const Metadata md) {
     }
 }
 
-void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
+void validate_slm_image(const nb::ndarray<uint8_t, nb::c_contig> &pixels, long expectedWidth,
                         long expectedHeight, long bytesPerPixel) {
     // Check dtype
     if (pixels.dtype() != nb::dtype<uint8_t>()) {
@@ -186,7 +188,7 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
     if (pixels.ndim() != 2 && pixels.ndim() != 3) {
         throw std::invalid_argument(
             "Pixels must be a 2D numpy array [h,w] of uint8, or a 3D numpy array "
-            "[h,w,c] of uint8 with 3 color channels [R,G,B].");
+            "[h,w,c] of uint8 with 3 or 4 color channels.");
     }
 
     // Check shape
@@ -198,17 +200,13 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
                                     std::to_string(pixels.shape(1)) + ").");
     }
 
-    // Check total bytes
+    // Check total bytes (bytesPerPixel already covers all components, e.g. RGB32)
     long expectedBytes = expectedWidth * expectedHeight * bytesPerPixel;
-    if (pixels.nbytes() != expectedBytes) {
+    if (static_cast<long>(pixels.nbytes()) != expectedBytes) {
         throw std::invalid_argument("Image size is wrong for this SLM. Expected " +
                                     std::to_string(expectedBytes) + " bytes, but received " +
-                                    std::to_string(pixels.nbytes()) +
-                                    " bytes. Does this SLM support RGB?");
+                                    std::to_string(pixels.nbytes()) + " bytes.");
     }
-
-    // Ensure C-contiguous layout
-    // TODO
 }
 
 ///////////////// Trampoline class for MMEventCallback ///////////////////
@@ -281,6 +279,19 @@ class PyMMEventCallback : public MMEventCallback {
 };
 
 ////////////////////////////////////////////////////////////////////////////
+///////////////// Bridge adapter storage helper ////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+
+// Register a PyBridgeAdapter with CMMCore. CMMCore takes ownership of the
+// adapter (via unique_ptr in LoadedDeviceAdapterImplMock). The adapter is
+// destroyed when CMMCore unloads it (unloadLibrary/destructor).
+void registerAndStoreBridgeAdapter(CMMCore &core, const std::string &adapterName,
+                                   std::unique_ptr<PyBridgeAdapter> adapter) {
+    adapter->markLoaded();
+    core.loadMockDeviceAdapter(adapterName.c_str(), adapter.release());
+}
+
+////////////////////////////////////////////////////////////////////////////
 ///////////////// main _pymmcore_nano module definition  ///////////////////
 ////////////////////////////////////////////////////////////////////////////
 
@@ -289,6 +300,55 @@ NB_MODULE(_pymmcore_nano, m) {
     nb::set_leak_warnings(false);
 
     m.doc() = "Python bindings for MMCore";
+
+    // DeviceAdapter — Python-visible wrapper for PyBridgeAdapter.
+    // Allows Python to build an adapter by adding device classes, then
+    // register it with CMMCore. This keeps device discovery logic in Python.
+    nb::class_<PyBridgeAdapter>(
+        m, "DeviceAdapter",
+        "A collection of Python device classes that acts as an MM device "
+        "adapter library. Add device classes with add_device_class(), then "
+        "register with core.loadPyDeviceAdapter(name, adapter).")
+        .def(nb::init<>())
+        .def("add_device_class", &PyBridgeAdapter::addDeviceClass, "name"_a, "device_class"_a,
+             "device_type"_a, "description"_a,
+             nb::sig("def add_device_class(self, name: str, device_class: type,"
+                     " device_type: DeviceType, description: str) -> None"));
+
+    // PropertyHandle — returned by create_property() for dynamic
+    // constraint updates (limits, allowed values). Valid for the
+    // device's entire lifetime.
+    nb::class_<PropertyHandle>(
+        m, "PropertyHandle",
+        "Handle for updating an MM property's limits or allowed values. "
+        "Returned by the create_property() callable passed to initialize().")
+        .def("set_limits", &PropertyHandle::setLimits, "lower"_a, "upper"_a)
+        .def("set_allowed_values", &PropertyHandle::setAllowedValues, "values"_a)
+        .def("set_sequence_max_length", &PropertyHandle::setSequenceMaxLength, "max_length"_a);
+
+    // DeviceCallbacks — bridge between Python device objects and C++
+    // infrastructure they can't access directly. In C++, a device adapter
+    // calls this->SetPositionLabel(), this->GetCoreCallback()->OnExposureChanged(),
+    // etc. — it's calling methods on itself or on the core callback. But in
+    // the bridge, the Python device and the C++ bridge device are two separate
+    // objects, so DeviceCallbacks provides the channel for Python devices to
+    // reach back into CMMCore notifications and device base class methods.
+    // Passed to initialize() as the second argument. Valid for the
+    // device's entire lifetime.
+    nb::class_<DeviceCallbacks>(m, "DeviceCallbacks",
+                                "Notification callbacks for communicating device state changes "
+                                "to CMMCore. Passed to initialize() as the second argument.")
+        .def("on_property_changed", &DeviceCallbacks::onPropertyChanged, "name"_a, "value"_a)
+        .def("on_properties_changed", &DeviceCallbacks::onPropertiesChanged)
+        .def("on_stage_position_changed", &DeviceCallbacks::onStagePositionChanged, "pos"_a)
+        .def("on_xy_stage_position_changed", &DeviceCallbacks::onXYStagePositionChanged, "x"_a,
+             "y"_a)
+        .def("on_exposure_changed", &DeviceCallbacks::onExposureChanged, "exposure"_a)
+        .def("on_shutter_open_changed", &DeviceCallbacks::onShutterOpenChanged, "open"_a)
+        .def("log_message", &DeviceCallbacks::logMessage, "msg"_a, "debug_only"_a = false)
+        .def("acq_finished", &DeviceCallbacks::acqFinished, "status_code"_a = 0)
+        .def("set_position_label", &DeviceCallbacks::setPositionLabel, "pos"_a, "label"_a)
+        .def("on_state_changed", &DeviceCallbacks::onStateChanged, "pos"_a);
 
     /////////////////// Module Attributes ///////////////////
 
@@ -1247,7 +1307,34 @@ MMCore will send notifications on internal events using this interface
              } RGIL)
         .def("popNextImage",
              [](CMMCore &self) -> np_array {
-                return create_image_array(self, self.popNextImage());
+                // Use the MD fast-path: CircularBuffer stores Width/Height/PixelType
+                // tags, so we can build the np_array without querying the camera
+                // (which would cross the Python bridge for PyBridgeCamera devices).
+                //
+                // TRADEOFF: For C++ cameras, this replaces 4 inline int accesses
+                // (create_image_array) with 2 std::stoi + a PixelType string-compare
+                // per frame — measured ~5% slowdown in a tight-pop loop, invisible
+                // in any realistic acquisition. For PyBridgeCamera (python devices)
+                // it saves 4 Python bridge crossings (~8us) per frame, which is a
+                // huge win (see bridge_devices.h StartSequenceAcquisition comment).
+                //
+                // ALTERNATIVES if the C++ regression ever matters:
+                //   (a) Cache dims in pymmcore-plus' popNextImage wrapper at
+                //       startSequenceAcquisition and reuse — only works when going
+                //       through CMMCorePlus.
+                //   (b) Cache dims in CMMCore itself at startSequenceAcquisition
+                //       (cleanest, but touches upstream MMCore).
+                //   (c) Expose popNextImageFast as a separate method, leaving
+                //       popNextImage unchanged, and opt-in from pymmcore-plus for
+                //       the python-device case.
+                //
+                // Safety: CircularBuffer::InsertImage always writes Width/Height/
+                // PixelType (CircularBuffer.cpp ~264-280). If the tags are missing
+                // or the PixelType is exotic, create_metadata_array falls back to
+                // create_image_array(self, pBuf) automatically.
+                Metadata md;
+                auto img = self.popNextImageMD(md);
+                return create_metadata_array(self, img, md);
              } RGIL)
         // this is a new overload that returns both the image and the metadata
         // not present in the original C++ API
@@ -1570,7 +1657,7 @@ MMCore will send notifications on internal events using this interface
             "setSLMImage",
             [](CMMCore &self,
                const char *slmLabel,
-               const nb::ndarray<uint8_t> &pixels) -> void {
+               const nb::ndarray<uint8_t, nb::c_contig> &pixels) -> void {
                 long expectedWidth = self.getSLMWidth(slmLabel);
                 long expectedHeight = self.getSLMHeight(slmLabel);
                 long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
@@ -1607,7 +1694,7 @@ MMCore will send notifications on internal events using this interface
             "loadSLMSequence",
             [](CMMCore &self,
                const char *slmLabel,
-               std::vector<nb::ndarray<uint8_t>> &imageSequence) -> void {
+               std::vector<nb::ndarray<uint8_t, nb::c_contig>> &imageSequence) -> void {
                 long expectedWidth = self.getSLMWidth(slmLabel);
                 long expectedHeight = self.getSLMHeight(slmLabel);
                 long bytesPerPixel = self.getSLMBytesPerPixel(slmLabel);
@@ -1700,6 +1787,41 @@ MMCore will send notifications on internal events using this interface
              "hubLabel"_a,
              "peripheralLabel"_a RGIL)
         .def("getLoadedPeripheralDevices", &CMMCore::getLoadedPeripheralDevices, "hubLabel"_a RGIL)
+
+
+        // Python Bridge Devices
+        .def("loadPyDevice",
+            [](CMMCore& self, const char* label, nb::object py_device,
+               MM::DeviceType type) {
+                // Convenience: create a single-device adapter and load it.
+                // Counter ensures unique adapter names across load/unload
+                // cycles for the same label.
+                static std::atomic<uint64_t> counter{0};
+                auto adapter = std::make_unique<PyBridgeAdapter>();
+                adapter->addDevice(label, py_device, type);
+
+                std::string adapterName = "_PyBridge_" + std::to_string(counter.fetch_add(1));
+                registerAndStoreBridgeAdapter(self, adapterName, std::move(adapter));
+                {
+                    nb::gil_scoped_release release;
+                    self.loadDevice(label, adapterName.c_str(), label);
+                }
+            },
+            "label"_a, "py_device"_a, "type"_a)
+
+        .def("loadPyDeviceAdapter",
+            [](CMMCore& self, const char* adapterName,
+               PyBridgeAdapter* adapter) {
+                // Move the adapter contents into a new owned instance.
+                // The Python-side DeviceAdapter is left in a "loaded"
+                // state — add_device/add_device_class will raise if
+                // called again.
+                auto owned = std::make_unique<PyBridgeAdapter>(std::move(*adapter));
+                registerAndStoreBridgeAdapter(self, adapterName, std::move(owned));
+            },
+            "adapter_name"_a, "adapter"_a,
+            nb::sig("def loadPyDeviceAdapter(self, adapter_name: str,"
+                    " adapter: DeviceAdapter) -> None"))
 
         ;
 }

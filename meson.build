@@ -88,6 +88,7 @@ custom_target(
 py.install_sources(
     files(
         'src/pymmcore_nano/__init__.py',
+        'src/pymmcore_nano/protocols.py',
         'src/pymmcore_nano/py.typed',
     ),
     subdir: 'pymmcore_nano',

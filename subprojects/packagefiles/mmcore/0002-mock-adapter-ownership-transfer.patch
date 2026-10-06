@@ -1,0 +1,63 @@
+diff --git a/LoadableModules/LoadedDeviceAdapterImplMock.h b/LoadableModules/LoadedDeviceAdapterImplMock.h
+index 1aa3af7..2439fdb 100644
+--- a/LoadableModules/LoadedDeviceAdapterImplMock.h
++++ b/LoadableModules/LoadedDeviceAdapterImplMock.h
+@@ -25,6 +25,8 @@
+
+ #include "RegisteredDeviceCollection.h"
+
++#include <memory>
++
+
+ namespace mmcore {
+ namespace internal {
+@@ -32,10 +34,10 @@ namespace internal {
+ class LoadedDeviceAdapterImplMock : public LoadedDeviceAdapterImpl
+ {
+ public:
+-   explicit LoadedDeviceAdapterImplMock(MockDeviceAdapter* impl)
+-      : impl_(impl) {}
++   explicit LoadedDeviceAdapterImplMock(std::unique_ptr<MockDeviceAdapter> impl)
++      : impl_(std::move(impl)) {}
+
+-   void Unload() override {};
++   void Unload() override { impl_.reset(); }
+
+    void InitializeModuleData() override;
+    long GetModuleVersion() const override;
+@@ -49,7 +51,7 @@ public:
+    void DeleteDevice(MM::Device* device) override;
+
+ private:
+-   MockDeviceAdapter* impl_;
++   std::unique_ptr<MockDeviceAdapter> impl_;
+    MM::internal::RegisteredDeviceCollection registeredDevices_;
+ };
+
+diff --git a/MockDeviceAdapter.h b/MockDeviceAdapter.h
+index f5036d8..e1ea8ec 100644
+--- a/MockDeviceAdapter.h
++++ b/MockDeviceAdapter.h
+@@ -27,6 +27,8 @@
+ struct MockDeviceAdapter {
+    using RegisterDeviceFunc = std::function<void(const char*, MM::DeviceType, const char*)>;
+
++   virtual ~MockDeviceAdapter() = default;
++
+    virtual void InitializeModuleData(RegisterDeviceFunc registerDevice) = 0;
+    virtual MM::Device* CreateDevice(const char* name) = 0;
+    virtual void DeleteDevice(MM::Device* device) = 0;
+diff --git a/PluginManager.cpp b/PluginManager.cpp
+index ed0bf79..6021c5f 100644
+--- a/PluginManager.cpp
++++ b/PluginManager.cpp
+@@ -184,7 +184,8 @@ CPluginManager::LoadMockAdapter(const std::string& name, MockDeviceAdapter* impl
+    }
+
+    moduleMap_[name] = std::make_shared<LoadedDeviceAdapter>(
+-      name, std::make_unique<LoadedDeviceAdapterImplMock>(impl));
++      name, std::make_unique<LoadedDeviceAdapterImplMock>(
++         std::unique_ptr<MockDeviceAdapter>(impl)));
+ }
+
+
