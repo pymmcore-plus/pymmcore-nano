@@ -65,10 +65,31 @@ class PyDevice(Protocol):
         Exceptions raised by any method of a Python device are reported to CMMCore
         as device errors (like a C++ adapter returning an error code), so they
         surface as `CMMError` with the exception line followed by the traceback.
+        A `NotImplementedError` is reported as the "Unsupported device command"
+        error, like a C++ base class method that the adapter does not override.
         """
         ...
 
-    def shutdown(self) -> None: ...
+    def create_pre_init_properties(self, create_property: CreatePropertyFn) -> None:
+        """Create pre-initialization properties (optional).
+
+        Called when CMMCore creates the device (before `initialize_bridge()`), like
+        the constructor of a C++ adapter. Properties created here with
+        `pre_init=True` exist before `initializeDevice()` and can only be set
+        before it (e.g. by a configuration file). The `create_property` callable is
+        invalidated when this method returns.
+        """
+        ...
+
+    def shutdown(self) -> None:
+        """Shut down the device.
+
+        `notify` is still usable here (e.g. to report `acq_finished()` after a
+        camera stops its acquisition thread) and is invalidated afterwards. An
+        exception raised here is logged, but does not fail `unloadDevice()`.
+        """
+        ...
+
     def busy(self) -> bool: ...
 
 
@@ -91,7 +112,14 @@ class PyCamera(PyDevice, Protocol):
     def clear_roi(self) -> None: ...
     def set_exposure(self, ms: float) -> None: ...
     def snap_image(self) -> None: ...
-    def get_image_buffer(self, channel: int = 0) -> np.ndarray: ...
+    def get_image_buffer(self, channel: int = 0) -> np.ndarray:
+        """Return the last snapped image.
+
+        The array must hold at least `width * height * bytes_per_pixel` bytes;
+        a smaller array is rejected (CMMCore would read past its end).
+        """
+        ...
+
     def get_roi(self) -> tuple[int, int, int, int]: ...
     def is_exposure_sequenceable(self) -> bool: ...
     def get_exposure_sequence_max_length(self) -> int: ...
@@ -101,16 +129,20 @@ class PyCamera(PyDevice, Protocol):
     def is_capturing(self) -> bool: ...
     def start_sequence_acquisition(
         self,
-        num_images: int,
+        num_images: int | None,
         interval_ms: float,
         insert_image: Callable[[np.ndarray, dict | None], bool],
     ) -> None:
         """Start sequence acquisition.
 
+        `num_images` is None for an unbounded (continuous) acquisition.
+
         The device owns the acquisition loop — call `insert_image(array,
         metadata)` for each frame, synchronously or from a background thread.
         `insert_image` returns True on success, False when CMMCore's circular
-        buffer is full. Stop acquiring when it returns False.
+        buffer is full. Stop acquiring when it returns False. Each array must
+        hold at least `width * height * bytes_per_pixel` bytes (as reported when
+        the acquisition started), or `insert_image` raises.
         """
         ...
 
@@ -340,6 +372,10 @@ class PyHub(PyDevice, Protocol):
         As for C++ hubs, the names become loadable from the hub's device adapter:
         `core.loadDevice(label, core.getDeviceLibrary(hub_label), name)`. A device
         *instance* is loaded as-is; a device *class* is instantiated on each load.
+
+        Called by `CMMCore.getInstalledDevices()`, and also when a device name
+        unknown to the adapter is loaded (so that a configuration file can load
+        peripherals by name). The hub may not be initialized yet in that case.
         """
         ...
 

@@ -328,3 +328,318 @@ def test_failed_loadPyDeviceAdapter_does_not_consume_adapter() -> None:
     # call, so this adapter now registers zero devices.
     core2.loadPyDeviceAdapter("Dup", adapter)
     assert list(core2.getAvailableDevices("Dup")) == ["Cam"]
+
+
+# ===========================================================================
+# Review round 2 (unicore-fixes2)
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# 8. Shutdown ordering and error handling.
+#
+#    shutdownCommon() cleared alive_ *before* calling the Python shutdown(), so
+#    any DeviceCallbacks call made while shutting down (e.g. a camera reporting
+#    AcqFinished after stopping its acquisition thread, as C++ cameras do) raised
+#    "Device has been unloaded".  The resulting error code from Shutdown() makes
+#    DeviceManager::UnloadDevice throw before erasing the device, so the device
+#    stays loaded; and when the core is destroyed, ~DeviceManager calls
+#    UnloadAllDevices() again, whose throw inside a destructor terminates the
+#    process.  A Python error in shutdown() is therefore logged and never
+#    returned as an error code.
+# ---------------------------------------------------------------------------
+
+
+class NotifyingShutdownCamera(MinimalCamera):
+    def shutdown(self) -> None:
+        # like CameraDevice.shutdown -> stop_sequence_acquisition -> acq_finished
+        self._notify.acq_finished()
+        self._notify.log_message("bye")
+
+
+def test_notify_is_usable_during_shutdown() -> None:
+    core = CMMCore()
+    cam = NotifyingShutdownCamera()
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.unloadDevice("Cam")
+    assert "Cam" not in core.getLoadedDevices()
+    with pytest.raises(RuntimeError, match="unloaded"):
+        cam._notify.log_message("too late")
+
+
+class FailingShutdownCamera(MinimalCamera):
+    def shutdown(self) -> None:
+        raise RuntimeError("hardware already gone")
+
+
+@pytest.mark.parametrize("how", ["unloadDevice", "unloadAllDevices", "reset", "del"])
+def test_python_error_in_shutdown_does_not_fail_unload(how: str) -> None:
+    core = CMMCore()
+    core.loadPyDevice("Cam", FailingShutdownCamera(), DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    if how == "unloadDevice":
+        core.unloadDevice("Cam")
+    elif how == "unloadAllDevices":
+        core.unloadAllDevices()
+    elif how == "reset":
+        core.reset()
+    if how != "del":
+        assert "Cam" not in core.getLoadedDevices()
+    # destroying the core must not call std::terminate
+    del core
+    gc.collect()
+
+
+# ---------------------------------------------------------------------------
+# 9. Image buffers handed to CMMCore were never checked against the frame size
+#    the camera reports, so an undersized array was read past its end
+#    (GetImageBufferSize() bytes in getImage(); w*h*bpp bytes in InsertImage).
+# ---------------------------------------------------------------------------
+
+
+class UndersizedSnapCamera(MinimalCamera):
+    def snap_image(self) -> None:
+        self._buf = np.zeros((2, 2), dtype=np.uint8)
+
+
+def test_undersized_snap_buffer_raises() -> None:
+    core = CMMCore()
+    core.loadPyDevice(
+        "Cam", UndersizedSnapCamera(width=256, height=256), DeviceType.CameraDevice
+    )
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.snapImage()
+    # MM::Camera::GetImageBuffer has no error channel: the reason is logged and
+    # CMMCore reports its own "buffer read failed" error.
+    with pytest.raises(pmn.CMMError, match="buffer read failed"):
+        core.getImage()
+
+
+class UndersizedSeqCamera(MinimalCamera):
+    errors: list[Exception]
+
+    def start_sequence_acquisition(self, n, interval, insert_image) -> None:
+        self.errors = []
+        try:
+            insert_image(np.zeros((2, 2), dtype=np.uint8), None)
+        except Exception as e:
+            self.errors.append(e)
+
+    def stop_sequence_acquisition(self) -> None:
+        pass
+
+    def is_capturing(self) -> bool:
+        return False
+
+
+def test_undersized_inserted_frame_raises() -> None:
+    core = CMMCore()
+    cam = UndersizedSeqCamera(width=256, height=256)
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.startSequenceAcquisition(1, 0, True)
+    assert len(cam.errors) == 1 and "bytes" in str(cam.errors[0])
+    assert core.getRemainingImageCount() == 0
+
+
+# ---------------------------------------------------------------------------
+# 10. Hub peripherals and the one-off adapter.
+#
+#    (a) The names reported by detect_installed_devices() were only registered
+#        with the adapter by getInstalledDevices(); C++ adapters register their
+#        device names statically, and loadSystemConfiguration() loads
+#        peripherals by name without ever calling discovery.
+#    (b) unloadDevice() unloaded the one-off adapter behind the device even when
+#        other devices (the hub, or its peripherals) were still loaded from it:
+#        CMMCore::unloadLibrary unloads every device of the module first.
+# ---------------------------------------------------------------------------
+
+
+def test_hub_peripheral_loadable_without_discovery() -> None:
+    core = CMMCore()
+    core.loadPyDevice("Hub", MinimalHub(), DeviceType.HubDevice)
+    lib = core.getDeviceLibrary("Hub")
+    # as in a config file: hub and peripheral loaded before initialization
+    core.loadDevice("HubCam", lib, "HubCam")
+    core.setParentLabel("HubCam", "Hub")
+    core.initializeAllDevices()
+    assert core.getParentLabel("HubCam") == "Hub"
+    core.setCameraDevice("HubCam")
+    core.snapImage()
+    assert core.getImage().shape == (32, 64)
+
+
+def _load_hub_and_peripheral(core: CMMCore) -> str:
+    core.loadPyDevice("Hub", MinimalHub(), DeviceType.HubDevice)
+    core.initializeDevice("Hub")
+    lib = core.getDeviceLibrary("Hub")
+    assert "HubCam" in core.getInstalledDevices("Hub")
+    core.loadDevice("HubCam", lib, "HubCam")
+    core.setParentLabel("HubCam", "Hub")
+    core.initializeDevice("HubCam")
+    return lib
+
+
+def test_unloading_peripheral_keeps_hub() -> None:
+    core = CMMCore()
+    lib = _load_hub_and_peripheral(core)
+    core.unloadDevice("HubCam")
+    assert "Hub" in core.getLoadedDevices()
+    assert core.getDeviceLibrary("Hub") == lib
+    # the hub still works, and the peripheral can be loaded again
+    core.loadDevice("HubCam", lib, "HubCam")
+    core.initializeDevice("HubCam")
+
+
+def test_unloading_hub_keeps_peripheral_like_cpp() -> None:
+    core = CMMCore()
+    _load_hub_and_peripheral(core)
+    core.unloadDevice("Hub")
+    assert "HubCam" in core.getLoadedDevices()
+    core.setCameraDevice("HubCam")
+    core.snapImage()
+    # the adapter is released with the last device that used it
+    core.unloadDevice("HubCam")
+    assert "Hub" not in core.getLoadedDevices()
+    core.loadPyDevice("Hub", MinimalHub(), DeviceType.HubDevice)
+
+
+def test_load_system_configuration_releases_python_devices(tmp_path) -> None:
+    """CMMCore::loadSystemConfiguration unloads devices itself (not through the
+    Python wrapper), so the one-off adapters have to be released afterwards."""
+    core = CMMCore()
+    cam = MinimalCamera()
+    ref = weakref.ref(cam)
+    core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    cfg = tmp_path / "empty.cfg"
+    cfg.write_text("Property,Core,Initialize,0\nProperty,Core,Initialize,1\n")
+    core.loadSystemConfiguration(str(cfg))
+    del cam
+    gc.collect()
+    assert ref() is None, "Python device still referenced after loadSystemConfiguration"
+
+
+# ---------------------------------------------------------------------------
+# 11. Pre-init properties.
+#
+#    C++ adapters create pre-init properties in their constructor, so they can
+#    be set (e.g. from a config file) before Initialize().  The bridge created
+#    every property inside Initialize(): a pre_init property did not exist
+#    before initializeDevice() and could not be set after it.
+#    The bridge now calls an optional create_pre_init_properties(create_property)
+#    on the Python device when the bridge device is created.
+# ---------------------------------------------------------------------------
+
+
+class PortCamera(MinimalCamera):
+    port = "COM1"
+    port_at_init: str | None = None
+
+    def create_pre_init_properties(self, create_property: CreatePropertyFn) -> None:
+        create_property(
+            "Port",
+            "COM1",
+            1,
+            False,
+            pre_init=True,
+            getter=lambda: self.port,
+            setter=lambda v: setattr(self, "port", v),
+            allowed_values=["COM1", "COM2"],
+        )
+
+    def initialize_bridge(self, create_property, notify) -> None:
+        super().initialize_bridge(create_property, notify)
+        self.port_at_init = self.port
+
+
+@pytest.mark.parametrize("via", ["loadPyDevice", "adapter"])
+def test_pre_init_property_exists_before_initialize(via: str) -> None:
+    core = CMMCore()
+    if via == "loadPyDevice":
+        cam = PortCamera()
+        core.loadPyDevice("Cam", cam, DeviceType.CameraDevice)
+    else:
+        adapter = DeviceAdapter()
+        adapter.add_device_class("Cam", PortCamera, DeviceType.CameraDevice, "")
+        core.loadPyDeviceAdapter("PortAdapter", adapter)
+        core.loadDevice("Cam", "PortAdapter", "Cam")
+    assert "Port" in core.getDevicePropertyNames("Cam")
+    assert core.isPropertyPreInit("Cam", "Port")
+    assert list(core.getAllowedPropertyValues("Cam", "Port")) == ["COM1", "COM2"]
+    core.setProperty("Cam", "Port", "COM2")
+    core.initializeDevice("Cam")
+    assert core.getProperty("Cam", "Port") == "COM2"
+    # regular properties are still created by initialize_bridge
+    assert "Gain" in core.getDevicePropertyNames("Cam")
+    # with strict checks (as pymmcore-plus enables), it is a real pre-init property
+    CMMCore.enableFeature("StrictInitializationChecks", True)
+    try:
+        with pytest.raises(pmn.CMMError, match="pre-init"):
+            core.setProperty("Cam", "Port", "COM1")
+    finally:
+        CMMCore.enableFeature("StrictInitializationChecks", False)
+
+
+def test_pre_init_factory_is_invalidated() -> None:
+    saved: list = []
+
+    class LeakyCamera(MinimalCamera):
+        def create_pre_init_properties(self, create_property) -> None:
+            saved.append(create_property)
+
+    core = CMMCore()
+    core.loadPyDevice("Cam", LeakyCamera(), DeviceType.CameraDevice)
+    with pytest.raises(RuntimeError, match="create_pre_init_properties"):
+        saved[0]("Late", "0", 1, False)
+
+
+# ---------------------------------------------------------------------------
+# 12. NotImplementedError maps to DEVICE_UNSUPPORTED_COMMAND, the code a C++
+#     base class returns for an unimplemented optional method (e.g.
+#     CXYStageBase::SetXOrigin), rather than a generic Python error.
+# ---------------------------------------------------------------------------
+
+
+def test_not_implemented_error_is_unsupported_command() -> None:
+    class Stepper(MinimalXYStepper):
+        def set_x_origin(self) -> None:
+            raise NotImplementedError("no X origin")
+
+    core = CMMCore()
+    core.loadPyDevice("XY", Stepper(), DeviceType.XYStageDevice)
+    core.initializeDevice("XY")
+    with pytest.raises(pmn.CMMError, match=r"Unsupported device command.*no X origin"):
+        core.setOriginX("XY")
+
+
+# ---------------------------------------------------------------------------
+# 13. Continuous acquisition passed LONG_MAX as num_images.  LONG_MAX is
+#     2**31-1 on Windows, so Python code could not tell "unbounded" from a large
+#     count portably.  The bridge now passes None for an unbounded acquisition.
+# ---------------------------------------------------------------------------
+
+
+def test_continuous_acquisition_passes_none() -> None:
+    seen: list = []
+
+    class Cam(MinimalCamera):
+        def start_sequence_acquisition(self, n, interval, insert_image) -> None:
+            seen.append(n)
+
+        def stop_sequence_acquisition(self) -> None:
+            pass
+
+        def is_capturing(self) -> bool:
+            return False
+
+    core = CMMCore()
+    core.loadPyDevice("Cam", Cam(), DeviceType.CameraDevice)
+    core.initializeDevice("Cam")
+    core.setCameraDevice("Cam")
+    core.startContinuousSequenceAcquisition(0)
+    core.startSequenceAcquisition(5, 0, True)
+    assert seen == [None, 5]

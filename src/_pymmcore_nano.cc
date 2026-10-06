@@ -14,6 +14,8 @@
 
 #include "bridge_devices.h"
 
+#include <algorithm>
+
 namespace nb = nanobind;
 
 using namespace nb::literals;
@@ -344,6 +346,23 @@ void unloadOneOffBridgeAdapters(CMMCore &core, const std::vector<std::string> &n
         } catch (const CMMError &) {
         }
     }
+}
+
+// Unload those of the given one-off adapters that no loaded device uses any
+// more. A one-off adapter may serve several devices (a hub loaded with
+// loadPyDevice and the peripherals loaded from it), and CMMCore::unloadLibrary
+// would unload all of them.
+void releaseUnusedOneOffBridgeAdapters(CMMCore &core, std::vector<std::string> names) {
+    if (names.empty())
+        return;
+    std::vector<std::string> inUse = oneOffBridgeAdapters(core);
+    std::vector<std::string> unused;
+    for (const auto &name : names) {
+        if (std::find(inUse.begin(), inUse.end(), name) == inUse.end() &&
+            std::find(unused.begin(), unused.end(), name) == unused.end())
+            unused.push_back(name);
+    }
+    unloadOneOffBridgeAdapters(core, unused);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -939,7 +958,21 @@ programming.
             "loadSystemConfiguration",
             // accept any object that can be cast to a string (e.g. Path)
             [](CMMCore &self, nb::object fileName) {
-                self.loadSystemConfiguration(nb::str(fileName).c_str());
+                std::string path = nb::str(fileName).c_str();
+                // CMMCore::loadSystemConfiguration unloads the loaded devices
+                // itself, bypassing the unloadAllDevices wrapper below; release
+                // the one-off bridge adapters that are no longer used.
+                auto names = oneOffBridgeAdapters(self);
+                try {
+                    nb::gil_scoped_release release;
+                    self.loadSystemConfiguration(path.c_str());
+                } catch (...) {
+                    nb::gil_scoped_release release;
+                    releaseUnusedOneOffBridgeAdapters(self, names);
+                    throw;
+                }
+                nb::gil_scoped_release release;
+                releaseUnusedOneOffBridgeAdapters(self, names);
             },
             "fileName"_a,
             nb::sig("def loadSystemConfiguration(self, fileName: str | os.PathLike) -> None"),
@@ -962,14 +995,14 @@ programming.
                 }
                 self.unloadDevice(label);
                 if (isOneOffBridgeAdapter(lib))
-                    unloadOneOffBridgeAdapters(self, {lib});
+                    releaseUnusedOneOffBridgeAdapters(self, {lib});
              },
              "label"_a RGIL)
         .def("unloadAllDevices",
              [](CMMCore &self) {
                 auto names = oneOffBridgeAdapters(self);
                 self.unloadAllDevices();
-                unloadOneOffBridgeAdapters(self, names);
+                releaseUnusedOneOffBridgeAdapters(self, names);
              } RGIL)
         .def("initializeAllDevices", &CMMCore::initializeAllDevices RGIL)
         .def("initializeDevice", &CMMCore::initializeDevice, "label"_a RGIL)
@@ -978,7 +1011,7 @@ programming.
              [](CMMCore &self) {
                 auto names = oneOffBridgeAdapters(self);
                 self.reset();
-                unloadOneOffBridgeAdapters(self, names);
+                releaseUnusedOneOffBridgeAdapters(self, names);
              } RGIL)
         .def("unloadLibrary", &CMMCore::unloadLibrary, "moduleName"_a RGIL)
         .def("updateCoreProperties", &CMMCore::updateCoreProperties RGIL)

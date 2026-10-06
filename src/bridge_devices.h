@@ -16,6 +16,7 @@
 
 #include "Error.h" // CMMError (mmcore)
 
+#include <algorithm>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -369,7 +370,8 @@ makePropertyAction(nb::object getter, nb::object setter, long seqMaxLength,
 
 template <typename TDevice>
 nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>> canCreate,
-                                 std::shared_ptr<std::atomic<bool>> alive, PyErrorFn onError) {
+                                 std::shared_ptr<std::atomic<bool>> alive, PyErrorFn onError,
+                                 const char *phase = "initialize_bridge()") {
     // Type-erased CreateProperty
     auto doCreate = [](MM::Device *d, const char *name, const char *val, MM::PropertyType t,
                        bool ro, MM::ActionFunctor *act, bool preInit) -> int {
@@ -377,14 +379,15 @@ nb::object createPropertyFactory(TDevice *dev, std::shared_ptr<std::atomic<bool>
     };
 
     return nb::cpp_function(
-        [dev, doCreate, canCreate, alive, onError](
+        [dev, doCreate, canCreate, alive, onError, phase](
             const std::string &name, const std::string &defaultValue, int mmType, bool readOnly,
             nb::object getter, nb::object setter, bool preInit, nb::object limits,
             nb::object allowedValues, long sequenceMaxLength, nb::object sequenceLoader,
             nb::object sequenceStarter, nb::object sequenceStopper) -> PropertyHandle {
             if (!*canCreate)
-                throw std::runtime_error("create_property() can only be called during "
-                                         "initialize()");
+                throw std::runtime_error(std::string("create_property() can only be called "
+                                                     "during ") +
+                                         phase);
             if constexpr (std::is_base_of_v<CStateDeviceBase<TDevice>, TDevice>) {
                 if (name == MM::g_Keyword_Label)
                     throw std::runtime_error(
@@ -501,6 +504,10 @@ template <typename TDevice> class PyBridgeDeviceBase {
     // is placed first so that it survives MM::MaxStrLength truncation when
     // CMMCore retrieves the error text. The full traceback is also sent to
     // the core log.
+    //
+    // A NotImplementedError is reported as DEVICE_UNSUPPORTED_COMMAND, the
+    // code the C++ base classes return for an optional method the adapter
+    // does not implement (e.g. CXYStageBase::SetXOrigin).
     int reportPyError(const std::string &what) const {
         std::string headline = what;
         auto end = what.find_last_not_of("\n ");
@@ -509,12 +516,18 @@ template <typename TDevice> class PyBridgeDeviceBase {
             headline = what.substr(start == std::string::npos ? 0 : start + 1,
                                    end - (start == std::string::npos ? 0 : start + 1) + 1);
         }
-        std::string text = headline + "\n" + what;
         auto *dev = const_cast<TDevice *>(self_);
-        if (dev && setErrorText_)
-            setErrorText_(dev, DEVICE_PYTHON_ERROR, text.c_str());
         if (dev && logMessage_)
             logMessage_(dev, what.c_str());
+        if (headline.rfind("NotImplementedError", 0) == 0) {
+            std::string text = "Unsupported device command: " + headline;
+            if (dev && setErrorText_)
+                setErrorText_(dev, DEVICE_UNSUPPORTED_COMMAND, text.c_str());
+            return DEVICE_UNSUPPORTED_COMMAND;
+        }
+        std::string text = headline + "\n" + what;
+        if (dev && setErrorText_)
+            setErrorText_(dev, DEVICE_PYTHON_ERROR, text.c_str());
         return DEVICE_PYTHON_ERROR;
     }
 
@@ -562,6 +575,30 @@ template <typename TDevice> class PyBridgeDeviceBase {
         }
     }
 
+    // Called from the bridge device constructor (i.e. when CMMCore creates
+    // the device, before Initialize()). Like a C++ adapter constructor, this is
+    // where pre-init properties are created: the optional Python method
+    //   create_pre_init_properties(create_property)
+    // is called with a factory that is invalidated when it returns.
+    void createPreInitPropertiesCommon(TDevice *dev) {
+        nb::gil_scoped_acquire gil;
+        if (!nb::hasattr(py_, "create_pre_init_properties"))
+            return;
+        auto canCreate = std::make_shared<std::atomic<bool>>(true);
+        nb::object factory = createPropertyFactory(dev, canCreate, alive_, pyErrorFn(),
+                                                   "create_pre_init_properties()");
+        try {
+            py_.attr("create_pre_init_properties")(factory);
+        } catch (nb::python_error &e) {
+            *canCreate = false;
+            std::string msg = e.what();
+            e.restore();
+            PyErr_Clear();
+            throw std::runtime_error(msg);
+        }
+        *canCreate = false;
+    }
+
     int initializeCommon(TDevice *dev, MM::Core *coreCallback) {
         return py_invoke([&]() -> int {
             return initializeWithPropertyFactory(dev, py_, alive_, coreCallback, pyErrorFn());
@@ -573,9 +610,22 @@ template <typename TDevice> class PyBridgeDeviceBase {
     int beforePyInitialize() { return DEVICE_OK; }
     int afterPyInitialize() { return DEVICE_OK; }
 
+    // The Python shutdown() runs while the device is still alive, so that it
+    // can use its DeviceCallbacks (e.g. a camera reporting AcqFinished after
+    // stopping its acquisition thread, as C++ cameras do). Only afterwards are
+    // the callbacks invalidated.
+    //
+    // A Python error in shutdown() is logged but never returned as an error
+    // code: DeviceManager::UnloadDevice() throws on a Shutdown() error before
+    // removing the device (so it would stay loaded), and ~DeviceManager calls
+    // Shutdown() again from a destructor, where the throw terminates the
+    // process.
     int shutdownCommon() {
+        int ret = py_call(py_, "shutdown");
         *alive_ = false;
-        return py_call(py_, "shutdown");
+        if (ret != DEVICE_OK && self_ && logMessage_)
+            logMessage_(self_, "Error in shutdown() ignored (see above)");
+        return DEVICE_OK;
     }
 
     bool busyCommon() { return py_get<bool>(py_, "busy"); }
@@ -601,6 +651,7 @@ template <typename TDevice> class PyBridgeDeviceBase {
         this->logMessage_ = [](ClassName *d, const char *text) {                               \
             d->LogMessage(text, false);                                                        \
         };                                                                                     \
+        this->createPreInitPropertiesCommon(this);                                             \
     }                                                                                          \
     int Initialize() override {                                                                \
         try {                                                                                  \
@@ -682,6 +733,10 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
     // handle, so the returned pointer would dangle as soon as it goes out of
     // scope while img_arr_ still references the original, non-contiguous
     // array. Instead, make the contiguous copy in Python and keep *that*.
+    //
+    // CMMCore copies GetImageWidth() * GetImageHeight() * GetImageBytesPerPixel()
+    // bytes from the returned pointer, so the array must hold at least that
+    // many bytes; otherwise the copy would read past the end of the array.
     const unsigned char *holdImageArray(nb::object arr) {
         using Arr = nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>;
         Arr nd;
@@ -689,20 +744,44 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
             arr = nb::module_::import_("numpy").attr("ascontiguousarray")(arr);
             nd = nb::cast<Arr>(arr, /*convert=*/false);
         }
+        size_t expected =
+            static_cast<size_t>(GetImageWidth()) * GetImageHeight() * GetImageBytesPerPixel();
+        checkImageBytes(nd.nbytes(), expected);
         img_arr_ = std::move(arr);
         return static_cast<const unsigned char *>(nd.data());
     }
 
+    static void checkImageBytes(size_t actual, size_t expected) {
+        if (actual < expected)
+            throw std::runtime_error("Image buffer has " + std::to_string(actual) +
+                                     " bytes, but the camera reports frames of " +
+                                     std::to_string(expected) +
+                                     " bytes (width * height * bytes per pixel)");
+    }
+
+    // MM::Camera::GetImageBuffer has no error code: a Python error (or an
+    // undersized array) is recorded on the device and logged, and nullptr is
+    // returned, which CMMCore reports as "Camera image buffer read failed".
     const unsigned char *GetImageBuffer() override {
-        return py_invoke([&]() -> const unsigned char * {
-            return holdImageArray(py_.attr("get_image_buffer")());
-        });
+        try {
+            return py_invoke([&]() -> const unsigned char * {
+                return holdImageArray(py_.attr("get_image_buffer")());
+            });
+        } catch (const std::runtime_error &e) {
+            reportPyError(e.what());
+            return nullptr;
+        }
     }
 
     const unsigned char *GetImageBuffer(unsigned channelNr) override {
-        return py_invoke([&]() -> const unsigned char * {
-            return holdImageArray(py_.attr("get_image_buffer")(channelNr));
-        });
+        try {
+            return py_invoke([&]() -> const unsigned char * {
+                return holdImageArray(py_.attr("get_image_buffer")(channelNr));
+            });
+        } catch (const std::runtime_error &e) {
+            reportPyError(e.what());
+            return nullptr;
+        }
     }
 
     // -- MM::Camera: ROI --
@@ -789,6 +868,7 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                     if (!*alive)
                         throw std::runtime_error("Device has been unloaded");
                     auto nd = nb::cast<nb::ndarray<nb::c_contig, nb::ro, nb::device::cpu>>(arr);
+                    checkImageBytes(nd.nbytes(), static_cast<size_t>(w) * h * bpp);
 
                     // Build serialized metadata in MMCore's format
                     Metadata md;
@@ -813,7 +893,11 @@ class PyBridgeCamera : public CCameraBase<PyBridgeCamera>,
                 },
                 nb::arg("image"), nb::arg("metadata") = nb::none());
 
-            py_.attr("start_sequence_acquisition")(numImages, interval_ms, inserter);
+            // An unbounded acquisition (StartSequenceAcquisition(interval) and
+            // CMMCore::startContinuousSequenceAcquisition use LONG_MAX, which
+            // is only 2**31-1 on Windows) is passed to Python as None.
+            nb::object py_num = numImages == LONG_MAX ? nb::none() : nb::cast(numImages);
+            py_.attr("start_sequence_acquisition")(py_num, interval_ms, inserter);
             return DEVICE_OK;
         });
     }
@@ -1608,6 +1692,9 @@ class PyBridgeAdapter : public MockDeviceAdapter {
 
     std::vector<DeviceEntry> devices_;
     bool loaded_ = false;
+    // Hubs created by this adapter (and not yet deleted): their peripherals
+    // are registered on demand, see CreateDevice.
+    std::vector<PyBridgeHub *> hubs_;
 
   public:
     PyBridgeAdapter() = default;
@@ -1677,35 +1764,56 @@ class PyBridgeAdapter : public MockDeviceAdapter {
         devices_.push_back({name, description, std::move(py_obj), type, is_class});
     }
 
-    MM::Device *CreateDevice(const char *name) override {
-        nb::gil_scoped_acquire gil;
-        for (auto &d : devices_) {
-            if (d.name == name) {
-                MM::Device *dev = nullptr;
-                try {
-                    nb::object py_dev = d.is_class ? d.py_obj() : d.py_obj;
-                    dev = createBridgeDevice(py_dev, d.type, d.name, d.description);
-                } catch (nb::python_error &e) {
-                    // Surface the Python error instead of a bare "failed to
-                    // instantiate device" from CMMCore.
-                    std::string msg = e.what();
-                    e.restore();
-                    PyErr_Clear();
-                    throw CMMError("Failed to instantiate Python device \"" + d.name +
-                                   "\": " + msg);
-                } catch (const std::exception &e) {
-                    throw CMMError("Failed to instantiate Python device \"" + d.name +
-                                   "\": " + e.what());
-                }
-                if (auto *hub = dynamic_cast<PyBridgeHub *>(dev))
-                    hub->setAdapter(this);
-                return dev;
-            }
-        }
+    DeviceEntry *findEntry(const char *name) {
+        for (auto &d : devices_)
+            if (d.name == name)
+                return &d;
         return nullptr;
     }
 
-    void DeleteDevice(MM::Device *device) override { delete device; }
+    MM::Device *CreateDevice(const char *name) override {
+        nb::gil_scoped_acquire gil;
+        DeviceEntry *entry = findEntry(name);
+        if (!entry) {
+            // A C++ adapter registers all of its device names up front, so a
+            // hub's peripherals can be loaded by name without first calling
+            // getInstalledDevices() (which is what loadSystemConfiguration
+            // does). Ask the hubs of this adapter to detect their peripherals.
+            for (auto *hub : hubs_) {
+                hub->DetectInstalledDevices();
+                if ((entry = findEntry(name)))
+                    break;
+            }
+        }
+        if (!entry)
+            return nullptr;
+        auto &d = *entry;
+        MM::Device *dev = nullptr;
+        try {
+            nb::object py_dev = d.is_class ? d.py_obj() : d.py_obj;
+            dev = createBridgeDevice(py_dev, d.type, d.name, d.description);
+        } catch (nb::python_error &e) {
+            // Surface the Python error instead of a bare "failed to
+            // instantiate device" from CMMCore.
+            std::string msg = e.what();
+            e.restore();
+            PyErr_Clear();
+            throw CMMError("Failed to instantiate Python device \"" + d.name + "\": " + msg);
+        } catch (const std::exception &e) {
+            throw CMMError("Failed to instantiate Python device \"" + d.name +
+                           "\": " + e.what());
+        }
+        if (auto *hub = dynamic_cast<PyBridgeHub *>(dev)) {
+            hub->setAdapter(this);
+            hubs_.push_back(hub);
+        }
+        return dev;
+    }
+
+    void DeleteDevice(MM::Device *device) override {
+        hubs_.erase(std::remove(hubs_.begin(), hubs_.end(), device), hubs_.end());
+        delete device;
+    }
 };
 
 inline int PyBridgeHub::DetectInstalledDevices() {
