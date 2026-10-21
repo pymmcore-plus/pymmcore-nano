@@ -90,9 +90,10 @@ np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned 
     const unsigned out_byteDepth = byteDepth / 4;
 
     std::initializer_list<size_t> shape = {height, width, 3};
-    // Note the negative stride for the last dimension, data comes in as BGRA
-    // we want to invert that to be ARGB
-    std::initializer_list<int64_t> strides = {width * byteDepth, byteDepth, -1};
+    // Strides are in *elements* (each out_byteDepth bytes), not bytes: each pixel
+    // holds 4 components, and the negative stride on the last dimension walks the
+    // BGRA source backwards (starting at R, see `offset` below) to yield RGB.
+    std::initializer_list<int64_t> strides = {width * 4, 4, -1};
 
     // Determine the dtype based on per-channel size.
     nb::dlpack::dtype dtype;
