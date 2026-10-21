@@ -4,6 +4,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.testing as npt
+import pytest
+
+try:
+    from numpy.lib.array_utils import byte_bounds
+except ImportError:  # numpy < 2
+    from numpy import byte_bounds
 
 if TYPE_CHECKING:
     import pymmcore_nano as pmn
@@ -74,3 +80,24 @@ def test_image_ramps(demo_core: pmn.CMMCore):
     img = demo_core.getImage()
     assert img.dtype == np.uint16
     assert img.shape == (height, width, 3)
+
+
+@pytest.mark.parametrize("pixel_type", ["32bitRGB", "64bitRGB"])
+def test_rgb_image_strides_within_buffer(demo_core: pmn.CMMCore, pixel_type: str):
+    demo_core.setProperty("Camera", "PixelType", pixel_type)
+    demo_core.snapImage()
+    img = demo_core.getImage()
+    height, width = demo_core.getImageHeight(), demo_core.getImageWidth()
+    bytes_per_pixel = demo_core.getBytesPerPixel()
+    itemsize = img.dtype.itemsize
+    assert img.shape == (height, width, 3)
+    assert itemsize == bytes_per_pixel // 4
+    # BGRA source, viewed as RGB: one pixel per `bytes_per_pixel`, channels reversed
+    # (bind to a local so a failure doesn't make pytest repr an out-of-bounds array)
+    strides = img.strides
+    assert strides == (width * bytes_per_pixel, bytes_per_pixel, -itemsize)
+    # the span of addressed bytes must fit inside the copied buffer
+    low, high = byte_bounds(img)
+    assert high - low <= height * width * bytes_per_pixel
+    # and the data should not be degenerate (the demo pattern has no all-zero rows)
+    assert not (img[height // 2 :] == 0).all()
