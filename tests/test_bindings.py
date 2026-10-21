@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -36,24 +37,38 @@ IGNORE_CONSTANTS = {
 }
 
 
-def walk_preorder(node: Cursor) -> Iterator[Cursor]:
-    """Depth-first walk over the AST."""
+def _located_in(node: Cursor, file: Path) -> bool:
+    """Return True if *node* is declared in *file*."""
+    loc = node.location.file
+    return loc is not None and os.path.abspath(loc.name) == os.path.abspath(file)
+
+
+def walk_preorder(node: Cursor, *, within: Path | None = None) -> Iterator[Cursor]:
+    """Depth-first walk over the AST.
+
+    If *within* is given, only descend into cursors declared in that file.  This
+    keeps the walk out of system headers, which we don't care about and which may
+    contain cursor kinds unknown to the installed python libclang bindings.
+    """
     yield node
     for child in node.get_children():
-        yield from walk_preorder(child)
+        if within is None or _located_in(child, within):
+            yield from walk_preorder(child, within=within)
 
 
-def find_class_def(root: Cursor, name: str) -> Cursor | None:
+def find_class_def(
+    root: Cursor, name: str, *, within: Path | None = None
+) -> Cursor | None:
     """Return the full class definition cursor for *name* in the AST rooted at *root*.
 
-    Walks the tree depth-first and returns the first ``CursorKind.CLASS_DECL`` or
-    ``CursorKind.STRUCT_DECL`` that both matches *name* and is a definition
-    (not a forward declaration).
+    Walks the tree depth-first (restricted to *within*, if given) and returns the
+    first ``CursorKind.CLASS_DECL`` or ``CursorKind.STRUCT_DECL`` that both
+    matches *name* and is a definition (not a forward declaration).
     """
     return next(
         (
             cur
-            for cur in walk_preorder(root)
+            for cur in walk_preorder(root, within=within)
             if cur.kind in (CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL)  # pyright: ignore
             and cur.spelling == name
             and cur.is_definition()
@@ -83,7 +98,7 @@ def public_members(
     args: list[str] = ["-x", "c++", "-std=c++17", *(extra_args or [])]
     tu = index.parse(str(header), args=args)
 
-    cls = find_class_def(tu.cursor, class_name)
+    cls = find_class_def(tu.cursor, class_name, within=Path(header))
     if cls is None:
         raise RuntimeError(f"Definition of '{class_name}' not found in {header!s}")
 
@@ -166,7 +181,7 @@ def extract_header_constants(header: str | Path) -> dict[str, set[str]]:
             defines.add(name)
 
     # Walk the AST to find enums and const variables
-    for node in walk_preorder(tu.cursor):
+    for node in walk_preorder(tu.cursor, within=Path(header)):
         if node.kind.name == "ENUM_DECL":
             # Get all enum constants
             for child in node.get_children():
@@ -339,7 +354,7 @@ def extract_virtual_methods(
     args: list[str] = ["-x", "c++", "-std=c++17", *(extra_args or [])]
     tu = index.parse(str(header), args=args)
 
-    cls = find_class_def(tu.cursor, class_name)
+    cls = find_class_def(tu.cursor, class_name, within=Path(header))
     if cls is None:
         raise RuntimeError(f"Definition of '{class_name}' not found in {header!s}")
 
