@@ -371,7 +371,7 @@ def test_cmmcore_members():
         ],
     )
     assert members, "No public members found in CMMCore"
-    binding_members = extract_class_members(BINDINGS, "CMMCore")
+    binding_members = extract_class_members(BINDINGS, "PyCMMCore")
     assert binding_members, "No .def calls found in bindings"
 
     if missing := (set(members) - set(binding_members)):
