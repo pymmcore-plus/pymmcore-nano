@@ -654,7 +654,7 @@ A configuration is a collection of device property settings.
              })
         .def("__setitem__",
              [](Metadata &self, const std::string &key, const std::string &value) {
-                 MetadataSingleTag tag(key.c_str(), "__", false);
+                 MetadataSingleTag tag(key.c_str(), "_", false);
                  tag.SetValue(value.c_str());
                  self.SetTag(tag);
              })

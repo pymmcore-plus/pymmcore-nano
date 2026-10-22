@@ -355,6 +355,23 @@ def test_get_image_metadata(demo_core: pmn.CMMCore) -> None:
         md.GetSingleTag("NumberOfComponents")
 
 
+def test_metadata_mapping_interface() -> None:
+    md = pmn.Metadata()
+    md["k"] = "v"
+    assert md["k"] == "v"
+    assert md.HasTag("k")
+    assert list(md.GetKeys()) == ["k"]
+
+    # overwriting replaces the tag rather than adding a new one
+    md["k"] = "v2"
+    assert md["k"] == "v2"
+    assert list(md.GetKeys()) == ["k"]
+
+    del md["k"]
+    assert not md.HasTag("k")
+    assert list(md.GetKeys()) == []
+
+
 def test_image_sequence(demo_core: pmn.CMMCore) -> None:
     assert demo_core.getBufferTotalCapacity() == 0
     assert demo_core.getBufferFreeCapacity() == 0
