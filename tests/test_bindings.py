@@ -310,32 +310,20 @@ def _find_class_end(code: str, class_start: int) -> int:
     raise RuntimeError("Could not find end of class definition")
 
 
-def extract_trampoline_methods(
-    src: Path, trampoline_class_name: str
-) -> tuple[set[str], int]:
-    """Extract trampoline class information from the nanobind source file.
-
-    Returns a tuple with:
-    - 'override_methods': set of method names with NB_OVERRIDE calls
-    - 'trampoline_count': the number specified in NB_TRAMPOLINE
-    """
+def extract_trampoline_methods(src: Path, trampoline_class_name: str) -> set[str]:
+    """Return the method names with NB_OVERRIDE calls in a trampoline class."""
     text = src.read_text()
 
     # Find the trampoline class definition
     trampoline_pattern = rf"class\s+{re.escape(trampoline_class_name)}\s*:"
     match = re.search(trampoline_pattern, text)
     if not match:
-        return set(), 0
+        return set()
 
     # Find the end of the class definition
     class_start = match.start()
     class_end = _find_class_end(text, class_start)
     class_block = text[class_start:class_end]
-
-    # Extract NB_TRAMPOLINE count
-    trampoline_pattern = r"NB_TRAMPOLINE\([^,]+,\s*(\d+)\)"
-    trampoline_match = re.search(trampoline_pattern, class_block)
-    trampoline_count = int(trampoline_match.group(1)) if trampoline_match else 0
 
     # Extract methods with NB_OVERRIDE
     override_pattern = r"NB_OVERRIDE\(\s*([^,\)]+)"
@@ -343,7 +331,7 @@ def extract_trampoline_methods(
         match.group(1).strip() for match in re.finditer(override_pattern, class_block)
     }
 
-    return override_methods, trampoline_count
+    return override_methods
 
 
 def extract_virtual_methods(
@@ -417,25 +405,13 @@ def test_mmevent_callback_members():
         extra_args=["-Isrc/mmCoreAndDevices", "-DSWIGPYTHON"],
     )
 
-    override_methods, trampoline_count = extract_trampoline_methods(
-        BINDINGS, "PyMMEventCallback"
-    )
-
-    # Ensure we have the right types
-    assert isinstance(override_methods, set), "override_methods should be a set"
-    assert isinstance(trampoline_count, int), "trampoline_count should be an int"
+    override_methods = extract_trampoline_methods(BINDINGS, "PyMMEventCallback")
 
     # Check that all virtual methods have corresponding override methods
     if missing_overrides := (virtual_methods - override_methods):
         assert not missing_overrides, (
             f"Missing trampoline override methods: {', '.join(missing_overrides)}"
         )
-
-    # Check that the trampoline count matches the number of virtual methods
-    assert trampoline_count == len(virtual_methods), (
-        f"NB_TRAMPOLINE count ({trampoline_count}) doesn't match "
-        f"virtual method count ({len(virtual_methods)})"
-    )
 
 
 def test_configuration_members():

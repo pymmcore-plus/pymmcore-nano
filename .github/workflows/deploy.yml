@@ -26,8 +26,6 @@ jobs:
             macos_arch: "arm64"
           # Parallelize Windows by Python version (slow serial builds)
           - os: windows-latest
-            python: cp39
-          - os: windows-latest
             python: cp310
           - os: windows-latest
             python: cp311
