@@ -17,7 +17,9 @@ NAMESPACE_BEGIN(detail)
 
 template <typename Type, typename Alloc>
 struct type_caster<std::vector<Type, Alloc>> : list_caster<std::vector<Type, Alloc>, Type> {
-    static constexpr auto Name = io_name(NB_TYPING_SEQUENCE, NB_TYPING_TUPLE) +
+    // literal names, like nanobind's own list_caster (the NB_TYPING_* macros
+    // were removed in nanobind 3)
+    static constexpr auto Name = io_name("collections.abc.Sequence", "tuple") +
                                  const_name("[") + make_caster<Type>::Name +
                                  io_name("]", ", ...]");
 
