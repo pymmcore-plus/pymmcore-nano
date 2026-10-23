@@ -1,14 +1,14 @@
 [build-system]
 requires = [
     'meson-python',
-    'nanobind',          # for stubgen
+    'nanobind==3.1.0',   # for stubgen; keep in sync with subprojects/nanobind.wrap
     'typing_extensions', # for stubgen (should be declared by nanobind)
     'ruff',              # for stubgen
 ]
 build-backend = 'mesonpy'
 
 [project]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 name = "pymmcore-nano"
 dynamic = ['version']
 description = "Alternative python bindings for MMCore, Micro-Manager's device control layer"
@@ -23,7 +23,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -38,7 +37,7 @@ dependencies = ["numpy>=1.25"]
 test-devices = ["mm-test-adapters~=75.0"]
 
 [dependency-groups]
-build = ["meson-python", "nanobind", "ninja", "ruff", "typing_extensions"]
+build = ["meson-python", "nanobind==3.1.0", "ninja", "ruff", "typing_extensions"]
 test = [
     "pytest",
     "pytest-cov",
@@ -86,7 +85,7 @@ build-verbosity = 1
 # is specific to glibc and not available in musl-libc
 # Free-threaded (*t) builds are skipped for now: cp315t fails to import.
 skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "*t-*"]
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
+build = ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 test-requires = ["check-wheel-contents"]
 test-groups = ["test"]
 test-command = [
