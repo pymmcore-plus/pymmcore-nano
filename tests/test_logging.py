@@ -187,7 +187,15 @@ def test_rotation_creates_backup_files(core: pmn.CMMCore, tmp_path: Path) -> Non
         )
 
     def _all_log_text() -> str:
-        return "".join(f.read_text() for f in tmp_path.iterdir())
+        # MMCore's logging thread renames and recreates test.log as it rotates,
+        # so a file we just listed may already be gone by the time we read it
+        text = []
+        for f in tmp_path.iterdir():
+            try:
+                text.append(f.read_text())
+            except FileNotFoundError:
+                pass
+        return "".join(text)
 
     _wait_until(lambda: "rotation-fill-0199" in _all_log_text())
 
