@@ -267,10 +267,6 @@ def test_camera_snap(demo_core: pmn.CMMCore) -> None:
     demo_core.snapImage()
     img = demo_core.getImage()
     assert isinstance(img, np.ndarray)
-    assert not img.flags.writeable
-    with pytest.raises(ValueError, match="assignment destination is read-only"):
-        img[0, 0] = 0
-    img = img.copy()
     assert img.flags.writeable
 
     assert img.dtype == np.uint16
@@ -301,6 +297,14 @@ def test_camera_snap(demo_core: pmn.CMMCore) -> None:
     demo_core.snapImage()
     img5 = demo_core.getImage(0)  # also testing overloaded method with channel
     assert img5.shape == (256, 128, 3)  # new shape
+
+
+def test_images_are_writeable_copies(demo_core: pmn.CMMCore) -> None:
+    demo_core.snapImage()
+    img = demo_core.getImage()
+    original = img.copy()
+    img -= 1  # modifying the returned image in place should just work...
+    assert np.array_equal(demo_core.getImage(), original)  # ...and not touch the core
 
 
 def test_image_processor(demo_core: pmn.CMMCore) -> None:

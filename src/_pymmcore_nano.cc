@@ -33,8 +33,8 @@ const std::string PYMMCORE_NANO_VERSION = "0";
 
 ///////////////// NUMPY ARRAY HELPERS ///////////////////
 
-// Alias for read-only NumPy array
-using np_array = nb::ndarray<nb::numpy, nb::ro>;
+// Alias for the NumPy arrays we return (each one owns a private copy of the data)
+using np_array = nb::ndarray<nb::numpy>;
 using StrVec = std::vector<std::string>;
 
 // Helper function to allocate a new buffer, copy the data,
@@ -56,7 +56,7 @@ np_array make_np_array_from_copy(const void *src, size_t nbytes,
 }
 
 /**
- * @brief Creates a read-only NumPy array for pBuf for a given width, height,
+ * @brief Creates a NumPy array for pBuf for a given width, height,
  * etc. These parameters are are gleaned either from image metadata or core
  * methods.
  *
@@ -113,7 +113,7 @@ np_array build_rgb_np_array(CMMCore &core, void *pBuf, unsigned width, unsigned 
     return make_np_array_from_copy(pBuf, nbytes, shape, strides, dtype, offset);
 }
 
-/** @brief Create a read-only NumPy array using core methods
+/** @brief Create a NumPy array using core methods
  *  getImageWidth/getImageHeight/getBytesPerPixel/getNumberOfComponents
  */
 np_array create_image_array(CMMCore &core, void *pBuf) {
@@ -130,7 +130,7 @@ np_array create_image_array(CMMCore &core, void *pBuf) {
 }
 
 /**
- * @brief Creates a read-only NumPy array for pBuf by using
+ * @brief Creates a NumPy array for pBuf by using
  * width/height/pixelType from a metadata object if possible, otherwise falls
  * back to core methods.
  *
