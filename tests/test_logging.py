@@ -197,15 +197,17 @@ def test_rotation_creates_backup_files(core: pmn.CMMCore, tmp_path: Path) -> Non
                 pass
         return "".join(text)
 
-    _wait_until(lambda: "rotation-fill-0199" in _all_log_text())
+    def _rotated_files() -> list[Path]:
+        return [f for f in tmp_path.iterdir() if f.name.startswith("test_")]
 
-    # check that at least one rotated file was created
-    rotated = [
-        f for f in tmp_path.iterdir() if f.name.startswith("test") and f != logfile
-    ]
-    assert len(rotated) > 0, f"Expected rotated log files in {tmp_path}"
+    # The sink writes a whole batch of entries before checking whether to rotate,
+    # so the last entry can be visible in test.log before the rotation happens.
+    # Wait for the rotation itself, not just the last entry.
+    _wait_until(
+        lambda: "rotation-fill-0199" in _all_log_text() and len(_rotated_files()) > 0
+    )
     # should not exceed maxBackupCount
-    assert len(rotated) <= 2
+    assert len(_rotated_files()) <= 2
 
 
 # ── setStderrLogLevel / getStderrLogLevel ─────────────────────────────────────
