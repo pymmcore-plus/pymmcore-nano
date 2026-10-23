@@ -26,7 +26,7 @@ def test_state_device_labels(demo_core: pmn.CMMCore) -> None:
     device = "LED"
 
     state_labels = demo_core.getStateLabels(device)
-    assert isinstance(state_labels, list)
+    assert isinstance(state_labels, tuple)
     assert len(state_labels) > 0
 
     current_label = demo_core.getStateLabel(device)

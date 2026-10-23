@@ -3,7 +3,7 @@
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>
-#include <nanobind/stl/vector.h>
+#include "vector_as_tuple.h"
 #include <nanobind/trampoline.h>
 
 #include "ImageMetadata.h"
@@ -1160,14 +1160,24 @@ MMCore will send notifications on internal events using this interface
         .def("isMultiROIEnabled", &CMMCore::isMultiROIEnabled RGIL)
         .def("setMultiROI", &CMMCore::setMultiROI, "xs"_a, "ys"_a, "widths"_a, "heights"_a RGIL)
         .def("getMultiROI",
-             [](CMMCore &self) -> std::tuple<std::vector<unsigned>,
-                                             std::vector<unsigned>,
-                                             std::vector<unsigned>,
-                                             std::vector<unsigned>> {
+             [](CMMCore &self) {
                 std::vector<unsigned> xs, ys, widths, heights;
-                self.getMultiROI(xs, ys, widths, heights);
-                return {xs, ys, widths, heights};
-             } RGIL)
+                {
+                    nb::gil_scoped_release gil;
+                    self.getMultiROI(xs, ys, widths, heights);
+                }
+                // lists, to match pymmcore-plus's getMultiROI on pymmcore (SWIG),
+                // which takes output parameters instead of returning anything
+                auto to_list = [](const std::vector<unsigned> &v) {
+                    nb::list out;
+                    for (unsigned i : v)
+                        out.append(i);
+                    return out;
+                };
+                return nb::make_tuple(to_list(xs), to_list(ys), to_list(widths),
+                                      to_list(heights));
+             },
+             nb::sig("def getMultiROI(self) -> tuple[list[int], list[int], list[int], list[int]]"))
 
         .def("setExposure", nb::overload_cast<double>(&CMMCore::setExposure), "exp"_a RGIL)
         .def("setExposure",

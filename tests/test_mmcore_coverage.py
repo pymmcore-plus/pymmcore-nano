@@ -30,7 +30,7 @@ def test_property_type_and_limits(demo_core: pmn.CMMCore) -> None:
 def test_allowed_property_values(demo_core: pmn.CMMCore) -> None:
     dev = "Camera"
     allowed = demo_core.getAllowedPropertyValues(dev, "Binning")
-    assert isinstance(allowed, list)
+    assert isinstance(allowed, tuple)
     assert len(allowed) > 0
 
 
@@ -78,7 +78,7 @@ def test_binning_overloads(demo_core: pmn.CMMCore) -> None:
     demo_core.setBinning(1)
 
     vals = demo_core.getAllowedBinningValues()
-    assert isinstance(vals, list)
+    assert isinstance(vals, tuple)
     vals2 = demo_core.getAllowedBinningValues("Camera")
     assert vals == vals2
 
@@ -320,13 +320,13 @@ def test_set_parent_label(demo_core: pmn.CMMCore) -> None:
 
 def test_device_property_names(demo_core: pmn.CMMCore) -> None:
     names = demo_core.getDevicePropertyNames("Camera")
-    assert isinstance(names, list)
+    assert isinstance(names, tuple)
     assert len(names) > 0
 
 
 def test_installed_devices(demo_core: pmn.CMMCore) -> None:
     devs = demo_core.getInstalledDevices("DHub")
-    assert isinstance(devs, list)
+    assert isinstance(devs, tuple)
     assert len(devs) > 0
 
     if devs:
@@ -336,7 +336,7 @@ def test_installed_devices(demo_core: pmn.CMMCore) -> None:
 
 def test_loaded_peripheral_devices(demo_core: pmn.CMMCore) -> None:
     peripherals = demo_core.getLoadedPeripheralDevices("DHub")
-    assert isinstance(peripherals, list)
+    assert isinstance(peripherals, tuple)
     assert len(peripherals) > 0
 
 
@@ -416,7 +416,7 @@ def test_multi_roi_supported(demo_core: pmn.CMMCore) -> None:
 
 def test_get_device_adapter_names(core: pmn.CMMCore) -> None:
     names = core.getDeviceAdapterNames()
-    assert isinstance(names, list)
+    assert isinstance(names, tuple)
     assert "DemoCamera" in names
 
 

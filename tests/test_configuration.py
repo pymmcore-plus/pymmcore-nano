@@ -143,7 +143,7 @@ def test_core_properties(demo_core: pmn.CMMCore) -> None:
     core_device = "Core"
 
     core_props = demo_core.getDevicePropertyNames(core_device)
-    assert isinstance(core_props, list)
+    assert isinstance(core_props, tuple)
 
     for prop_name in core_props:
         if demo_core.hasProperty(core_device, prop_name):
