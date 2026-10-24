@@ -450,6 +450,32 @@ def test_image_sequence_errors(demo_core: pmn.CMMCore) -> None:
         demo_core.getNBeforeLastImageMD(0, md)
 
 
+@pytest.mark.parametrize(
+    "error_type, bad_call",
+    [
+        (ValueError, lambda core: core.setConfig("Channel", "NoSuchPreset")),
+        (ValueError, lambda core: core.loadDevice("Camera", "DemoCamera", "DCam")),
+        (OSError, lambda core: core.loadSystemConfiguration("/no/such/file.cfg")),
+        (IndexError, lambda core: core.popNextImage()),
+        (RuntimeError, lambda core: core.getProperty("NoSuchDevice", "Prop")),
+    ],
+)
+def test_error_types(
+    demo_core: pmn.CMMCore, error_type: type, bad_call: Callable[[pmn.CMMCore], object]
+) -> None:
+    # same builtin exception types as pymmcore (SWIG), but always a CMMError too
+    with pytest.raises(error_type) as exc_info:
+        bad_call(demo_core)
+    assert isinstance(exc_info.value, pmn.CMMError)
+
+
+def test_metadata_key_error() -> None:
+    with pytest.raises(KeyError):
+        pmn.Metadata().GetSingleTag("nope")
+    with pytest.raises(ValueError):  # what pymmcore (SWIG) raises
+        pmn.Metadata().GetSingleTag("nope")
+
+
 def test_img_seq_no_camera(demo_core: pmn.CMMCore) -> None:
     demo_core.setCameraDevice("")
     assert not demo_core.getCameraDevice()

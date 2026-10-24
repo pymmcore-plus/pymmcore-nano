@@ -212,6 +212,51 @@ void validate_slm_image(const nb::ndarray<uint8_t> &pixels, long expectedWidth,
     // TODO
 }
 
+///////////////// Exceptions ///////////////////
+
+// Python exception types raised for a CMMError.  Each subclass derives from both
+// CMMError (a RuntimeError) and the builtin type that pymmcore (SWIG) raises for
+// the same error code, so `except CMMError` and e.g. `except ValueError` both work.
+struct CMMErrorTypes {
+    PyObject *base, *value_error, *os_error, *index_error, *memory_error;
+};
+
+// Same mapping as cmmerror_swig_exception_code() in pymmcore's pymmcore_swig.i
+PyObject *cmmerror_type(const CMMErrorTypes &types, int code) {
+    switch (code) {
+    case MMERR_BadAffineTransform:
+    case MMERR_BadConfigName:
+    case MMERR_DuplicateConfigGroup:
+    case MMERR_DuplicateLabel:
+    case MMERR_InvalidContents:
+    case MMERR_InvalidCoreProperty:
+    case MMERR_InvalidCoreValue:
+    case MMERR_InvalidLabel:
+    case MMERR_InvalidPropertyBlock:
+    case MMERR_InvalidSerialDevice:
+    case MMERR_InvalidShutterDevice:
+    case MMERR_InvalidSpecificDevice:
+    case MMERR_InvalidStageDevice:
+    case MMERR_InvalidStateDevice:
+    case MMERR_InvalidXYStageDevice:
+    case MMERR_NoConfigGroup:
+    case MMERR_NoConfiguration:
+    case MMERR_NullPointerException:
+    case MMERR_PropertyNotInCache:
+    case MMERR_SetPropertyFailed:
+    case MMERR_UnexpectedDevice: return types.value_error;
+    case MMERR_FileOpenFailed:
+    case MMERR_InvalidCFGEntry:
+    case MMERR_InvalidConfigurationFile:
+    case MMERR_LoadLibraryFailed: return types.os_error;
+    case MMERR_CircularBufferEmpty:
+    case MMERR_InvalidConfigurationIndex: return types.index_error;
+    case MMERR_CircularBufferFailedToInitialize:
+    case MMERR_OutOfMemory: return types.memory_error;
+    default: return types.base;
+    }
+}
+
 ///////////////// Trampoline class for MMEventCallback ///////////////////
 
 // Allow Python to override virtual functions in MMEventCallback
@@ -778,16 +823,41 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
 
     //////////////////// Exceptions ////////////////////
 
-    // Register the exception with RuntimeError as the base
-    // NOTE:
-    // at the moment, we're not exposing all of the methods on the CMMErrors class
-    // because this is far simpler... but we could expose more if needed
-    // this will expose pymmcore_nano.CMMErrors as a subclass of RuntimeError
-    // and a basic message will be propagated, for example:
-    // CMMError('Failed to load device "SomeDevice" from adapter module
-    // "SomeModule"')
-    nb::exception<CMMError>(m, "CMMError", PyExc_RuntimeError);
-    nb::exception<MetadataKeyError>(m, "MetadataKeyError", PyExc_KeyError);
+    // CMMError is a RuntimeError; errors with a code that pymmcore (SWIG) maps to
+    // another builtin type are raised as a subclass of both (see cmmerror_type).
+    nb::exception<CMMError> cmmError(m, "CMMError", PyExc_RuntimeError);
+    auto cmmErrorSubclass = [&](const char *name, PyObject *builtin) {
+        std::string qualname = nb::cast<std::string>(m.attr("__name__")) + "." + name;
+        nb::object type = nb::steal(PyErr_NewException(
+            qualname.c_str(), nb::make_tuple(cmmError, nb::handle(builtin)).ptr(), nullptr));
+        if (!type.is_valid())
+            throw nb::python_error();
+        m.attr(name) = type;
+        return type.release().ptr(); // cmmErrorTypes keeps a reference for good
+    };
+    static CMMErrorTypes cmmErrorTypes{
+        cmmError.inc_ref().ptr(),
+        cmmErrorSubclass("CMMValueError", PyExc_ValueError),
+        cmmErrorSubclass("CMMOSError", PyExc_OSError),
+        cmmErrorSubclass("CMMIndexError", PyExc_IndexError),
+        cmmErrorSubclass("CMMMemoryError", PyExc_MemoryError),
+    };
+    // registered last, so it is tried before the plain CMMError translator above
+    nb::register_exception_translator(
+        [](const std::exception_ptr &p, void *payload) {
+            try {
+                std::rethrow_exception(p);
+            } catch (const CMMError &e) {
+                auto &types = *static_cast<CMMErrorTypes *>(payload);
+                PyErr_SetString(cmmerror_type(types, e.getCode()), e.getMsg().c_str());
+            }
+        },
+        &cmmErrorTypes);
+
+    // pymmcore (SWIG) raises ValueError for a missing metadata key
+    nb::exception<MetadataKeyError>(
+        m, "MetadataKeyError",
+        nb::make_tuple(nb::handle(PyExc_KeyError), nb::handle(PyExc_ValueError)));
     nb::exception<MetadataIndexError>(m, "MetadataIndexError", PyExc_IndexError);
 
     //////////////////// MMCore ////////////////////
