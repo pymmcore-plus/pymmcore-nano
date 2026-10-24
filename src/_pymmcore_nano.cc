@@ -805,7 +805,9 @@ programming.
             "loadSystemConfiguration",
             // accept any object that can be cast to a string (e.g. Path)
             [](CMMCore &self, nb::object fileName) {
-                self.loadSystemConfiguration(nb::str(fileName).c_str());
+                std::string path = nb::str(fileName).c_str();
+                nb::gil_scoped_release gil;
+                self.loadSystemConfiguration(path.c_str());
             },
             "fileName"_a,
             nb::sig("def loadSystemConfiguration(self, fileName: str | os.PathLike) -> None"),
@@ -820,7 +822,7 @@ programming.
         .def_static("getMMDeviceDeviceInterfaceVersion", &CMMCore::getMMDeviceDeviceInterfaceVersion RGIL)
         .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a RGIL)
         .def("unloadDevice", &CMMCore::unloadDevice, "label"_a RGIL)
-        .def("unloadAllDevices", &CMMCore::unloadAllDevices)
+        .def("unloadAllDevices", &CMMCore::unloadAllDevices RGIL)
         .def("initializeAllDevices", &CMMCore::initializeAllDevices RGIL)
         .def("initializeDevice", &CMMCore::initializeDevice, "label"_a RGIL)
         .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a RGIL)
@@ -847,8 +849,9 @@ MMCore will send notifications on internal events using this interface
             "setPrimaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)
             [](CMMCore &self, nb::object filename, bool truncate) {
-                // convert to string
-                self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);
+                std::string path = nb::str(filename).c_str();
+                nb::gil_scoped_release gil;
+                self.setPrimaryLogFile(path.c_str(), truncate);
             },
             "filename"_a,
             "truncate"_a = false )
@@ -874,8 +877,10 @@ MMCore will send notifications on internal events using this interface
                bool enableDebug,
                bool truncate,
                bool synchronous) {
-                return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug,
-                                                  truncate, synchronous);
+                std::string path = nb::str(filename).c_str();
+                nb::gil_scoped_release gil;
+                return self.startSecondaryLogFile(path.c_str(), enableDebug, truncate,
+                                                  synchronous);
             },
             "filename"_a,
             "enableDebug"_a,
