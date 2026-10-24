@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+import textwrap
 import threading
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 import pymmcore_nano as pmn
+import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -115,3 +119,60 @@ def test_callback(core: pmn.CMMCore, demo_config: Path):
 
     with assert_called("onShutterOpenChanged", core.getShutterDevice(), True):
         core.setShutterOpen(True)
+
+
+# The scripts below run in a fresh interpreter so that a deadlock fails the test
+# (via the timeout) instead of hanging the whole test session.
+
+SLOW_CALLBACK_SETUP = """
+import gc, threading, time
+import pymmcore_nano as pmn
+from mm_test_adapters import device_adapter_path
+
+in_callback = threading.Event()
+
+class SlowCallback(pmn.MMEventCallback):
+    def onPropertyChanged(self, device, prop, value):
+        in_callback.set()
+        time.sleep(0.5)
+
+core = pmn.CMMCore()
+core.setDeviceAdapterSearchPaths([str(device_adapter_path())])
+core.loadDevice("Camera", "DemoCamera", "DCam")
+core.initializeDevice("Camera")
+cb = SlowCallback()
+core.registerCallback(cb)
+
+core.setProperty("Camera", "Binning", "2")
+in_callback.wait()
+"""
+
+
+def _run_script(script: str, timeout: float = 20) -> None:
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", SLOW_CALLBACK_SETUP + script],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.fail(f"script did not finish within {timeout} s (deadlock?)")
+    assert result.returncode == 0, result.stderr
+
+
+def test_del_core_during_callback() -> None:
+    """Deleting the core while a callback is running should not deadlock."""
+    _run_script("del core")
+
+
+def test_gc_core_during_callback() -> None:
+    """Garbage-collecting the core while a callback is running should not deadlock."""
+    _run_script(
+        textwrap.dedent("""
+        cycle = [core]
+        cycle.append(cycle)
+        del core, cycle
+        gc.collect()
+        """)
+    )
