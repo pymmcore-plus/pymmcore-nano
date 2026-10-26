@@ -21,21 +21,6 @@ def _wait_until(predicate: Callable[[], bool], timeout: float = 2.0, interval=0.
     raise TimeoutError("Timed out waiting for condition")
 
 
-def _wait_until_stderr(
-    capfd: pytest.CaptureFixture, expected: str, timeout: float = 6.0, interval=0.05
-):
-    accumulated = ""
-    start = time.perf_counter()
-    while time.perf_counter() - start < timeout:
-        accumulated += capfd.readouterr().err
-        if expected in accumulated:
-            return True
-        time.sleep(interval)
-    raise TimeoutError(
-        f"Timed out waiting for {expected!r} in stderr. Got: {accumulated!r}"
-    )
-
-
 # ── LogLevel enum ─────────────────────────────────────────────────────────────
 
 
@@ -151,15 +136,15 @@ def test_log_filtered_by_level(core: pmn.CMMCore, tmp_path: Path) -> None:
     assert "should-not-appear" not in text
 
 
-@pytest.mark.flaky(reruns=2)
-def test_log_to_stderr(
-    core: pmn.CMMCore, capfd: pytest.CaptureFixture, tmp_path: Path
-) -> None:
-    core.enableStderrLog(True)
-    core.setPrimaryLogLevel(pmn.LogLevel.LogLevelTrace)
-    core.log("stderr-test-msg", pmn.LogLevel.LogLevelWarning, "test-logger")
-    _wait_until_stderr(capfd, "[WRN,test-logger] stderr-test-msg")
-    core.enableStderrLog(False)
+def test_log_to_stderr(core: pmn.CMMCore, stderr_to_file: Callable) -> None:
+    with stderr_to_file() as stderr_text:
+        core.enableStderrLog(True)
+        core.setPrimaryLogLevel(pmn.LogLevel.LogLevelTrace)
+        core.log("stderr-test-msg", pmn.LogLevel.LogLevelWarning, "test-logger")
+        _wait_until(
+            lambda: "[WRN,test-logger] stderr-test-msg" in stderr_text(), timeout=6
+        )
+        core.enableStderrLog(False)
 
 
 # ── setPrimaryLogFileRotation ─────────────────────────────────────────────────
@@ -228,19 +213,19 @@ def test_set_stderr_log_level_accepts_all_values(core: pmn.CMMCore) -> None:
 
 
 def test_stderr_log_level_filters_output(
-    core: pmn.CMMCore, capfd: pytest.CaptureFixture
+    core: pmn.CMMCore, stderr_to_file: Callable
 ) -> None:
-    core.enableStderrLog(True)
-    core.setStderrLogLevel(pmn.LogLevel.LogLevelWarning)
+    with stderr_to_file() as stderr_text:
+        core.enableStderrLog(True)
+        core.setStderrLogLevel(pmn.LogLevel.LogLevelWarning)
 
-    core.log("stderr-should-appear", pmn.LogLevel.LogLevelError)
-    _wait_until_stderr(capfd, "stderr-should-appear")
+        core.log("stderr-should-appear", pmn.LogLevel.LogLevelError)
+        _wait_until(lambda: "stderr-should-appear" in stderr_text(), timeout=6)
 
-    core.log("stderr-should-not-appear", pmn.LogLevel.LogLevelDebug)
-    time.sleep(0.2)
-    captured = capfd.readouterr().err
-    assert "stderr-should-not-appear" not in captured
-    core.enableStderrLog(False)
+        core.log("stderr-should-not-appear", pmn.LogLevel.LogLevelDebug)
+        time.sleep(0.2)
+        assert "stderr-should-not-appear" not in stderr_text()
+        core.enableStderrLog(False)
 
 
 # ── interaction with legacy APIs ──────────────────────────────────────────────

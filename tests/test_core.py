@@ -21,21 +21,6 @@ def _wait_until(predicate: Callable[[], bool], timeout: float = 2.0, interval=0.
     raise TimeoutError("Timed out waiting for condition")
 
 
-def _wait_until_stderr(
-    capfd: pytest.CaptureFixture, expected: str, timeout: float = 6.0, interval=0.05
-):
-    accumulated = ""
-    start = time.perf_counter()
-    while time.perf_counter() - start < timeout:
-        accumulated += capfd.readouterr().err
-        if expected in accumulated:
-            return True
-        time.sleep(interval)
-    raise TimeoutError(
-        f"Timed out waiting for {expected!r} in stderr. Got: {accumulated!r}"
-    )
-
-
 def test_version():
     device_version = pmn.DEVICE_INTERFACE_VERSION
     assert isinstance(device_version, int)
@@ -151,60 +136,58 @@ def test_device_loading(core: pmn.CMMCore) -> None:
 #    void registerCallback(MMEventCallback* cb);
 
 
-# have to use capfd to capture stderr, capsys won't work
-# Flaky on macOS CI: capfd occasionally returns partial/null-filled reads
-@pytest.mark.flaky(reruns=2)
-def test_core_logging(capfd: pytest.CaptureFixture, tmp_path: Path) -> None:
-    mmc = pmn.CMMCore()
-    # no file logging at start
-    assert not mmc.getPrimaryLogFile()
-    # stderr logging disabled at start
-    msg = "test logging"
-    mmc.logMessage(msg)
-    with pytest.raises(TimeoutError):
-        _wait_until_stderr(capfd, msg, timeout=0.1)
+def test_core_logging(stderr_to_file: Callable, tmp_path: Path) -> None:
+    with stderr_to_file() as stderr_text:
+        mmc = pmn.CMMCore()
+        # no file logging at start
+        assert not mmc.getPrimaryLogFile()
+        # stderr logging disabled at start
+        msg = "test logging"
+        mmc.logMessage(msg)
+        with pytest.raises(TimeoutError):
+            _wait_until(lambda: msg in stderr_text(), timeout=0.1)
 
-    # test file logging
-    logfile = tmp_path / "test.log"
-    mmc.setPrimaryLogFile(logfile)
-    assert mmc.getPrimaryLogFile() == str(logfile)
-    msg = "test file logging"
-    mmc.logMessage(msg)
-    _wait_until(lambda: msg in logfile.read_text())
-    mmc.setPrimaryLogFile("")
-    assert not mmc.getPrimaryLogFile()
-    logfile.write_text("")
-    mmc.logMessage(msg)
-    with pytest.raises(TimeoutError):
-        _wait_until(lambda: msg in logfile.read_text(), timeout=0.1)
+        # test file logging
+        logfile = tmp_path / "test.log"
+        mmc.setPrimaryLogFile(logfile)
+        assert mmc.getPrimaryLogFile() == str(logfile)
+        msg = "test file logging"
+        mmc.logMessage(msg)
+        _wait_until(lambda: msg in logfile.read_text())
+        mmc.setPrimaryLogFile("")
+        assert not mmc.getPrimaryLogFile()
+        logfile.write_text("")
+        mmc.logMessage(msg)
+        with pytest.raises(TimeoutError):
+            _wait_until(lambda: msg in logfile.read_text(), timeout=0.1)
 
-    # secondary log file
-    logfile2 = tmp_path / "test2.log"
-    handle = mmc.startSecondaryLogFile(logfile2, enableDebug=True)
-    assert isinstance(handle, int)
-    assert not logfile2.read_text()
-    msg = "test secondary file logging"
-    mmc.logMessage(msg)
-    _wait_until(lambda: msg in logfile2.read_text())
-    mmc.stopSecondaryLogFile(handle)
+        # secondary log file
+        logfile2 = tmp_path / "test2.log"
+        handle = mmc.startSecondaryLogFile(logfile2, enableDebug=True)
+        assert isinstance(handle, int)
+        assert not logfile2.read_text()
+        msg = "test secondary file logging"
+        mmc.logMessage(msg)
+        _wait_until(lambda: msg in logfile2.read_text())
+        mmc.stopSecondaryLogFile(handle)
 
-    # test stderr logging
-    mmc.enableStderrLog(True)
-    assert mmc.stderrLogEnabled()
-    msg = "test stderr logging"
-    mmc.logMessage(msg)
-    _wait_until_stderr(capfd, f"[IFO,App] {msg}")
+        # test stderr logging
+        mmc.enableStderrLog(True)
+        assert mmc.stderrLogEnabled()
+        msg = "test stderr logging"
+        mmc.logMessage(msg)
+        _wait_until(lambda: f"[IFO,App] {msg}" in stderr_text(), timeout=6)
 
-    # test debug logging
-    assert not mmc.debugLogEnabled()
-    mmc.enableDebugLog(True)
-    assert mmc.debugLogEnabled()
-    msg = "test debug logging"
-    mmc.logMessage(msg, True)  # log only in debug mode
-    _wait_until_stderr(capfd, f"[dbg,App] {msg}")
+        # test debug logging
+        assert not mmc.debugLogEnabled()
+        mmc.enableDebugLog(True)
+        assert mmc.debugLogEnabled()
+        msg = "test debug logging"
+        mmc.logMessage(msg, True)  # log only in debug mode
+        _wait_until(lambda: f"[dbg,App] {msg}" in stderr_text(), timeout=6)
 
-    mmc.enableStderrLog(False)
-    assert not mmc.stderrLogEnabled()
+        mmc.enableStderrLog(False)
+        assert not mmc.stderrLogEnabled()
 
 
 def test_core(demo_core: pmn.CMMCore) -> None:
