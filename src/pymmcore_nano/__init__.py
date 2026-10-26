@@ -48,7 +48,7 @@ def __getattr__(name: str):
         warnings.warn(
             f"{name} is only provided for compatibility with pymmcore (SWIG) "
             f"and will be removed. Use a {builtin.__name__} instead.",
-            FutureWarning,
+            DeprecationWarning,
             stacklevel=2,
         )
         return builtin
