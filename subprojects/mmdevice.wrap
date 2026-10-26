@@ -1,6 +1,6 @@
 [wrap-git]
 url = https://github.com/micro-manager/mmdevice.git
-revision = b31dbbcca65a9a5120232518b9b061e81092a896
+revision = 77fdd0864be5cf86e7b4e008d3c13568311a54cf
 depth = 1
 
 [provide]

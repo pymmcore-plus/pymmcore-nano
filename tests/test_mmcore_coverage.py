@@ -483,7 +483,9 @@ def test_unload_library(core: pmn.CMMCore) -> None:
     core.loadDevice("Cam", "DemoCamera", "DCam")
     core.initializeDevice("Cam")
     core.unloadDevice("Cam")
-    core.unloadLibrary("DemoCamera")
+    # since MMCore 12.5.1, only mock device adapters can be unloaded
+    with pytest.raises(pmn.CMMError, match="Cannot unload"):
+        core.unloadLibrary("DemoCamera")
 
 
 # ── setProperty on int-like prop ────────────────────────────────────────────
