@@ -257,6 +257,20 @@ PyObject *cmmerror_type(const CMMErrorTypes &types, int code) {
     }
 }
 
+///////////////// CMMCore subclass that releases the GIL on destruction ////////////
+
+// ~CMMCore() calls registerCallback(nullptr), which joins MMCore's notification
+// thread. That thread may be waiting for the GIL to deliver a Python callback,
+// and nanobind runs C++ destructors with the GIL held, so `del core` deadlocks.
+// Unregister with the GIL released first (SWIG releases it around `delete`).
+class PyCMMCore : public CMMCore {
+  public:
+    ~PyCMMCore() {
+        nb::gil_scoped_release release;
+        registerCallback(nullptr);
+    }
+};
+
 ///////////////// Trampoline class for MMEventCallback ///////////////////
 
 // Allow Python to override virtual functions in MMEventCallback
@@ -862,7 +876,7 @@ Use by passing an instance to [`CMMCore.registerCallback`][pymmcore_nano.CMMCore
 
     //////////////////// MMCore ////////////////////
 
-    nb::class_<CMMCore>(m, "CMMCore", R"doc(
+    nb::class_<PyCMMCore>(m, "CMMCore", R"doc(
 The main MMCore object.
 
 
@@ -874,8 +888,10 @@ programming.
         .def(
             "loadSystemConfiguration",
             // accept any object that can be cast to a string (e.g. Path)
-            [](CMMCore &self, nb::object fileName) {
-                self.loadSystemConfiguration(nb::str(fileName).c_str());
+            [](PyCMMCore &self, nb::object fileName) {
+                std::string path = nb::str(fileName).c_str();
+                nb::gil_scoped_release gil;
+                self.loadSystemConfiguration(path.c_str());
             },
             "fileName"_a,
             nb::sig("def loadSystemConfiguration(self, fileName: str | os.PathLike) -> None"),
@@ -890,7 +906,7 @@ programming.
         .def_static("getMMDeviceDeviceInterfaceVersion", &CMMCore::getMMDeviceDeviceInterfaceVersion RGIL)
         .def("loadDevice", &CMMCore::loadDevice, "label"_a, "moduleName"_a, "deviceName"_a RGIL)
         .def("unloadDevice", &CMMCore::unloadDevice, "label"_a RGIL)
-        .def("unloadAllDevices", &CMMCore::unloadAllDevices)
+        .def("unloadAllDevices", &CMMCore::unloadAllDevices RGIL)
         .def("initializeAllDevices", &CMMCore::initializeAllDevices RGIL)
         .def("initializeDevice", &CMMCore::initializeDevice, "label"_a RGIL)
         .def("getDeviceInitializationState", &CMMCore::getDeviceInitializationState, "label"_a RGIL)
@@ -916,9 +932,10 @@ MMCore will send notifications on internal events using this interface
         .def(
             "setPrimaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)
-            [](CMMCore &self, nb::object filename, bool truncate) {
-                // convert to string
-                self.setPrimaryLogFile(nb::str(filename).c_str(), truncate);
+            [](PyCMMCore &self, nb::object filename, bool truncate) {
+                std::string path = nb::str(filename).c_str();
+                nb::gil_scoped_release gil;
+                self.setPrimaryLogFile(path.c_str(), truncate);
             },
             "filename"_a,
             "truncate"_a = false )
@@ -939,13 +956,15 @@ MMCore will send notifications on internal events using this interface
         .def(
             "startSecondaryLogFile",
             // accept any object that can be cast to a string (e.g. Path)
-            [](CMMCore &self,
+            [](PyCMMCore &self,
                nb::object filename,
                bool enableDebug,
                bool truncate,
                bool synchronous) {
-                return self.startSecondaryLogFile(nb::str(filename).c_str(), enableDebug,
-                                                  truncate, synchronous);
+                std::string path = nb::str(filename).c_str();
+                nb::gil_scoped_release gil;
+                return self.startSecondaryLogFile(path.c_str(), enableDebug, truncate,
+                                                  synchronous);
             },
             "filename"_a,
             "enableDebug"_a,
@@ -1129,7 +1148,7 @@ MMCore will send notifications on internal events using this interface
         .def("getPixelSizeUm", nb::overload_cast<bool>(&CMMCore::getPixelSizeUm), "cached"_a RGIL)
         .def("getPixelSizeUmByID", &CMMCore::getPixelSizeUmByID, "resolutionID"_a RGIL)
         .def("getPixelSizeAffine",
-             [](CMMCore &self) {
+             [](PyCMMCore &self) {
                 std::vector<double> v;
                 {
                     nb::gil_scoped_release gil;
@@ -1139,7 +1158,7 @@ MMCore will send notifications on internal events using this interface
              },
              nb::sig("def getPixelSizeAffine(self) -> tuple[float, float, float, float, float, float]"))
         .def("getPixelSizeAffine",
-             [](CMMCore &self, bool cached) {
+             [](PyCMMCore &self, bool cached) {
                 std::vector<double> v;
                 {
                     nb::gil_scoped_release gil;
@@ -1149,7 +1168,7 @@ MMCore will send notifications on internal events using this interface
              }, "cached"_a,
              nb::sig("def getPixelSizeAffine(self, cached: bool) -> tuple[float, float, float, float, float, float]"))
         .def("getPixelSizeAffineByID",
-             [](CMMCore &self, const char *resolutionID) {
+             [](PyCMMCore &self, const char *resolutionID) {
                 std::vector<double> v;
                 {
                     nb::gil_scoped_release gil;
@@ -1211,14 +1230,14 @@ MMCore will send notifications on internal events using this interface
              "xSize"_a,
              "ySize"_a RGIL)
         .def("getROI",
-             [](CMMCore &self) {
+             [](PyCMMCore &self) {
                 int x, y, xSize, ySize;
                 self.getROI(x, y, xSize, ySize);            // Call C++ method
                 return std::make_tuple(x, y, xSize, ySize); // Return a tuple
              } RGIL)
         .def(
             "getROI",
-            [](CMMCore &self, const char *label) {
+            [](PyCMMCore &self, const char *label) {
                 int x, y, xSize, ySize;
                 self.getROI(label, x, y, xSize, ySize);     // Call the C++ method
                 return std::make_tuple(x, y, xSize, ySize); // Return as Python tuple
@@ -1229,7 +1248,7 @@ MMCore will send notifications on internal events using this interface
         .def("isMultiROIEnabled", &CMMCore::isMultiROIEnabled RGIL)
         .def("setMultiROI", &CMMCore::setMultiROI, "xs"_a, "ys"_a, "widths"_a, "heights"_a RGIL)
         .def("getMultiROI",
-             [](CMMCore &self) {
+             [](PyCMMCore &self) {
                 std::vector<unsigned> xs, ys, widths, heights;
                 {
                     nb::gil_scoped_release gil;
@@ -1271,10 +1290,10 @@ MMCore will send notifications on internal events using this interface
         .def("snapImage", &CMMCore::snapImage RGIL)
         .def(
             "getImage",
-            [](CMMCore &self) -> np_array {
+            [](PyCMMCore &self) -> np_array {
                 return create_image_array(self, self.getImage()); } RGIL)
         .def("getImage",
-             [](CMMCore &self, unsigned channel) -> np_array {
+             [](PyCMMCore &self, unsigned channel) -> np_array {
                 return create_image_array(self, self.getImage(channel));
              }, "numChannel"_a RGIL)
         .def("getImageWidth", &CMMCore::getImageWidth RGIL)
@@ -1322,18 +1341,18 @@ MMCore will send notifications on internal events using this interface
              nb::overload_cast<const char *>(&CMMCore::isSequenceRunning),
              "cameraLabel"_a RGIL)
         .def("getLastImage",
-             [](CMMCore &self) -> np_array {
+             [](PyCMMCore &self) -> np_array {
                 return create_image_array(self, self.getLastImage());
              } RGIL)
         .def("popNextImage",
-             [](CMMCore &self) -> np_array {
+             [](PyCMMCore &self) -> np_array {
                 return create_image_array(self, self.popNextImage());
              } RGIL)
         // this is a new overload that returns both the image and the metadata
         // not present in the original C++ API
         .def(
             "getLastImageMD",
-            [](CMMCore &self) -> std::tuple<np_array, Metadata> {
+            [](PyCMMCore &self) -> std::tuple<np_array, Metadata> {
                 Metadata md;
                 auto img = self.getLastImageMD(md);
                 return {create_metadata_array(self, img, md), md};
@@ -1341,7 +1360,7 @@ MMCore will send notifications on internal events using this interface
             "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
         .def(
             "getLastImageMD",
-            [](CMMCore &self, Metadata &md) -> np_array {
+            [](PyCMMCore &self, Metadata &md) -> np_array {
                 auto img = self.getLastImageMD(md);
                 return create_metadata_array(self, img, md);
             },
@@ -1349,7 +1368,7 @@ MMCore will send notifications on internal events using this interface
             "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
         .def(
             "getLastImageMD",
-            [](CMMCore &self,
+            [](PyCMMCore &self,
                unsigned channel,
                unsigned slice) -> std::tuple<np_array, Metadata> {
                 Metadata md;
@@ -1362,7 +1381,7 @@ MMCore will send notifications on internal events using this interface
             "as tuple of image and metadata" RGIL)
         .def(
             "getLastImageMD",
-            [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
+            [](PyCMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
                 auto img = self.getLastImageMD(channel, slice, md);
                 return create_metadata_array(self, img, md);
             },
@@ -1374,7 +1393,7 @@ MMCore will send notifications on internal events using this interface
 
         .def(
             "popNextImageMD",
-            [](CMMCore &self) -> std::tuple<np_array, Metadata> {
+            [](PyCMMCore &self) -> std::tuple<np_array, Metadata> {
                 Metadata md;
                 auto img = self.popNextImageMD(md);
                 return {create_metadata_array(self, img, md), md};
@@ -1382,7 +1401,7 @@ MMCore will send notifications on internal events using this interface
             "Get the last image in the circular buffer, return as tuple of image and metadata" RGIL)
         .def(
             "popNextImageMD",
-            [](CMMCore &self, Metadata &md) -> np_array {
+            [](PyCMMCore &self, Metadata &md) -> np_array {
                 auto img = self.popNextImageMD(md);
                 return create_metadata_array(self, img, md);
             },
@@ -1390,7 +1409,7 @@ MMCore will send notifications on internal events using this interface
             "Get the last image in the circular buffer, store metadata in the provided object" RGIL)
         .def(
             "popNextImageMD",
-            [](CMMCore &self,
+            [](PyCMMCore &self,
                unsigned channel,
                unsigned slice) -> std::tuple<np_array, Metadata> {
                 Metadata md;
@@ -1403,7 +1422,7 @@ MMCore will send notifications on internal events using this interface
             "as tuple of image and metadata" RGIL)
         .def(
             "popNextImageMD",
-            [](CMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
+            [](PyCMMCore &self, unsigned channel, unsigned slice, Metadata &md) -> np_array {
                 auto img = self.popNextImageMD(channel, slice, md);
                 return create_metadata_array(self, img, md);
             },
@@ -1415,7 +1434,7 @@ MMCore will send notifications on internal events using this interface
 
         .def(
             "getNBeforeLastImageMD",
-            [](CMMCore &self, unsigned long n) -> std::tuple<np_array, Metadata> {
+            [](PyCMMCore &self, unsigned long n) -> std::tuple<np_array, Metadata> {
                 Metadata md;
                 auto img = self.getNBeforeLastImageMD(n, md);
                 return {create_metadata_array(self, img, md), md};
@@ -1426,7 +1445,7 @@ MMCore will send notifications on internal events using this interface
             "of image and metadata" RGIL)
         .def(
             "getNBeforeLastImageMD",
-            [](CMMCore &self, unsigned long n, Metadata &md) -> np_array {
+            [](PyCMMCore &self, unsigned long n, Metadata &md) -> np_array {
                 auto img = self.getNBeforeLastImageMD(n, md);
                 return create_metadata_array(self, img, md);
             },
@@ -1560,14 +1579,14 @@ MMCore will send notifications on internal events using this interface
 
         .def(
             "getXYPosition",
-            [](CMMCore &self, const char *xyStageLabel) -> std::tuple<double, double> {
+            [](PyCMMCore &self, const char *xyStageLabel) -> std::tuple<double, double> {
                 double x, y;
                 self.getXYPosition(xyStageLabel, x, y);
                 return {x, y};
             },
             "xyStageLabel"_a RGIL)
         .def("getXYPosition",
-             [](CMMCore &self) -> std::tuple<double, double> {
+             [](PyCMMCore &self) -> std::tuple<double, double> {
                 double x, y;
                 self.getXYPosition(x, y);
                 return {x, y};
@@ -1637,7 +1656,7 @@ MMCore will send notifications on internal events using this interface
         .def("getSerialPortAnswer", &CMMCore::getSerialPortAnswer, "portLabel"_a, "term"_a RGIL)
         .def("writeToSerialPort", &CMMCore::writeToSerialPort, "portLabel"_a, "data"_a RGIL)
         .def("readFromSerialPort",
-            [](CMMCore &self, const char *portLabel) -> nb::bytes {
+            [](PyCMMCore &self, const char *portLabel) -> nb::bytes {
                 auto vec = self.readFromSerialPort(portLabel);
                 return nb::bytes(vec.data(), vec.size());
             },
@@ -1648,7 +1667,7 @@ MMCore will send notifications on internal events using this interface
         // int*
         .def(
             "setSLMImage",
-            [](CMMCore &self,
+            [](PyCMMCore &self,
                const char *slmLabel,
                const nb::ndarray<uint8_t> &pixels) -> void {
                 long expectedWidth = self.getSLMWidth(slmLabel);
@@ -1685,7 +1704,7 @@ MMCore will send notifications on internal events using this interface
         .def("stopSLMSequence", &CMMCore::stopSLMSequence, "slmLabel"_a RGIL)
         .def(
             "loadSLMSequence",
-            [](CMMCore &self,
+            [](PyCMMCore &self,
                const char *slmLabel,
                std::vector<nb::ndarray<uint8_t>> &imageSequence) -> void {
                 long expectedWidth = self.getSLMWidth(slmLabel);
@@ -1714,7 +1733,7 @@ MMCore will send notifications on internal events using this interface
              "pulseTime_us"_a RGIL)
         .def("setGalvoPosition", &CMMCore::setGalvoPosition, "galvoLabel"_a, "x"_a, "y"_a RGIL)
         .def("getGalvoPosition",
-             [](CMMCore &self, const char *galvoLabel) -> std::tuple<double, double> {
+             [](PyCMMCore &self, const char *galvoLabel) -> std::tuple<double, double> {
                 double x, y;
                 self.getGalvoPosition(galvoLabel, x, y);
                 return std::make_tuple(x, y);
