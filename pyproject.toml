@@ -8,7 +8,7 @@ requires = [
 build-backend = 'mesonpy'
 
 [project]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 name = "pymmcore-nano"
 dynamic = ['version']
 description = "Alternative python bindings for MMCore, Micro-Manager's device control layer"
@@ -23,7 +23,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -85,7 +84,7 @@ build-verbosity = 1
 # is specific to glibc and not available in musl-libc
 # Free-threaded (*t) builds are skipped for now: cp315t fails to import.
 skip = ["*-manylinux_i686", "*-musllinux*", "*-win32", "*t-*"]
-build = ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
+build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 test-requires = ["check-wheel-contents"]
 test-groups = ["test"]
 test-command = [
@@ -109,7 +108,7 @@ repair-wheel-command = ""
 # https://docs.astral.sh/ruff/rules/
 [tool.ruff]
 line-length = 88
-target-version = "py39"
+target-version = "py311"
 fix = true
 unsafe-fixes = true
 src = ["tests"]

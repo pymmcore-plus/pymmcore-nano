@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import enum
 import time
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pymmcore_nano as pmn
 import pytest
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
