@@ -23,7 +23,7 @@ IGNORE_MEMBERS = {"noop"}
 
 # Regex patterns for parsing bindings
 NB_DEF_RE = re.compile(r'\.def(?:_static|_readwrite|_readonly)?\s*\(\s*"([^"]+)"')
-NB_CLASS_RE = re.compile(r"\bnb::class_<\s*([^,>]+)\s*[,>]")
+NB_CLASS_RE = re.compile(r"\b(?:nb::class_|autodoc_class)<\s*([^,>]+)\s*[,>]")
 M_ATTR_RE = re.compile(r'm\.attr\s*\(\s*"([^"]+)"\s*\)')
 ENUM_VALUE_RE = re.compile(r'\.value\s*\(\s*"([^"]+)"')
 BIND_ENUM_VALUE_RE = re.compile(r'BIND_ENUM_VALUE\s*\([^,]+,\s*"([^"]+)"')

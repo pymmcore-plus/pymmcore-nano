@@ -69,7 +69,7 @@ plugins:
             allow_inspection: false
             find_stubs_package: true
             docstring_section_style: list
-            # docstring_style: "numpy"
+            docstring_style: "numpy"
             filters: ["!^_"]
             inherited_members: true
             merge_init_into_class: true

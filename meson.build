@@ -42,9 +42,18 @@ if get_option('match_swig')
     cpp_args += ['-DMATCH_SWIG']
 endif
 
+# Generate docstrings for CMMCore methods from the doxygen comments in MMCore.cpp
+mmcore_docs = custom_target(
+    'mmcore_docs',
+    input: mmcore_proj.get_variable('mmcore_sources')
+        + mmcore_proj.get_variable('mmcore_public_headers'),
+    output: 'mmcore_docs.h',
+    command: [py, files('scripts/gen_mmcore_docs.py'), '@OUTPUT@', '@INPUT@'],
+)
+
 ext_module = py.extension_module(
     '_pymmcore_nano',
-    sources: ['src/_pymmcore_nano.cc'],
+    sources: ['src/_pymmcore_nano.cc', mmcore_docs],
     dependencies: [nanobind_dep, mmcore_dep],
     install: true,
     subdir: 'pymmcore_nano',
