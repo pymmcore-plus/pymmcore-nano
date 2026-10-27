@@ -30,11 +30,8 @@ BIND_ENUM_VALUE_RE = re.compile(r'BIND_ENUM_VALUE\s*\([^,]+,\s*"([^"]+)"')
 DEFINE_RE = re.compile(r"^\s*#define\s+([A-Z_][A-Z0-9_]*)\s+", re.MULTILINE)
 ENUM_RE = re.compile(r"nb::enum_<[^>]+>\s*\([^)]+\)")
 
-# Constants to ignore (internal/deprecated)
-IGNORE_CONSTANTS = {
-    "MM_DEPRECATED",
-    "g_Keyword_Meatdata_Exposure",  # This is the deprecated typo version
-}
+# Constants to ignore (internal)
+IGNORE_CONSTANTS = {"MM_DEPRECATED"}
 
 
 def _located_in(node: Cursor, file: Path) -> bool:

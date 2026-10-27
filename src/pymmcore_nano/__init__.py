@@ -4,6 +4,9 @@ from ._pymmcore_nano import __version__ as __version__  # type: ignore [attr-def
 import sys
 import importlib.util
 
+# which binding generator produced this module (pymmcore from SWIG has no such attr)
+BINDING = "nanobind"
+
 
 _pymmcore_spec = importlib.util.find_spec("pymmcore")
 

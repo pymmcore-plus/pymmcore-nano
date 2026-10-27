@@ -18,3 +18,13 @@ def test_swig_container_names(demo_core: pmn.CMMCore) -> None:
 
     with pytest.raises(AttributeError):
         pmn.NotAVector  # noqa: B018
+
+
+def test_misspelled_exposure_keyword() -> None:
+    # MMDevice (and therefore pymmcore) ship this typo; keep both spellings working
+    assert pmn.g_Keyword_Meatdata_Exposure == pmn.g_Keyword_Metadata_Exposure
+    assert pmn.g_Keyword_Metadata_Exposure == "Exposure-ms"
+
+
+def test_binding_attr() -> None:
+    assert pmn.BINDING == "nanobind"

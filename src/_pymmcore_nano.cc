@@ -490,6 +490,8 @@ NB_MODULE(_pymmcore_nano, m) {
     m.attr("g_Keyword_Pressure_Measured") = MM::g_Keyword_Pressure_Measured;
     m.attr("g_Keyword_Metadata_CameraLabel") = MM::g_Keyword_Metadata_CameraLabel;
     m.attr("g_Keyword_Metadata_Exposure") = MM::g_Keyword_Metadata_Exposure;
+    // typo kept for compatibility with pymmcore (SWIG) and MMDevice itself
+    m.attr("g_Keyword_Meatdata_Exposure") = MM::g_Keyword_Metadata_Exposure;
     m.attr("g_Keyword_Metadata_Height") = MM::g_Keyword_Metadata_Height;
     m.attr("g_Keyword_Metadata_ImageNumber") = MM::g_Keyword_Metadata_ImageNumber;
     m.attr("g_Keyword_Metadata_ROI_X") = MM::g_Keyword_Metadata_ROI_X;
