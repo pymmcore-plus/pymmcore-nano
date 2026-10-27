@@ -140,6 +140,8 @@ ignore = [
 "docs/*.py" = ["A", "D"]
 
 [tool.check-wheel-contents]
-toplevel = "pymmcore_nano"
+# windows wheels also carry pymmcore_nano.libs/ (msvcp140.dll, added by delvewheel);
+# W010 = that dir has no python modules, W201 = it is absent from other platforms' wheels
+toplevel = ["pymmcore_nano", "pymmcore_nano.libs"]
 package = "src/pymmcore_nano"
-ignore = ["W102", "W002"]
+ignore = ["W102", "W002", "W010", "W201"]
